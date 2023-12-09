@@ -4,8 +4,6 @@
 
 #include "panel_mediator.h"
 
-#define PANEL_MAX_MONITORS 10
-
 G_BEGIN_DECLS
 
 // The top-of-screen Panel which exists on each monitor of the current
@@ -29,4 +27,19 @@ void panel_activate(AdwApplication *app, gpointer user_data);
 //
 // If the caller will hold a referene to PanelMediator it should increase it's
 // ref count and decrement it once finished.
-PanelMediator *panel_get_global_panel_mediator();
+PanelMediator *panel_get_global_mediator();
+
+// Called when the provided panel influenced the MessageTray to become visible.
+void panel_on_msg_tray_visible(Panel *panel);
+
+// Called when the provided panel influenced the MessageTray to be hidden.
+void panel_on_msg_tray_hidden(Panel *panel);
+
+// Called when the provided panel influenced the QuickSettings to become visible.
+void panel_on_qs_visible(Panel *panel);
+
+// Called when the provided panel influenced the QuickSettings to be hidden.
+void panel_on_qs_hidden(Panel *panel);
+
+// Returns the monitor the given Panel is on.
+GdkMonitor *panel_get_monitor(Panel *panel);

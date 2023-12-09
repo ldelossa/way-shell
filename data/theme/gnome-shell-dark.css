@@ -1,0 +1,248 @@
+/*
+/ Underlay
+*/
+.underlay {
+  background-color: rgba(0, 0, 0, 0.0);
+}
+
+.underlay:hover,
+.underlay:active {
+  background-color: rgba(0, 0, 0, 0.0);
+}
+
+/*
+/ Message Tray
+*/
+#message-tray {
+  padding: 6px;
+  background-color: #353535;
+  border-radius: 20px;
+  border: 1px solid #424242;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+  color: #f2f2f2;
+}
+
+#message-tray .calendar-area {
+  padding: 15px;
+  margin-bottom: 12em;
+}
+
+#message-tray #calendar-month-selector {
+  padding: 0px;
+  margin: 0px;
+}
+
+#message-tray #calendar-month-selector label {
+  font-size: 15px;
+  font-weight: bold;
+  color: #f2f2f2;
+}
+
+#message-tray #calendar-month-selector button {
+  background-color: inherit;
+}
+
+#message-tray #calendar-month-selector button:hover {
+  background-color: rgba(242, 242, 242, 0.25);
+}
+
+#message-tray #calendar-today {
+  background-color: #353535;
+  padding-bottom: 15px;
+  color: #b0b0b0b0;
+  transition: 250ms;
+}
+
+#message-tray #calendar-today.calendar-today-dirty {
+  color: #dddddd;
+}
+
+#message-tray #calendar-today.calendar-today-dirty:hover {
+  color: #ffffff;
+  background-color: rgba(242, 242, 242, 0.15);
+}
+
+#message-tray #calendar-today row label.title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#message-tray #calendar-today row label.subtitle {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+#message-tray calendar {
+  background-color: #353535;
+}
+
+#message-tray calendar.view {
+  background-color: #353535;
+  color: #353535;
+}
+
+#message-tray calendar.view grid {
+  background-color: #353535;
+  color: #353535;
+}
+
+#message-tray calendar.view grid label.day-number,
+label.day-name {
+  color: #f2f2f2;
+  padding: 0px;
+  margin: 0px;
+}
+
+#message-tray calendar.view grid label.day-number:active {
+  border-radius: 100%;
+}
+
+#message-tray calendar.view grid label.day-number:focus {
+  border-radius: 100%;
+  background-color: rgba(242, 242, 242, 0.05);
+  outline-color: #3584e4;
+}
+
+#message-tray calendar.view grid label.day-number:focus:selected {
+  border-radius: 100%;
+  background-color: rgba(242, 242, 242, 0.15);
+  outline-color: #3584e4;
+}
+
+#message-tray calendar.view grid label.day-number.today,
+label.day-number.today:focus {
+  border-radius: 100%;
+  background-color: #3584e4;
+}
+
+#message-tray calendar.view grid label.day-number.today:focus:selected {
+  background-color: #3584e4;
+  outline-color: #ffffff;
+}
+
+#message-tray calendar.view grid label:selected {
+  border-radius: 100%;
+}
+
+#message-tray calendar.view grid label.other-month {
+  color: rgba(242, 242, 242, 0.25);
+}
+
+#message-tray separator {
+  color: #f2f2f2;
+  padding: 5x;
+}
+
+/*
+/ Quick Settings
+*/
+#quick-settings {
+  padding: 6px;
+  background-color: #353535;
+  border-radius: 20px;
+  border: 1px solid #424242;
+  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+  color: #f2f2f2;
+}
+
+#quick-settings-header {
+  padding: 4px;
+}
+
+#quick-settings #quick-settings-header .battery-button {
+  border-radius: 15px;
+  padding: 5px 10px;
+}
+
+#quick-settings #quick-settings-header image,
+#quick-settings #quick-settings-header label {
+  padding: 2px;
+}
+
+#power-menu {
+  padding: 20px;
+}
+
+#power-menu separator {
+  margin: 10px
+}
+
+#power-menu #options-container {
+  padding: 5px;
+  border-radius: 20px;
+  background-color: #5e5c64;
+}
+
+#power-menu #options-container button {
+  background-color: inherit;
+  font-weight: normal;
+  font-size: 16px;
+}
+
+#power-menu #options-container button:hover {
+  background-color: #9a9996;
+}
+
+#power-menu #options-container #options-title {
+  padding: 4px;
+}
+
+#power-menu #options-container #options-title label,
+#power-menu #options-container #options-title image {
+  padding: 4px;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+#power-menu #options-container #options-title #icon-container {
+  margin: 4px;
+  background-color: #9a9996;
+  border-radius: 100px;
+}
+
+#power-menu #options-container #buttons-container {
+  margin: 20px;
+}
+
+#quick-settings #audio-scales {
+  padding: 10px;
+}
+
+/*
+/ Panel CSS
+*/
+#panel {
+  background-color: #000000;
+  font-weight: bold;
+  transition-duration: 250ms;
+  box-shadow: inset 0 -1px 0 0 #000000;
+}
+
+#panel .panel-button,
+#panel .panel-button-toggled {
+  margin: 2px;
+  transition-duration: 150ms;
+  font-weight: bold;
+  background-color: transparent;
+  color: #f2f2f2;
+  box-shadow: none;
+  border-radius: 15px;
+  padding: 5px 10px;
+}
+
+#panel .panel-button:hover {
+  background-color: rgba(242, 242, 242, 0.25);
+}
+
+#panel .panel-button:active {
+  background-color: rgba(242, 242, 242, 0.35);
+}
+
+#panel .panel-button-toggled {
+  background-color: rgba(242, 242, 242, 0.25);
+}
+
+#panel image {
+  margin-left: 6px;
+  margin-right: 6px;
+}
