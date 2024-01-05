@@ -24,14 +24,16 @@ void message_tray_activate(AdwApplication *app, gpointer user_data);
 MessageTrayMediator *message_tray_get_global_mediator();
 
 // Opens the MessageTray relative to the given Panel.
-void message_tray_set_visible(MessageTray *tray, Panel *panel);
+void message_tray_set_visible(MessageTray *self, Panel *panel);
 
 // Closes the MessageTray relative to the given Panel.
 // If already hidden this results in a no-op.
-void message_tray_set_hidden(MessageTray *tray, Panel *panel);
+void message_tray_set_hidden(MessageTray *self, Panel *panel);
 
-Panel *message_tray_get_panel(MessageTray *tray);
+Panel *message_tray_get_panel(MessageTray *self);
 
 // Toggles the MessageTray window open or closed, determined by whether the
 // widget is visible or hidden under the give Panel.
-void message_tray_toggle(MessageTray *tray, Panel *panel);
+void message_tray_toggle(MessageTray *self, Panel *panel);
+
+void message_tray_reinitialize(MessageTray *self);

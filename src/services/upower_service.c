@@ -132,6 +132,7 @@ char *upower_device_map_icon_name(UpDevice *device) {
     gboolean rechargable = 0;
     guint state = 0;
     gchar *icon = NULL;
+    gboolean charging = false;
 
     g_debug("upower_service.c:upower_device_map_icon_name() called.");
 
@@ -148,58 +149,53 @@ char *upower_device_map_icon_name(UpDevice *device) {
     if (!rechargable) {
         return "ac-adapter-symbolic";
     }
+
+    charging = (state == UP_DEVICE_STATE_CHARGING ||
+                state == UP_DEVICE_STATE_PENDING_CHARGE);
+
     if (percent <= 10) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-caution-charging-symbolic";
+        if (charging) return "battery-caution-charging-symbolic";
         return "battery-level-0-symbolic";
     }
     if (percent > 10 && percent < 20) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-10-charging-symbolic";
+        if (charging) return "battery-level-10-charging-symbolic";
         return "battery-level-10-symbolic";
     }
     if (percent >= 20 && percent < 30) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-20-charging-symbolic";
+        if (charging) return "battery-level-20-charging-symbolic";
         return "battery-level-20-symbolic";
     }
     if (percent >= 30 && percent < 40) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-30-charging-symbolic";
+        if (charging) return "battery-level-30-charging-symbolic";
         return "battery-level-30-symbolic";
     }
     if (percent >= 40 && percent < 50) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-40-charging-symbolic";
+        if (charging) return "battery-level-40-charging-symbolic";
         return "battery-level-40-symbolic";
     }
     if (percent >= 50 && percent < 60) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-50-charging-symbolic";
+        if (charging) return "battery-level-50-charging-symbolic";
         return "battery-level-50-symbolic";
     }
     if (percent >= 60 && percent < 70) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-60-charging-symbolic";
+        if (charging) return "battery-level-60-charging-symbolic";
         return "battery-level-60-symbolic";
     }
     if (percent >= 70 && percent < 80) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-70-charging-symbolic";
+        if (charging) return "battery-level-70-charging-symbolic";
         return "battery-level-70-symbolic";
     }
     if (percent >= 80 && percent < 90) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-80-charging-symbolic";
+        if (charging) return "battery-level-80-charging-symbolic";
         return "battery-level-80-symbolic";
     }
     if (percent >= 90 && percent < 99) {
-        if (state == UP_DEVICE_STATE_CHARGING)
-            return "battery-level-90-charging-symbolic";
+        if (charging) return "battery-level-90-charging-symbolic";
         return "battery-level-90-symbolic";
     }
     if (percent >= 99) {
-        if (state == UP_DEVICE_STATE_CHARGING || state == UP_DEVICE_STATE_FULLY_CHARGED)
+        if (state == UP_DEVICE_STATE_CHARGING ||
+            state == UP_DEVICE_STATE_FULLY_CHARGED)
             return "battery-full-charging-symbolic";
         return "battery-full-symbolic";
     }

@@ -22,6 +22,9 @@ void quick_settings_activate(AdwApplication *app, gpointer user_data);
 // Must call `quick_settings_activate` or returns NULL.
 QuickSettingsMediator *quick_settings_get_global_mediator();
 
+// Called to reinitialize the widget without allocating a new one.
+void quick_settings_reinitialize(QuickSettings *self);
+
 // Opens the QuickSettings relative to the given Panel.
 void quick_settings_set_visible(QuickSettings *qs, Panel *panel);
 

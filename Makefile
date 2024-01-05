@@ -1,7 +1,9 @@
 CC := gcc
 DEPS := libadwaita-1 \
 		upower-glib \
-		wireplumber-0.4
+		wireplumber-0.4 \
+		json-glib-1.0 \
+		libnm
 CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
 LIBS := $(shell pkg-config --libs $(DEPS))
 LIBS += "-lgtk4-layer-shell" "-lm"

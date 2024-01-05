@@ -27,3 +27,12 @@ void quick_settings_mediator_emit_hidden(QuickSettingsMediator *mediator,
                                          QuickSettings *qs, Panel *panel);
 
 void quick_settings_mediator_connect(QuickSettingsMediator *mediator);
+
+// Emits the message-tray-open signal on the MessageTrayMediator.
+// Tells the message tray to open on the provided monitor.
+void quick_settings_mediator_req_open(QuickSettingsMediator *mediator,
+                                      Panel *panel);
+
+// Emits the message-tray-close signal on the MessageTrayMediator.
+// Tells the message tray to close if its visible.
+void quick_settings_mediator_req_close(QuickSettingsMediator *mediator);

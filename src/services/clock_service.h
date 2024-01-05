@@ -1,3 +1,5 @@
+#pragma once
+
 #include <adwaita.h>
 
 G_BEGIN_DECLS

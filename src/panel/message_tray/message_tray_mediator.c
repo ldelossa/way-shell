@@ -5,12 +5,18 @@
 #include "message_tray.h"
 
 enum signals {
+    // signals
+
     // the message tray is about to be visible, but not on screen yet.
     message_tray_will_show,
     // the message tray is now visible.
     message_tray_visible,
     // the message tray is now hidden.
     message_tray_hidden,
+
+    // actions
+    message_tray_open,
+    message_tray_close,
     signals_n
 };
 
@@ -18,7 +24,7 @@ struct _MessageTrayMediator {
     GObject parent_instance;
     MessageTray *tray;
 };
-static guint panel_signals[signals_n] = {0};
+static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(MessageTrayMediator, message_tray_mediator, G_TYPE_OBJECT);
 
 // stub out dispose, finalize, class_init, and init functions.
@@ -38,23 +44,52 @@ static void message_tray_mediator_class_init(MessageTrayMediatorClass *klass) {
     object_class->dispose = message_tray_mediator_dispose;
     object_class->finalize = message_tray_mediator_finalize;
 
-    panel_signals[message_tray_will_show] =
+    signals[message_tray_will_show] =
         g_signal_new("message-tray-will-show", G_TYPE_FROM_CLASS(object_class),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 2,
                      MESSAGE_TRAY_TYPE, PANEL_TYPE);
 
-    panel_signals[message_tray_visible] =
+    signals[message_tray_visible] =
         g_signal_new("message-tray-visible", G_TYPE_FROM_CLASS(object_class),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 2,
                      MESSAGE_TRAY_TYPE, PANEL_TYPE);
 
-    panel_signals[message_tray_hidden] =
+    signals[message_tray_hidden] =
         g_signal_new("message-tray-hidden", G_TYPE_FROM_CLASS(object_class),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 2,
                      MESSAGE_TRAY_TYPE, PANEL_TYPE);
+
+    signals[message_tray_open] = g_signal_new(
+        "message-tray-open", G_TYPE_FROM_CLASS(object_class),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1, PANEL_TYPE);
+
+    signals[message_tray_close] =
+        g_signal_new("message-tray-close", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 };
 
-static void message_tray_mediator_init(MessageTrayMediator *self){};
+static void on_message_tray_open(MessageTrayMediator *mediator, Panel *panel) {
+    g_debug("message_tray_mediator.c:on_message_tray_open() called.");
+    message_tray_set_visible(mediator->tray, panel);
+};
+
+static void on_message_tray_close(MessageTrayMediator *mediator) {
+    g_debug("message_tray_mediator.c:message_tray_close() called.");
+    if (message_tray_get_panel(mediator->tray) == NULL) {
+        return;
+    }
+    message_tray_set_hidden(mediator->tray,
+                            message_tray_get_panel(mediator->tray));
+};
+
+static void message_tray_mediator_init(MessageTrayMediator *self) {
+    // wire into our open and close signals
+    g_signal_connect(self, "message-tray-open",
+                     G_CALLBACK(on_message_tray_open), NULL);
+
+    g_signal_connect(self, "message-tray-close",
+                     G_CALLBACK(on_message_tray_close), NULL);
+};
 
 // Emitted when the MessageTray is about to become visible.
 // Includes the Panel which invoked its visibility.
@@ -63,7 +98,7 @@ void message_tray_mediator_emit_will_show(MessageTrayMediator *mediator,
     g_debug(
         "message_tray_mediator.c:message_tray_mediator_emit_will_show() "
         "emitting signal.");
-    g_signal_emit(mediator, panel_signals[message_tray_will_show], 0, tray,
+    g_signal_emit(mediator, signals[message_tray_will_show], 0, tray,
                   panel);
 };
 
@@ -73,7 +108,7 @@ void message_tray_mediator_emit_visible(MessageTrayMediator *mediator,
     g_debug(
         "message_tray_mediator.c:message_tray_mediator_emit_visible() emitting "
         "signal.");
-    g_signal_emit(mediator, panel_signals[message_tray_visible], 0, tray,
+    g_signal_emit(mediator, signals[message_tray_visible], 0, tray,
                   panel);
 };
 
@@ -83,15 +118,25 @@ void message_tray_mediator_emit_hidden(MessageTrayMediator *mediator,
     g_debug(
         "message_tray_mediator.c:message_tray_mediator_emit_hidden() emitting "
         "signal.");
-    g_signal_emit(mediator, panel_signals[message_tray_hidden], 0, tray, panel);
+    g_signal_emit(mediator, signals[message_tray_hidden], 0, tray, panel);
 };
 
-static void on_message_tray_toggle_request(PanelMediator *panel_mediator,
-                                           Panel *panel,
-                                           MessageTrayMediator *mediator) {
-    g_debug("message_tray_mediator.c:on_message_tray_request() called.");
-    message_tray_toggle(mediator->tray, panel);
-}
+// Emits the message-tray-open signal on the MessageTrayMediator.
+void message_tray_mediator_req_open(MessageTrayMediator *mediator,
+                                    Panel *panel) {
+    g_debug(
+        "message_tray_mediator.c:message_tray_mediator_emit_open() emitting "
+        "signal.");
+    g_signal_emit(mediator, signals[message_tray_open], 0, panel);
+};
+
+// Emits the message-tray-close signal on the MessageTrayMediator.
+void message_tray_mediator_req_close(MessageTrayMediator *mediator) {
+    g_debug(
+        "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
+        "signal.");
+    g_signal_emit(mediator, signals[message_tray_close], 0);
+};
 
 static void on_quick_settings_will_show(QuickSettingsMediator *qs_mediator,
                                         QuickSettings *qs, Panel *panel,
@@ -107,11 +152,6 @@ void message_tray_mediator_set_tray(MessageTrayMediator *mediator,
 };
 
 void message_tray_mediator_connect(MessageTrayMediator *mediator) {
-    // connect to Panel mediator's request to toggle message tray.
-    PanelMediator *panel_mediator = panel_get_global_mediator();
-    g_signal_connect(panel_mediator, "message-tray-toggle-request",
-                     G_CALLBACK(on_message_tray_toggle_request), mediator);
-
     QuickSettingsMediator *quick_settings_mediator =
         quick_settings_get_global_mediator();
     g_signal_connect(quick_settings_mediator, "quick-settings-will-show",

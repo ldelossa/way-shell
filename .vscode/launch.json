@@ -5,12 +5,20 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Remote Debug",
             "type": "lldb",
             "request": "launch",
-            "name": "Debug",
-            "program": "${workspaceFolder}/<executable file>",
-            "args": [],
-            "cwd": "${workspaceFolder}"
+            "program": "${workspaceFolder}/gnomeland", // Local path.
+            "initCommands": [
+                "platform select remote-linux", // For example: 'remote-linux', 'remote-macosx', 'remote-android', etc.
+                "platform connect connect://0.0.0.0:7777",
+                "settings set target.inherit-env false", // See note below.
+            ],
+            "env": {
+                "XDG_RUNTIME_DIR": "/run/user/1000",
+                "DBUS_SYSTEM_BUS_ADDRESS": "unix:path=/var/run/dbus/system_bus_socket",
+                "SWAYSOCK": "/run/user/1000/sway-ipc.1000.4132927.sock"
+            }
         }
     ]
 }

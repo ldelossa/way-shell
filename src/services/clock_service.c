@@ -10,7 +10,7 @@ struct _ClockService {
     GObject parent_instance;
     gboolean enabled;
 };
-static guint panel_signals[signals_n] = {0};
+static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(ClockService, clock_service, G_TYPE_OBJECT);
 
 // stub out dispose, finalize, class_init, and init methods
@@ -32,7 +32,7 @@ static void clock_service_class_init(ClockServiceClass *klass) {
     object_class->finalize = clock_service_finalize;
 
     // create a signal which has a GDateTime as a argument
-    panel_signals[tick] = g_signal_new("tick", G_TYPE_FROM_CLASS(object_class),
+    signals[tick] = g_signal_new("tick", G_TYPE_FROM_CLASS(object_class),
                                        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL,
                                        G_TYPE_NONE, 1, G_TYPE_DATE_TIME);
 };
@@ -40,7 +40,7 @@ static void clock_service_class_init(ClockServiceClass *klass) {
 static gboolean emit_tick(gpointer self) {
     GDateTime *now = g_date_time_new_now_local();
     g_debug("clock_service.c:emit_tick() emitting signal.");
-    g_signal_emit(self, panel_signals[tick], 0, now);
+    g_signal_emit(self, signals[tick], 0, now);
     g_date_time_unref(now);
     return CLOCK_SERVICE(self)->enabled;
 }

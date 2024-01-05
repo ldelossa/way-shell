@@ -35,3 +35,12 @@ void message_tray_mediator_emit_hidden(MessageTrayMediator *mediator,
 
 // Connects the MessageTrayMediator to all other Mediator's signals required.
 void message_tray_mediator_connect(MessageTrayMediator *mediator);
+
+// Emits the message-tray-open signal on the MessageTrayMediator.
+// Tells the message tray to open on the provided monitor.
+void message_tray_mediator_req_open(MessageTrayMediator *mediator,
+                                     Panel *panel);
+
+// Emits the message-tray-close signal on the MessageTrayMediator.
+// Tells the message tray to close if its visible.
+void message_tray_mediator_req_close(MessageTrayMediator *mediator);

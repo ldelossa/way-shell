@@ -8,9 +8,9 @@
 #include "../panel.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_audio_scales.h"
-#include "quick_settings_battery_button.h"
+#include "quick_settings_grid/quick_settings_grid.h"
+#include "quick_settings_header/quick_settings_header.h"
 #include "quick_settings_mediator.h"
-#include "quick_settings_power_menu.h"
 
 // global QuickSettingsMediator.
 static QuickSettingsMediator *mediator = NULL;
@@ -23,12 +23,8 @@ struct _QuickSettings {
     AdwWindow *win;
     AdwAnimation *animation;
     GtkBox *container;
-    struct {
-        GtkCenterBox *container;
-        QuickSettingsBatteryButton bat_button;
-        GtkButton *power_button;
-    } header;
-    QuickSettingsPowerMenu power_menu;
+    QuickSettingsHeader *header;
+    QuickSettingsGrid *qs_grid;
     AudioScales audio_scales;
     AdwWindow *underlay;
     Panel *panel;
@@ -41,14 +37,15 @@ void static opacity_animation(double value, QuickSettings *qs) {
 
 // stub out dispose, finalize, class_init and init methods.
 static void quick_settings_dispose(GObject *gobject) {
-    QuickSettings *qs = QS_QUICK_SETTINGS(gobject);
+    QuickSettings *self = QS_QUICK_SETTINGS(gobject);
 
-    // free embedded battery button widgets
-    quick_settings_battery_button_free(&qs->header.bat_button);
+    g_object_unref(self->header);
+    g_object_unref(self->qs_grid);
+    g_object_unref(self->underlay);
 
     // if we are holding a panel un-ref it
-    if (qs->panel) {
-        g_object_unref(qs->panel);
+    if (self->panel) {
+        g_object_unref(self->panel);
     }
 
     // Chain-up
@@ -146,64 +143,122 @@ static void quick_settings_init_underlay(QuickSettings *self) {
     g_signal_connect(button, "clicked", G_CALLBACK(on_underlay_click), self);
 };
 
-static void on_power_button_click(GtkButton *button, QuickSettings *qs) {
-    g_debug("quick_settings.c:on_power_button_click() called.");
+// static void on_power_button_click(GtkButton *button, QuickSettings *qs) {
+//     g_debug("quick_settings.c:on_power_button_click() called.");
 
-    gboolean revealed =
-        gtk_revealer_get_reveal_child(GTK_REVEALER(qs->power_menu.revealer));
-    gtk_revealer_set_reveal_child(qs->power_menu.revealer, !revealed);
+//     gboolean revealed =
+//         gtk_revealer_get_reveal_child(GTK_REVEALER(qs->power_menu.revealer));
+//     gtk_revealer_set_reveal_child(qs->power_menu.revealer, !revealed);
 
-    if (revealed) {
-        gtk_window_set_default_size(GTK_WINDOW(qs->win), 400, 200);
-    }
-};
+//     if (revealed) {
+//         gtk_window_set_default_size(GTK_WINDOW(qs->win), 400, 200);
+//     }
+// };
 
-static void quick_settings_init_layout_header_power_button(
-    QuickSettings *self) {
-    self->header.power_button = GTK_BUTTON(gtk_button_new());
+// static void quick_settings_init_layout_header_power_button(
+//     QuickSettings *self) {
+//     self->header.power_button = GTK_BUTTON(gtk_button_new());
 
-    gtk_widget_add_css_class(GTK_WIDGET(self->header.power_button), "circular");
+//     gtk_widget_add_css_class(GTK_WIDGET(self->header.power_button),
+//     "circular");
 
-    GtkWidget *icon = gtk_image_new_from_icon_name("system-shutdown-symbolic");
+//     GtkWidget *icon =
+//     gtk_image_new_from_icon_name("system-shutdown-symbolic");
 
-    gtk_button_set_child(self->header.power_button, icon);
+//     gtk_button_set_child(self->header.power_button, icon);
 
-    g_signal_connect(self->header.power_button, "clicked",
-                     G_CALLBACK(on_power_button_click), self);
-};
+//     g_signal_connect(self->header.power_button, "clicked",
+//                      G_CALLBACK(on_power_button_click), self);
+// };
 
-static void quick_settings_init_layout_header(QuickSettings *self) {
-    // init embedded widgets
-    quick_settings_battery_button_init(&self->header.bat_button);
-    quick_settings_init_layout_header_power_button(self);
+// static void quick_settings_init_layout_header(QuickSettings *self) {
+//     // init embedded widgets
+//     self->header.bat_button =
+//         g_object_new(QUICK_SETTINGS_BATTERY_BUTTON_TYPE, NULL);
+//     quick_settings_init_layout_header_power_button(self);
 
-    self->header.container = GTK_CENTER_BOX(gtk_center_box_new());
-    gtk_widget_set_name(GTK_WIDGET(self->header.container),
-                        "quick-settings-header");
+//     self->header.container = GTK_CENTER_BOX(gtk_center_box_new());
+//     gtk_widget_set_name(GTK_WIDGET(self->header.container),
+//                         "quick-settings-header");
 
-    // battery button as start widget of header's center box
-    gtk_center_box_set_start_widget(self->header.container,
-                                    GTK_WIDGET(self->header.bat_button.button));
+//     // battery button as start widget of header's center box
+//     gtk_center_box_set_start_widget(
+//         self->header.container,
+//         quick_settings_battery_button_get_widget(self->header.bat_button));
 
-    // power button as first end widget of header's center box
-    gtk_center_box_set_end_widget(self->header.container,
-                                  GTK_WIDGET(self->header.power_button));
+//     // power button as first end widget of header's center box
+//     gtk_center_box_set_end_widget(self->header.container,
+//                                   GTK_WIDGET(self->header.power_button));
 
-    // add header to quick setting's container
-    gtk_box_append(self->container, GTK_WIDGET(self->header.container));
-}
+//     // add header to quick setting's containe
+//     g_clear_object(&self->container);r gtk_box_append(self->container,
+//     GTK_WIDGET(self->header.container));
+// }
+
+// static void quick_settings_init_layout(QuickSettings *self) {
+//     gtk_widget_set_size_request(GTK_WIDGET(self->win), 400, 200);
+
+//     // create vertical container box
+//     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
+
+//     // configure layer shell properties of window.
+//     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+//     gtk_layer_set_layer((GTK_WINDOW(self->win)),
+//     GTK_LAYER_SHELL_LAYER_OVERLAY);
+//     gtk_widget_set_name(GTK_WIDGET(self->win), "quick-settings");
+
+//     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP,
+//     true); gtk_layer_set_anchor(GTK_WINDOW(self->win),
+//     GTK_LAYER_SHELL_EDGE_RIGHT,
+//                          true);
+//     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP,
+//     10); gtk_layer_set_margin(GTK_WINDOW(self->win),
+//     GTK_LAYER_SHELL_EDGE_RIGHT, 30);
+
+//     // add header
+//     quick_settings_init_layout_header(self);
+
+//     // add powermenu
+//     quick_settings_power_menu_init(&self->power_menu);
+//     gtk_box_append(GTK_BOX(self->container),
+//                    GTK_WIDGET(self->power_menu.revealer));
+
+//     // add audio scales
+//     quick_settings_audio_scales_init(&self->audio_scales);
+//     gtk_box_append(GTK_BOX(self->container),
+//                    GTK_WIDGET(self->audio_scales.container));
+
+//     // add quick settings grid
+//     quick_settings_grid_init(self);
+//     gtk_box_append(GTK_BOX(self->container),
+//                    quick_settings_grid_get_widget(self->qs_grid));
+
+//     // animation controller
+//     AdwAnimationTarget *target = adw_callback_animation_target_new(
+//         (AdwAnimationTargetFunc)opacity_animation, self, NULL);
+//     self->animation =
+//         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
+
+//     adw_window_set_content(self->win, GTK_WIDGET(self->container));
+// };
+
+// fwd declare
+static void on_window_destroy(GtkWindow *win, QuickSettings *self);
 
 static void quick_settings_init_layout(QuickSettings *self) {
-    self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_orientable_set_orientation(GTK_ORIENTABLE(self->container),
-                                   GTK_ORIENTATION_HORIZONTAL);
+    self->panel = NULL;
 
+    // init underlay
+    quick_settings_init_underlay(self);
+
+    // setup ADW window
+    self->win = ADW_WINDOW(adw_window_new());
+    g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);
     gtk_widget_set_size_request(GTK_WIDGET(self->win), 400, 200);
 
     // configure layer shell properties of window.
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
-    adw_window_set_content(self->win, GTK_WIDGET(self->container));
     gtk_widget_set_name(GTK_WIDGET(self->win), "quick-settings");
 
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
@@ -214,35 +269,52 @@ static void quick_settings_init_layout(QuickSettings *self) {
 
     // create vertical container box
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    adw_window_set_content(self->win, GTK_WIDGET(self->container));
 
-    // add header
-    quick_settings_init_layout_header(self);
+    // attach header
+    gtk_box_append(self->container,
+                   quick_settings_header_get_widget(self->header));
 
-    // add powermenu
-    quick_settings_power_menu_init(&self->power_menu);
-    gtk_box_append(GTK_BOX(self->container),
-                   GTK_WIDGET(self->power_menu.revealer));
-
-    // add audio scales
+    // attach audio scales
     quick_settings_audio_scales_init(&self->audio_scales);
-    gtk_box_append(GTK_BOX(self->container),
-                   GTK_WIDGET(self->audio_scales.container));
+    gtk_box_append(self->container, GTK_WIDGET(self->audio_scales.container));
+
+    // attach quick settings grid
+    gtk_box_append(self->container,
+                   quick_settings_grid_get_widget(self->qs_grid));
 
     // animation controller
     AdwAnimationTarget *target = adw_callback_animation_target_new(
         (AdwAnimationTargetFunc)opacity_animation, self, NULL);
     self->animation =
         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
+
+    adw_window_set_content(self->win, GTK_WIDGET(self->container));
+}
+
+static void on_window_destroy(GtkWindow *win, QuickSettings *self) {
+    g_debug("quick_settings.c:on_window_destroy() called.");
+    quick_settings_reinitialize(self);
 };
 
+void quick_settings_reinitialize(QuickSettings *self) {
+    g_debug("quick_settings.c:quick_settings_reinitialize() called.");
+
+    // kill our signals
+    g_signal_handlers_disconnect_by_func(self->win, on_window_destroy, self);
+
+    // reinitialize dependent widgets
+    quick_settings_grid_reinitialize(self->qs_grid);
+    quick_settings_header_reinitialize(self->header);
+
+    // reinit our layout
+    quick_settings_init_layout(self);
+}
+
 static void quick_settings_init(QuickSettings *self) {
-    self->win = ADW_WINDOW(adw_window_new());
+    // initialize depedent widgets
+    self->header = g_object_new(QUICK_SETTINGS_HEADER_TYPE, NULL);
+    self->qs_grid = g_object_new(QUICK_SETTINGS_GRID_TYPE, NULL);
 
-    // setup the click away window
-    quick_settings_init_underlay(self);
-
-    // setup the layout
     quick_settings_init_layout(self);
 };
 
@@ -274,15 +346,6 @@ void quick_settings_set_visible(QuickSettings *self, Panel *panel) {
         return;
     }
 
-    // its possible that win is not a valid object, this could be due to the
-    // monitor being removed while the top level window is opened.
-    if (!G_IS_OBJECT(self->win)) {
-        g_debug(
-            "quick_settings.c:quick_settings_set_visible() qs->win is not a "
-            "valid GObject must re-initialize.");
-        quick_settings_init(self);
-    }
-
     monitor = panel_get_monitor(panel);
     if (!monitor) return;
 
@@ -294,7 +357,7 @@ void quick_settings_set_visible(QuickSettings *self, Panel *panel) {
     quick_settings_mediator_emit_will_show(mediator, self, panel);
 
     // show underlay
-    gtk_window_present(GTK_WINDOW(self->underlay));
+    // gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
@@ -309,23 +372,23 @@ void quick_settings_set_visible(QuickSettings *self, Panel *panel) {
     adw_animation_play(self->animation);
 }
 
-void quick_settings_toggle(QuickSettings *qs, Panel *panel) {
+void quick_settings_toggle(QuickSettings *self, Panel *panel) {
     g_debug("quick_settings.c:quick_settings_toggle() called.");
 
-    if (!qs || !panel) return;
+    if (!self || !panel) return;
 
-    if (!qs->panel) {
-        return quick_settings_set_visible(qs, panel);
+    if (!self->panel) {
+        return quick_settings_set_visible(self, panel);
     }
     // qs is open on same panel requesting, hide it.
-    if (qs->panel == panel) {
-        return quick_settings_set_hidden(qs, panel);
+    if (self->panel == panel) {
+        return quick_settings_set_hidden(self, panel);
     }
     // qs is displayed on another monitor, hide it first.
-    if (qs->panel != panel) {
-        quick_settings_set_hidden(qs, qs->panel);
+    if (self->panel != panel) {
+        quick_settings_set_hidden(self, self->panel);
     }
-    return quick_settings_set_visible(qs, panel);
+    return quick_settings_set_visible(self, panel);
 }
 
 QuickSettingsMediator *quick_settings_get_global_mediator() {

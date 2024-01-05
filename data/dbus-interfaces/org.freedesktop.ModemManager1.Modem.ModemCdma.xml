@@ -1,5 +1,0 @@
-<node>
-  <interface name="org.freedesktop.ModemManager1.Modem.ModemCdma">
-    <property name="Sid" type="u" access="read"/>
-  </interface>
-</node>

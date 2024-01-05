@@ -1,3 +1,5 @@
+#pragma once
+
 #include <adwaita.h>
 #include <upower.h>
 

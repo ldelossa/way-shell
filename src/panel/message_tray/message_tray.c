@@ -1,9 +1,12 @@
+#include "message_tray.h"
+
 #include <adwaita.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
+#include "../../services/notifications_service/notifications_service.h"
 #include "../panel.h"
+#include "./notifications/notifications_list.h"
 #include "calendar/calendar.h"
-#include "message_tray.h"
 #include "message_tray_mediator.h"
 
 // global MessageTrayMediator.
@@ -16,7 +19,8 @@ struct _MessageTray {
     GtkBox *container;
     AdwWindow *underlay;
     Panel *panel;
-    AdwSwitchRow *dnd_switch;
+    Calendar *calendar;
+    NotificationsList *notifications_list;
 };
 G_DEFINE_TYPE(MessageTray, message_tray, G_TYPE_OBJECT);
 
@@ -27,6 +31,11 @@ void static opacity_animation(double value, MessageTray *tray) {
 // stub out dispose, finalize, class_init and init methods.
 static void message_tray_dispose(GObject *gobject) {
     MessageTray *self = MESSAGE_TRAY_TRAY(gobject);
+
+    g_object_unref(self->notifications_list);
+
+    if (self->panel) g_object_unref(self->panel);
+
     // Chain-up
     G_OBJECT_CLASS(message_tray_parent_class)->dispose(gobject);
 };
@@ -50,8 +59,8 @@ static void animation_close_done(AdwAnimation *animation, MessageTray *tray) {
                                          tray);
 
     // make animation forward
-    adw_timed_animation_set_reverse(
-        ADW_TIMED_ANIMATION(tray->animation), FALSE);
+    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(tray->animation),
+                                    FALSE);
 
     // hide tray
     gtk_widget_set_visible(GTK_WIDGET(tray->win), false);
@@ -123,7 +132,84 @@ static void message_tray_init_underlay(MessageTray *self) {
     g_signal_connect(button, "clicked", G_CALLBACK(on_underlay_click), self);
 };
 
+// static void message_tray_init_layout(MessageTray *self) {
+//     // make top level container.
+//     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+//     gtk_widget_set_hexpand_set(GTK_WIDGET(self->container), true);
+//     gtk_widget_set_vexpand_set(GTK_WIDGET(self->container), true);
+
+//     // create three columns
+//     GtkBox *left_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
+//     GtkSeparator *sep =
+//         GTK_SEPARATOR(gtk_separator_new(GTK_ORIENTATION_VERTICAL));
+//     GtkBox *right_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
+
+//     // attach boxes to container
+//     gtk_box_append(self->container, GTK_WIDGET(left_box));
+//     gtk_box_append(self->container, GTK_WIDGET(sep));
+//     gtk_box_append(self->container, GTK_WIDGET(right_box));
+
+//     // right box will always use rest of available space.
+//     gtk_widget_set_hexpand(GTK_WIDGET(right_box), true);
+//     gtk_widget_set_vexpand(GTK_WIDGET(right_box), true);
+
+//     // make sure to unref this so we don't keep stale signal handlers around.
+//     if (self->notifications_list) {
+//         g_object_unref(self->notifications_list);
+//     }
+//     self->notifications_list = g_object_new(NOTIFICATIONS_LIST_TYPE, NULL);
+//     gtk_box_append(
+//         left_box,
+//         GTK_WIDGET(notifications_list_get_widget(self->notifications_list)));
+
+//     Calendar *calendar = g_object_new(CALENDAR_TYPE, NULL);
+//     gtk_box_append(right_box, GTK_WIDGET(calendar_get_widget(calendar)));
+
+//     // set 800x600 size request and adjust left box
+//     gtk_widget_set_size_request(GTK_WIDGET(self->container), 800, 600);
+//     gtk_widget_set_size_request(GTK_WIDGET(left_box), 800 * 0.60, 600);
+
+//     // configure layer shell properties for window
+//     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+//     gtk_layer_set_layer((GTK_WINDOW(self->win)),
+//     GTK_LAYER_SHELL_LAYER_OVERLAY); adw_window_set_content(self->win,
+//     GTK_WIDGET(self->container)); gtk_widget_set_name(GTK_WIDGET(self->win),
+//     "message-tray"); gtk_layer_set_anchor(GTK_WINDOW(self->win),
+//     GTK_LAYER_SHELL_EDGE_TOP, true);
+//     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP,
+//     10);
+
+//     // animation controller
+//     AdwAnimationTarget *target = adw_callback_animation_target_new(
+//         (AdwAnimationTargetFunc)opacity_animation, self, NULL);
+//     self->animation =
+//         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
+// }
+
+static void on_window_destroy(GtkWidget *w, MessageTray *self) {
+    g_debug("message_tray.c:on_window_destroy() called.");
+    self->win = NULL;
+    message_tray_reinitialize(self);
+};
+
 static void message_tray_init_layout(MessageTray *self) {
+    self->panel = NULL;
+
+    // setup adw window
+    self->win = ADW_WINDOW(adw_window_new());
+    // configure layer shell properties for window
+    gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
+    gtk_widget_set_name(GTK_WIDGET(self->win), "message-tray");
+    gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
+    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
+
+    // wire into window's GtkWidget destroy signal
+    g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);
+
+    // setup the click away window
+    message_tray_init_underlay(self);
+
     // make top level container.
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_hexpand_set(GTK_WIDGET(self->container), true);
@@ -144,46 +230,38 @@ static void message_tray_init_layout(MessageTray *self) {
     gtk_widget_set_hexpand(GTK_WIDGET(right_box), true);
     gtk_widget_set_vexpand(GTK_WIDGET(right_box), true);
 
-    AdwStatusPage *status = ADW_STATUS_PAGE(adw_status_page_new());
-    adw_status_page_set_icon_name(status, "notifications-disabled-symbolic");
-    adw_status_page_set_title(status, "No Notifications");
-    gtk_widget_set_vexpand(GTK_WIDGET(status), true);
+    gtk_box_append(
+        left_box,
+        GTK_WIDGET(notifications_list_get_widget(self->notifications_list)));
 
-    self->dnd_switch = ADW_SWITCH_ROW(adw_switch_row_new());
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(self->dnd_switch),
-                                  "Do Not Disturb");
-
-    Calendar *calendar = g_object_new(CALENDAR_TYPE, NULL);
-    gtk_box_append(right_box, GTK_WIDGET(calendar_get_widget(calendar)));
-
-    gtk_box_append(left_box, GTK_WIDGET(status));
-    gtk_box_append(left_box, GTK_WIDGET(self->dnd_switch));
+    self->calendar = g_object_new(CALENDAR_TYPE, NULL);
+    gtk_box_append(right_box, GTK_WIDGET(calendar_get_widget(self->calendar)));
 
     // set 800x600 size request and adjust left box
     gtk_widget_set_size_request(GTK_WIDGET(self->container), 800, 600);
     gtk_widget_set_size_request(GTK_WIDGET(left_box), 800 * 0.60, 600);
-
-    // configure layer shell properties for window
-    gtk_layer_init_for_window(GTK_WINDOW(self->win));
-    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
-    adw_window_set_content(self->win, GTK_WIDGET(self->container));
-    gtk_widget_set_name(GTK_WIDGET(self->win), "message-tray");
-    gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
-    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
 
     // animation controller
     AdwAnimationTarget *target = adw_callback_animation_target_new(
         (AdwAnimationTargetFunc)opacity_animation, self, NULL);
     self->animation =
         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
+
+    adw_window_set_content(self->win, GTK_WIDGET(self->container));
+}
+
+void message_tray_reinitialize(MessageTray *self) {
+    // reinitialize our depedencies
+    notifications_list_reinitialize(self->notifications_list);
+
+    // initialize our layout again
+    message_tray_init_layout(self);
 }
 
 static void message_tray_init(MessageTray *self) {
-    // make our modal window
-    self->win = ADW_WINDOW(adw_window_new());
-
-    // setup the click away window
-    message_tray_init_underlay(self);
+    // create dependent widgets
+    self->notifications_list = g_object_new(NOTIFICATIONS_LIST_TYPE, NULL);
+    self->calendar = g_object_new(CALENDAR_TYPE, NULL);
 
     // setup the layout
     message_tray_init_layout(self);
@@ -193,8 +271,8 @@ static void message_tray_init(MessageTray *self) {
 MessageTrayMediator *message_tray_get_global_mediator() { return mediator; };
 
 void message_tray_activate(AdwApplication *app, gpointer user_data) {
-    MessageTray *tray = g_object_new(MESSAGE_TRAY_TYPE, NULL);
     mediator = g_object_new(MESSAGE_TRAY_MEDIATOR_TYPE, NULL);
+    MessageTray *tray = g_object_new(MESSAGE_TRAY_TYPE, NULL);
     message_tray_mediator_set_tray(mediator, tray);
 };
 
@@ -226,15 +304,6 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
         return;
     }
 
-    // its possible that win is not a valid object, this could be due to the
-    // monitor being removed while the top level window is opened.
-    if (!G_IS_OBJECT(self->win)) {
-        g_debug(
-            "message_tray.c:message_tray_set_visible() tray->win is not a "
-            "valid GObject must re-initialize.");
-        message_tray_init(self);
-    }
-
     monitor = panel_get_monitor(panel);
     if (!monitor) return;
 
@@ -246,7 +315,7 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
     message_tray_mediator_emit_will_show(mediator, self, panel);
 
     // present underlay
-    gtk_window_present(GTK_WINDOW(self->underlay));
+    // gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
@@ -256,8 +325,8 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
     self->panel = panel;
 
     // connect animation done signal and play animation.
-    g_signal_connect(self->animation, "done",
-                     G_CALLBACK(animation_open_done), self);
+    g_signal_connect(self->animation, "done", G_CALLBACK(animation_open_done),
+                     self);
     adw_animation_play(self->animation);
 }
 
@@ -280,6 +349,4 @@ void message_tray_toggle(MessageTray *self, Panel *panel) {
     return message_tray_set_visible(self, panel);
 }
 
-Panel *message_tray_get_panel(MessageTray *self) {
-    return self->panel;
-}
+Panel *message_tray_get_panel(MessageTray *self) { return self->panel; }

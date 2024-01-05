@@ -1,12 +1,17 @@
 #include "quick_settings_button.h"
 
+#include <NetworkManager.h>
 #include <adwaita.h>
 #include <upower.h>
 
+#include "../services/network_manager_service.h"
 #include "../services/upower_service.h"
 #include "../services/wireplumber_service.h"
+#include "nm-dbus-interface.h"
 #include "panel.h"
 #include "panel_mediator.h"
+#include "quick_settings/quick_settings.h"
+#include "quick_settings/quick_settings_mediator.h"
 
 struct _QuickSettingsButton {
     GObject parent_instance;
@@ -18,41 +23,6 @@ struct _QuickSettingsButton {
     gboolean toggled;
 };
 G_DEFINE_TYPE(QuickSettingsButton, quick_settings_button, G_TYPE_OBJECT);
-
-static void quick_settings_button_dispose(GObject *gobject) {
-    QuickSettingsButton *self = QUICK_SETTINGS_BUTTON(gobject);
-    G_OBJECT_CLASS(quick_settings_button_parent_class)->dispose(gobject);
-};
-
-static void quick_settings_button_finalize(GObject *gobject) {
-    G_OBJECT_CLASS(quick_settings_button_parent_class)->finalize(gobject);
-};
-
-static void quick_settings_button_class_init(QuickSettingsButtonClass *klass) {
-    GObjectClass *object_class = G_OBJECT_CLASS(klass);
-    object_class->dispose = quick_settings_button_dispose;
-    object_class->finalize = quick_settings_button_finalize;
-};
-
-GtkImage *quick_settings_button_get_icon(QuickSettingsButton *self,
-                                         enum IconTypes pos) {
-    GtkWidget *icon = gtk_widget_get_first_child(GTK_WIDGET(self->box));
-
-    if (pos > icons_n) {
-        return NULL;
-    }
-
-    for (int i = 0; i != pos; i++) {
-        icon = gtk_widget_get_next_sibling(icon);
-    }
-    return GTK_IMAGE(icon);
-};
-
-static void on_click(GtkButton *button, QuickSettingsButton *self) {
-    g_debug("quick_settings_button.c:on_click() called.");
-    PanelMediator *mediator = panel_get_global_mediator();
-    panel_mediator_emit_qs_toggle_request(mediator, self->panel);
-};
 
 static void on_battery_icon_change(GObject *object, GParamSpec *pspec,
                                    QuickSettingsButton *qs) {
@@ -132,6 +102,158 @@ source:
     return;
 }
 
+static void on_nm_change(NetworkManagerService *nm, QuickSettingsButton *self) {
+    gboolean has_wifi = network_manager_service_wifi_available(nm);
+    NMDevice *dev = network_manager_service_get_primary_device(nm);
+    NMState state = network_manager_service_get_state(nm);
+
+    NMDeviceType type = 0;
+    if (dev) type = nm_device_get_device_type(dev);
+
+    switch (state) {
+        case NM_STATE_UNKNOWN:
+        case NM_STATE_ASLEEP:
+        case NM_STATE_DISCONNECTING:
+        case NM_STATE_DISCONNECTED:
+            if (has_wifi) {
+                qs_button_set_icon(self, network,
+                                   "network-wireless-offline-symbolic");
+                return;
+            }
+            qs_button_set_icon(self, network, "network-wired-offline-symbolic");
+            return;
+        case NM_STATE_CONNECTING:
+            if (type == NM_DEVICE_TYPE_WIFI) {
+                qs_button_set_icon(self, network,
+                                   "network-wireless-acquiring-symbolic");
+                return;
+            }
+            qs_button_set_icon(self, network,
+                               "network-wired-acquiring-symbolic");
+            return;
+        case NM_STATE_CONNECTED_LOCAL:
+        case NM_STATE_CONNECTED_SITE:
+            // LOCAL/SITE connectivity can occur when a wifi device is
+            // disconnected but any other network devices (even linux bridges)
+            // remain connected to a network.
+            //
+            // therefore if we see this state and we also have wifi adapters,
+            // confirm whether the adapters are disconnected or not.
+            if (has_wifi) {
+                NMDeviceState state = network_manager_service_wifi_state(nm);
+                if (state == NM_DEVICE_STATE_DISCONNECTED) {
+                    qs_button_set_icon(self, network,
+                                       "network-wireless-offline-symbolic");
+                    return;
+                }
+                qs_button_set_icon(self, network,
+                                   "network-wireless-no-route-symbolic");
+                return;
+            }
+            qs_button_set_icon(self, network,
+                               "network-wired-no-route-symbolic");
+            return;
+        case NM_STATE_CONNECTED_GLOBAL:
+            if (type == NM_DEVICE_TYPE_WIFI) {
+                NMDeviceWifi *wifi = NM_DEVICE_WIFI(dev);
+                NMAccessPoint *ap =
+                    nm_device_wifi_get_active_access_point(wifi);
+                if (!ap) {
+                    return;
+                }
+                guint8 strength = nm_access_point_get_strength(ap);
+                if (strength < 25) {
+                    qs_button_set_icon(self, network,
+                                       "network-wireless-signal-weak-symbolic");
+                    return;
+                }
+                if (strength >= 25 && strength < 50) {
+                    qs_button_set_icon(self, network,
+                                       "network-wireless-signal-ok-symbolic");
+                    return;
+                }
+                if (strength >= 50 && strength < 75) {
+                    qs_button_set_icon(self, network,
+                                       "network-wireless-signal-good-symbolic");
+                    return;
+                }
+                if (strength >= 75) {
+                    qs_button_set_icon(self, network,
+                                       "network-wireless-signal-excellent-"
+                                       "symbolic");
+                    return;
+                }
+            }
+            qs_button_set_icon(self, network, "network-wired-symbolic");
+            return;
+    }
+};
+
+static void quick_settings_button_dispose(GObject *gobject) {
+    QuickSettingsButton *self = QUICK_SETTINGS_BUTTON(gobject);
+    WirePlumberService *wps = wire_plumber_service_get_global();
+    UPowerService *upower = upower_service_get_global();
+    NetworkManagerService *nm = network_manager_service_get_global();
+
+    g_debug("quick_settings_button.c:quick_settings_button_dispose() called.");
+
+    UpDevice *bat = upower_service_get_primary_device(upower);
+    if (!bat) {
+        return;
+    }
+    // disconnect from signals
+    g_signal_handlers_disconnect_by_func(bat, on_battery_icon_change, self);
+    g_signal_handlers_disconnect_by_func(wps, on_default_nodes_changed, self);
+    g_signal_handlers_disconnect_by_func(nm, on_nm_change, self);
+
+    G_OBJECT_CLASS(quick_settings_button_parent_class)->dispose(gobject);
+};
+
+static void quick_settings_button_finalize(GObject *gobject) {
+    G_OBJECT_CLASS(quick_settings_button_parent_class)->finalize(gobject);
+};
+
+static void quick_settings_button_class_init(QuickSettingsButtonClass *klass) {
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+    object_class->dispose = quick_settings_button_dispose;
+    object_class->finalize = quick_settings_button_finalize;
+};
+
+GtkImage *quick_settings_button_get_icon(QuickSettingsButton *self,
+                                         enum IconTypes pos) {
+    GtkWidget *icon = gtk_widget_get_first_child(GTK_WIDGET(self->box));
+
+    if (pos > icons_n) {
+        return NULL;
+    }
+
+    for (int i = 0; i != pos; i++) {
+        icon = gtk_widget_get_next_sibling(icon);
+    }
+    return GTK_IMAGE(icon);
+};
+
+static void on_click(GtkButton *button, QuickSettingsButton *self) {
+    g_debug("quick_settings_button.c:on_click() called.");
+    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    if (!qs) return;
+    if (self->toggled)
+        quick_settings_mediator_req_close(qs);
+    else
+        quick_settings_mediator_req_open(qs, self->panel);
+};
+
+static void quick_setting_button_init_network(QuickSettingsButton *self) {
+    NetworkManagerService *nm = network_manager_service_get_global();
+
+    g_debug(
+        "quick_settings_button.c:quick_setting_button_init_network() "
+        "called.");
+
+    // wire into 'primary-device-changed' event
+    g_signal_connect(nm, "changed", G_CALLBACK(on_nm_change), self);
+}
+
 static void quick_settings_button_init_upower(QuickSettingsButton *self) {
     gboolean is_bat = FALSE;
     UpDevice *bat = NULL;
@@ -208,7 +330,9 @@ static void quick_settings_button_init(QuickSettingsButton *self) {
                    gtk_image_new_from_icon_name("battery-full-symbolic"));
     gtk_button_set_child(self->button, GTK_WIDGET(self->box));
     gtk_box_append(self->container, GTK_WIDGET(self->button));
+
     quick_settings_button_init_upower(self);
+    quick_setting_button_init_network(self);
 };
 
 GtkButton *quick_settings_button_get_button(QuickSettingsButton *self) {
@@ -222,6 +346,8 @@ GtkBox *quick_settings_button_get_widget(QuickSettingsButton *self) {
 int qs_button_set_icon(QuickSettingsButton *b, enum IconTypes pos,
                        const char *name) {
     GtkImage *icon = NULL;
+
+    g_debug("quick_settings_button.c:qs_button_set_icon() called.");
 
     if (pos > icons_n) {
         return -1;

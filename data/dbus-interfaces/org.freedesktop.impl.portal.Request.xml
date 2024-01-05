@@ -1,5 +1,0 @@
-<node>
-  <interface name="org.freedesktop.impl.portal.Request">
-    <method name="Close"/>
-  </interface>
-</node>

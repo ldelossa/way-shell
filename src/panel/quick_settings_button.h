@@ -1,3 +1,5 @@
+#pragma once
+
 #include <adwaita.h>
 
 #include "panel.h"
@@ -37,7 +39,8 @@ void quick_settings_button_set_panel(QuickSettingsButton *self, Panel *panel);
 
 // Sets the QS button's toggle state.
 // Effects the css applied to the button.
-void quick_settings_button_set_toggled(QuickSettingsButton *qs, gboolean toggled);
+void quick_settings_button_set_toggled(QuickSettingsButton *qs,
+                                       gboolean toggled);
 
 // Returns whether the QS button is toggled or not.
 gboolean quick_settings_get_toggled(QuickSettingsButton *self);

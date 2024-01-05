@@ -6,6 +6,9 @@
 #include "panel_clock.h"
 #include "panel_mediator.h"
 #include "quick_settings_button.h"
+#include "workspaces_bar/workspaces_bar.h"
+#include "message_tray/message_tray.h"
+#include "message_tray/message_tray_mediator.h"
 
 // Provides a mapping between monitors and valid Panels.
 // Keys are GdkMonitor pointers while values are *Panel pointers.
@@ -26,6 +29,7 @@ struct _Panel {
     GtkBox *left;
     GtkBox *center;
     GtkBox *right;
+    WorkSpacesBar *ws_bar;
     PanelClock *clock;
     QuickSettingsButton *qs_button;
 };
@@ -73,11 +77,28 @@ static void panel_init(Panel *self) {
 // Designed as a handler for GdkMonior::invalidate signal.
 static void panel_runtime_dispose(GdkMonitor *mon, Panel *panel) {
     const char *desc = gdk_monitor_get_description(mon);
-    g_debug("bar.c:_bar_free(): received monitor invalidation event for: %s",
-            desc);
+    g_debug(
+        "panel.c:panel_runtime_dispose(): received monitor invalidation event "
+        "for: %s",
+        desc);
+
+    // request message tray to close
+    MessageTrayMediator *mtm  = message_tray_get_global_mediator();
+    message_tray_mediator_req_close(mtm);
+
     g_hash_table_remove(panels, mon);
+    workspaces_bar_free(panel->ws_bar);
     g_object_unref(panel->monitor);
+    g_object_unref(panel->clock);
+    g_object_unref(panel->qs_button);
     g_object_unref(panel);
+
+}
+
+static void panel_init_attach_workspaces_bar(Panel *panel) {
+    panel->ws_bar = workspaces_bar_new(panel);
+    gtk_box_append(panel->left,
+                   GTK_WIDGET(workspaces_bar_get_widget(panel->ws_bar)));
 }
 
 static void panel_init_attach_clock(Panel *panel) {
@@ -105,8 +126,7 @@ static void panel_init_attach_monitor(Panel *panel, AdwApplication *app,
 
     gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(panel->win));
     gtk_layer_init_for_window(GTK_WINDOW(panel->win));
-    gtk_layer_set_layer((GTK_WINDOW(panel->win)),
-                        GTK_LAYER_SHELL_LAYER_OVERLAY);
+    gtk_layer_set_layer((GTK_WINDOW(panel->win)), GTK_LAYER_SHELL_LAYER_TOP);
     gtk_layer_auto_exclusive_zone_enable(GTK_WINDOW(panel->win));
     gtk_layer_set_monitor(GTK_WINDOW(panel->win), monitor);
 
@@ -124,6 +144,7 @@ static void panel_init_attach_monitor(Panel *panel, AdwApplication *app,
 static int panel_runtime_init(AdwApplication *app, Panel *panel,
                               GdkMonitor *monitor) {
     panel_init_attach_monitor(panel, app, monitor);
+    panel_init_attach_workspaces_bar(panel);
     panel_init_attach_clock(panel);
     panel_init_attach_qs_button(panel);
     g_hash_table_insert(panels, monitor, panel);
@@ -139,33 +160,39 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
                                     gpointer gtk_app) {
     uint8_t n = g_list_model_get_n_items(monitors);
     const char *desc = NULL;
+    const char *model = NULL;
+    const char *connector = NULL;
 
-    g_debug("bar.c:_bar_assign_to_monitors(): received monitor change event.");
-    g_debug("bar.c:_bar_assign_to_monitors(): new number of monitors %d", n);
+    g_debug(
+        "panel.c:panel_on_monitor_change(): received monitor change event.");
+    g_debug("panel.c:panel_on_monitor_change(): new number of monitors %d", n);
 
     for (uint8_t i = 0; i < n; i++) {
         GdkMonitor *mon = g_list_model_get_item(monitors, i);
         if (!gdk_monitor_is_valid(mon)) {
             g_warning(
-                "bar.c:_bar_assign_to_monitors() received invalid monitor from "
+                "panel.c:panel_on_monitor_change() received invalid monitor "
+                "from "
                 "Gdk, moving to next.");
             continue;
         }
 
         desc = gdk_monitor_get_description(mon);
+        model = gdk_monitor_get_model(mon);
+        connector = gdk_monitor_get_connector(mon);
 
         if (g_hash_table_contains(panels, mon)) {
             g_debug(
-                "bar.c:_bar_assign_to_monitors(): bar already exists for "
-                "monitor %s",
-                desc);
+                "panel.c:panel_on_monitor_change(): bar already exists for "
+                "monitor [%s] [%s] [%s]",
+                desc, model, connector);
             continue;
         }
 
         Panel *panel = g_object_new(PANEL_TYPE, NULL);
         if (!panel_runtime_init(ADW_APPLICATION(gtk_app), panel, mon)) {
             g_critical(
-                "bar.c:_bar_assign_to_monitors(): failed to initialize bar");
+                "panel.c:panel_on_monitor_change(): failed to initialize bar");
             panel_runtime_dispose(mon, panel);
             return;
         }
@@ -174,8 +201,9 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
                          panel);
 
         g_debug(
-            "bar.c:_bar_assign_to_monitors(): initialized bar for monitor: %s",
-            desc);
+            "panel.c:panel_on_monitor_change(): initialized bar for monitor: "
+            "[%s] [%s] [%s]",
+            desc, model, connector);
     }
 }
 
@@ -212,15 +240,18 @@ void panel_activate(AdwApplication *app, gpointer user_data) {
     panels = g_hash_table_new(g_direct_hash, g_direct_equal);
 
     g_debug(
-        "bar.c:panel_activate() initializing bars with synthetic monitor "
+        "panel.c:panel_activate() initializing bars with synthetic monitor "
         "event.");
+
     GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
     GdkDisplay *display = gdk_seat_get_display(seat);
     GListModel *monitors = gdk_display_get_monitors(display);
+
     panel_on_monitor_change(monitors, 0, 0, 0, app);
 
     g_debug(
-        "bar.c:panel_activate() init finished, listening for monitor events.");
+        "panel.c:panel_activate() init finished, listening for monitor "
+        "events.");
     // Connect the callback function to the "items-changed" signal
     // so we'll destroy and recreate bars on monitor changes.
     //
