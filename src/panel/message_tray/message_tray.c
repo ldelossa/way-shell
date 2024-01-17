@@ -3,7 +3,6 @@
 #include <adwaita.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "../panel.h"
 #include "./notifications/notifications_list.h"
 #include "calendar/calendar.h"
 #include "message_tray_mediator.h"
@@ -17,9 +16,9 @@ struct _MessageTray {
     AdwAnimation *animation;
     GtkBox *container;
     AdwWindow *underlay;
-    Panel *panel;
     Calendar *calendar;
     NotificationsList *notifications_list;
+    GdkMonitor *monitor;
 };
 G_DEFINE_TYPE(MessageTray, message_tray, G_TYPE_OBJECT);
 
@@ -64,20 +63,20 @@ static void animation_close_done(AdwAnimation *animation, MessageTray *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->underlay), false);
 
     // emit hidden signal
-    message_tray_mediator_emit_hidden(mediator, self, self->panel);
+    message_tray_mediator_emit_hidden(mediator, self, self->monitor);
 
-    // clear panel
-    self->panel = NULL;
+    // clear monitor
+    self->monitor = NULL;
 };
 
-void message_tray_set_hidden(MessageTray *self, Panel *panel) {
+void message_tray_set_hidden(MessageTray *self, GdkMonitor *monitor) {
     int anim_state = 0;
 
     g_debug("message_tray.c:message_tray_set_hidden() called.");
 
     // this is required, since external callers will call this method as expect
-    // a no-op of there is no attached self->panel.
-    if (!self || !self->win || !self->panel || !panel) {
+    // a no-op of there is no attached self->monitor.
+    if (!self || !self->win || !self->monitor || !monitor) {
         return;
     }
 
@@ -102,7 +101,7 @@ void message_tray_set_hidden(MessageTray *self, Panel *panel) {
 
 static void on_underlay_click(GtkButton *button, MessageTray *tray) {
     g_debug("message_tray.c:on_click() called.");
-    message_tray_set_hidden(tray, tray->panel);
+    message_tray_set_hidden(tray, tray->monitor);
 };
 
 static void message_tray_init_underlay(MessageTray *self) {
@@ -129,60 +128,6 @@ static void message_tray_init_underlay(MessageTray *self) {
     g_signal_connect(button, "clicked", G_CALLBACK(on_underlay_click), self);
 };
 
-// static void message_tray_init_layout(MessageTray *self) {
-//     // make top level container.
-//     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-//     gtk_widget_set_hexpand_set(GTK_WIDGET(self->container), true);
-//     gtk_widget_set_vexpand_set(GTK_WIDGET(self->container), true);
-
-//     // create three columns
-//     GtkBox *left_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-//     GtkSeparator *sep =
-//         GTK_SEPARATOR(gtk_separator_new(GTK_ORIENTATION_VERTICAL));
-//     GtkBox *right_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-
-//     // attach boxes to container
-//     gtk_box_append(self->container, GTK_WIDGET(left_box));
-//     gtk_box_append(self->container, GTK_WIDGET(sep));
-//     gtk_box_append(self->container, GTK_WIDGET(right_box));
-
-//     // right box will always use rest of available space.
-//     gtk_widget_set_hexpand(GTK_WIDGET(right_box), true);
-//     gtk_widget_set_vexpand(GTK_WIDGET(right_box), true);
-
-//     // make sure to unref this so we don't keep stale signal handlers around.
-//     if (self->notifications_list) {
-//         g_object_unref(self->notifications_list);
-//     }
-//     self->notifications_list = g_object_new(NOTIFICATIONS_LIST_TYPE, NULL);
-//     gtk_box_append(
-//         left_box,
-//         GTK_WIDGET(notifications_list_get_widget(self->notifications_list)));
-
-//     Calendar *calendar = g_object_new(CALENDAR_TYPE, NULL);
-//     gtk_box_append(right_box, GTK_WIDGET(calendar_get_widget(calendar)));
-
-//     // set 800x600 size request and adjust left box
-//     gtk_widget_set_size_request(GTK_WIDGET(self->container), 800, 600);
-//     gtk_widget_set_size_request(GTK_WIDGET(left_box), 800 * 0.60, 600);
-
-//     // configure layer shell properties for window
-//     gtk_layer_init_for_window(GTK_WINDOW(self->win));
-//     gtk_layer_set_layer((GTK_WINDOW(self->win)),
-//     GTK_LAYER_SHELL_LAYER_OVERLAY); adw_window_set_content(self->win,
-//     GTK_WIDGET(self->container)); gtk_widget_set_name(GTK_WIDGET(self->win),
-//     "message-tray"); gtk_layer_set_anchor(GTK_WINDOW(self->win),
-//     GTK_LAYER_SHELL_EDGE_TOP, true);
-//     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP,
-//     10);
-
-//     // animation controller
-//     AdwAnimationTarget *target = adw_callback_animation_target_new(
-//         (AdwAnimationTargetFunc)opacity_animation, self, NULL);
-//     self->animation =
-//         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
-// }
-
 static void on_window_destroy(GtkWidget *w, MessageTray *self) {
     g_debug("message_tray.c:on_window_destroy() called.");
     self->win = NULL;
@@ -190,7 +135,7 @@ static void on_window_destroy(GtkWidget *w, MessageTray *self) {
 };
 
 static void message_tray_init_layout(MessageTray *self) {
-    self->panel = NULL;
+    self->monitor = NULL;
 
     // setup adw window
     self->win = ADW_WINDOW(adw_window_new());
@@ -283,25 +228,24 @@ static void animation_open_done(AdwAnimation *animation, MessageTray *tray) {
     g_signal_handlers_disconnect_by_func(tray->animation, animation_open_done,
                                          tray);
     // emit visible signal
-    message_tray_mediator_emit_visible(mediator, tray, tray->panel);
+    message_tray_mediator_emit_visible(mediator, tray, tray->monitor);
 };
 
-void message_tray_set_visible(MessageTray *self, Panel *panel) {
-    GdkMonitor *monitor = NULL;
+void message_tray_set_visible(MessageTray *self, GdkMonitor *monitor) {
     int anim_state = 0;
 
     g_debug("message_tray.c:message_tray_set_visible() called.");
 
-    if (!self || !panel) return;
+    if (!self || !monitor) return;
 
     // determine current state
-    if (self->panel && self->panel == panel) {
-        // panel is already opened on the requested panel, just return.
+    if (self->monitor && self->monitor == monitor) {
+        // monitor is already opened on the requested monitor, just return.
         return;
     }
-    if (self->panel && self->panel != panel) {
-        // panel is opened on another monitor, close it first
-        message_tray_set_hidden(self, self->panel);
+    if (self->monitor && self->monitor != monitor) {
+        // monitor is opened on another monitor, close it first
+        message_tray_set_hidden(self, self->monitor);
     }
 
     // this ensures there are no in-flight animation done callbacks on the
@@ -314,15 +258,12 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
         return;
     }
 
-    monitor = panel_get_monitor(panel);
-    if (!monitor) return;
-
     // move underlay and win to new monitor
     gtk_layer_set_monitor(GTK_WINDOW(self->underlay), monitor);
     gtk_layer_set_monitor(GTK_WINDOW(self->win), monitor);
 
     // emit will show signal before we open any windows.
-    message_tray_mediator_emit_will_show(mediator, self, panel);
+    message_tray_mediator_emit_will_show(mediator, self, monitor);
 
     // present underlay
     gtk_window_present(GTK_WINDOW(self->underlay));
@@ -330,7 +271,7 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
 
-    self->panel = panel;
+    self->monitor = monitor;
 
     // connect animation done signal and play animation.
     g_signal_connect(self->animation, "done", G_CALLBACK(animation_open_done),
@@ -338,23 +279,23 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
     adw_animation_play(self->animation);
 }
 
-void message_tray_toggle(MessageTray *self, Panel *panel) {
+void message_tray_toggle(MessageTray *self, GdkMonitor *monitor) {
     g_debug("message_tray.c:message_tray_toggle called.");
 
-    if (!self || !panel) return;
+    if (!self || !monitor) return;
 
-    if (!self->panel) {
-        return message_tray_set_visible(self, panel);
+    if (!self->monitor) {
+        return message_tray_set_visible(self, monitor);
     }
-    // tray is open on same panel requesting, hide it.
-    if (self->panel == panel) {
-        return message_tray_set_hidden(self, panel);
+    // tray is open on same monitor requesting, hide it.
+    if (self->monitor == monitor) {
+        return message_tray_set_hidden(self, monitor);
     }
     // tray is displayed on another monitor, hide it first.
-    if (self->panel != panel) {
-        message_tray_set_hidden(self, self->panel);
+    if (self->monitor != monitor) {
+        message_tray_set_hidden(self, self->monitor);
     }
-    return message_tray_set_visible(self, panel);
+    return message_tray_set_visible(self, monitor);
 }
 
-Panel *message_tray_get_panel(MessageTray *self) { return self->panel; }
+GdkMonitor *message_tray_get_monitor(MessageTray *self) { return self->monitor; }

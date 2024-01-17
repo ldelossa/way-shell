@@ -34,26 +34,34 @@ static void panel_mediator_class_init(PanelMediatorClass *klass) {
 static void panel_mediator_init(PanelMediator *self){};
 
 static void on_message_tray_visible(MessageTrayMediator *tray_mediator,
-                                    MessageTray *tray, Panel *panel) {
+                                    MessageTray *tray, GdkMonitor *monitor) {
     g_debug("panel_mediator.c:on_message_tray_visible() called.");
+    Panel *panel = panel_get_from_monitor(monitor);
+    if (!panel) return;
     panel_on_msg_tray_visible(panel);
 }
 
 static void on_message_tray_hidden(MessageTrayMediator *tray_mediator,
-                                   MessageTray *tray, Panel *panel) {
+                                   MessageTray *tray, GdkMonitor *monitor) {
     g_debug("panel_mediator.c:on_message_tray_hidden() called.");
+    Panel *panel = panel_get_from_monitor(monitor);
+    if (!panel) return;
     panel_on_msg_tray_hidden(panel);
 }
 
 static void on_quick_settings_visible(QuickSettingsMediator *qs_mediator,
-                                      QuickSettings *qs, Panel *panel) {
+                                      QuickSettings *qs, GdkMonitor *monitor) {
     g_debug("panel_mediator.c:on_quick_settings_visible() called.");
+    Panel *panel = panel_get_from_monitor(monitor);
+    if (!panel) return;
     panel_on_qs_visible(panel);
 }
 
 static void on_quick_settings_hidden(QuickSettingsMediator *qs_mediator,
-                                     QuickSettings *qs, Panel *panel) {
+                                     QuickSettings *qs, GdkMonitor *monitor) {
     g_debug("panel_mediator.c:on_quick_settings_hidden() called.");
+    Panel *panel = panel_get_from_monitor(monitor);
+    if (!panel) return;
     panel_on_qs_hidden(panel);
 }
 

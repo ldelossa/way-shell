@@ -53,7 +53,7 @@ static void on_click(GtkButton *button, PanelStatusBar *self) {
     if (self->toggled)
         quick_settings_mediator_req_close(qs);
     else
-        quick_settings_mediator_req_open(qs, self->panel);
+        quick_settings_mediator_req_open(qs, panel_get_monitor(self->panel));
 };
 
 static void panel_status_bar_init_layout(PanelStatusBar *self) {

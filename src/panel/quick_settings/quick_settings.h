@@ -26,17 +26,17 @@ QuickSettingsMediator *quick_settings_get_global_mediator();
 void quick_settings_reinitialize(QuickSettings *self);
 
 // Opens the QuickSettings relative to the given Panel.
-void quick_settings_set_visible(QuickSettings *qs, Panel *panel);
+void quick_settings_set_visible(QuickSettings *qs, GdkMonitor *mon);
 
 // Closes the QuickSettings relative to the given Panel.
 // If already hidden this results in a no-op.
-void quick_settings_set_hidden(QuickSettings *qs, Panel *panel);
+void quick_settings_set_hidden(QuickSettings *qs, GdkMonitor *mon);
 
 // Toggles the QuickSettings window open or closed, determined by whether the
 // widget is visible or hidden under the give Panel.
-void quick_settings_toggle(QuickSettings *qs, Panel *panel);
+void quick_settings_toggle(QuickSettings *qs, GdkMonitor *mon);
 
 // Shrink the QuickSettings UI to its original size, if possible.
 void quick_settings_shrink(QuickSettings *qs);
 
-Panel *quick_settings_get_panel(QuickSettings *qs);
+GdkMonitor *quick_settings_get_monitor(QuickSettings *qs);

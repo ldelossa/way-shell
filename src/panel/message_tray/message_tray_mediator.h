@@ -21,17 +21,17 @@ void message_tray_mediator_set_tray(MessageTrayMediator *mediator,
 // Emitted when the MessageTray is about to become visible.
 // Includes the Panel which invoked its visibility.
 void message_tray_mediator_emit_will_show(MessageTrayMediator *mediator,
-                                          MessageTray *tray, Panel *panel);
+                                          MessageTray *tray, GdkMonitor *monitor);
 
 // Emitted when the MessageTray has become visible.
 // Includes the Panel which invoked its visibility.
 void message_tray_mediator_emit_visible(MessageTrayMediator *mediator,
-                                        MessageTray *tray, Panel *panel);
+                                        MessageTray *tray, GdkMonitor *monitor);
 
 // Emitted when the MessageTray is hidden.
 // And the last Panel which invoked it.
 void message_tray_mediator_emit_hidden(MessageTrayMediator *mediator,
-                                       MessageTray *tray, Panel *panel);
+                                       MessageTray *tray, GdkMonitor *monitor);
 
 // Connects the MessageTrayMediator to all other Mediator's signals required.
 void message_tray_mediator_connect(MessageTrayMediator *mediator);
@@ -39,7 +39,7 @@ void message_tray_mediator_connect(MessageTrayMediator *mediator);
 // Emits the message-tray-open signal on the MessageTrayMediator.
 // Tells the message tray to open on the provided monitor.
 void message_tray_mediator_req_open(MessageTrayMediator *mediator,
-                                     Panel *panel);
+                                     GdkMonitor *monitor);
 
 // Emits the message-tray-close signal on the MessageTrayMediator.
 // Tells the message tray to close if its visible.

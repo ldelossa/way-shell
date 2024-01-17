@@ -163,6 +163,12 @@ label.day-number.today:focus {
   background-color: #555555;
 }
 
+#notifications-osd .notification-widget-button-critical,
+#notifications-list .notification-widget-button-critical {
+  border-radius: 10px;
+  background-color: #f66151;
+}
+
 #notifications-osd .notification-widget-icon,
 #notifications-list .notification-widget-icon {
   border-radius: 10px;

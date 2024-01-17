@@ -88,6 +88,10 @@ void on_monitor_invalidate(GdkMonitor *monitor, Panel *self) {
 }
 
 static void panel_init_layout(Panel *self) {
+    // NOTE:
+    // We do not initialize any of the Panel's dependecies until
+    // 'panel_attach_to_monitor' since the depedencies expect the panel to
+    // always have a valid monitor.
     self->win = ADW_WINDOW(adw_window_new());
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
@@ -108,10 +112,6 @@ static void panel_init_layout(Panel *self) {
     gtk_center_box_set_center_widget(self->container, GTK_WIDGET(self->center));
     gtk_center_box_set_end_widget(self->container, GTK_WIDGET(self->right));
 
-    panel_init_workspaces_bar(self);
-    panel_init_panel_clock(self);
-    panel_init_status_bar(self);
-
     adw_window_set_content(ADW_WINDOW(self->win), GTK_WIDGET(self->container));
 }
 
@@ -124,6 +124,11 @@ void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
     gtk_layer_set_monitor(GTK_WINDOW(self->win), monitor);
     g_hash_table_insert(panels, monitor, self);
     gtk_window_present(GTK_WINDOW(self->win));
+
+    panel_init_workspaces_bar(self);
+    panel_init_panel_clock(self);
+    panel_init_status_bar(self);
+
 }
 
 // Iterates over the monitors GListModel, creating panels for any new monitors.
@@ -230,4 +235,9 @@ void panel_activate(AdwApplication *app, gpointer user_data) {
     // anyway, so don't bother tracking connection ID for later disconnect.
     g_signal_connect(monitors, "items-changed",
                      G_CALLBACK(panel_on_monitor_change), app);
+}
+
+
+Panel *panel_get_from_monitor(GdkMonitor *monitor) {
+    return g_hash_table_lookup(panels, monitor);
 }

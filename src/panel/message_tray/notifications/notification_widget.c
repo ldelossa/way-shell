@@ -4,7 +4,8 @@
 
 #include "gtk/gtkrevealer.h"
 
-static void set_layout(NotificationWidget *self) {
+static void notification_widget_init_layout(NotificationWidget *self,
+                                            Notification *n) {
     // main container for widget
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_add_css_class(GTK_WIDGET(self->container),
@@ -25,9 +26,15 @@ static void set_layout(NotificationWidget *self) {
     GtkBox *button_contents =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     self->button = GTK_BUTTON(gtk_button_new());
-    gtk_widget_add_css_class(GTK_WIDGET(self->button),
-                             "notification-widget-button");
     gtk_button_set_child(self->button, GTK_WIDGET(button_contents));
+
+    if (n->urgency == 2) {
+        gtk_widget_add_css_class(GTK_WIDGET(self->button),
+                                 "notification-widget-button-critical");
+    } else {
+        gtk_widget_add_css_class(GTK_WIDGET(self->button),
+                                 "notification-widget-button");
+    }
 
     // dismiss button used in overlay stack.
     GtkImage *dismiss_icon =
@@ -156,7 +163,7 @@ NotificationWidget *notification_widget_from_notification(Notification *n) {
 
     self->id = n->id;
 
-    set_layout(self);
+    notification_widget_init_layout(self, n);
     set_notification_icon(self, n);
     set_notification_text(self, n);
 

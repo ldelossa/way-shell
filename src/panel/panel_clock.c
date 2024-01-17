@@ -70,7 +70,7 @@ static void on_click(GtkWidget *w, PanelClock *clock) {
         message_tray_mediator_req_close(m);
         return;
     }
-    message_tray_mediator_req_open(m, clock->panel);
+    message_tray_mediator_req_open(m, panel_get_monitor(clock->panel));
 }
 
 static void panel_clock_init_layout(PanelClock *self) {

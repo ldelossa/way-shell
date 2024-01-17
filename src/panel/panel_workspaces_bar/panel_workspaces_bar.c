@@ -218,8 +218,8 @@ static void panel_workspaces_bar_dispose(GObject *gobject) {
     WMServiceSway *sway = wm_service_sway_get_global();
     g_signal_handler_disconnect(sway, self->signal_id);
 
-    // // release reference to current workspaces array
-    // g_ptr_array_unref(self->workspaces);
+    // release reference to current workspaces array
+    g_ptr_array_unref(self->workspaces);
 
     // Chain-up
     G_OBJECT_CLASS(panel_workspaces_bar_parent_class)->dispose(gobject);
@@ -290,18 +290,3 @@ void panel_workspaces_bar_set_panel(PanelWorkspacesBar *self, Panel *panel) {
     // create initial buttons
     on_workspaces_update(NULL, self->workspaces, self);
 }
-
-// void workspaces_bar_free(WorkSpacesBar *self) {
-//     WMServiceSway *sway = wm_service_sway_get_global();
-
-//     g_debug("workspaces_bar.c:workspaces_bar_free() called");
-
-//     // remove signal handler
-//     g_signal_handlers_disconnect_by_func(sway, on_workspaces_update, self);
-
-//     // release referene to current workspaces array
-//     g_ptr_array_unref(self->workspaces);
-
-//     // release reference to associated panel
-//     g_object_unref(self->panel);
-// }

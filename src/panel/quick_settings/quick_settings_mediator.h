@@ -18,20 +18,20 @@ void quick_settings_mediator_set_qs(QuickSettingsMediator *mediator,
                                     QuickSettings *qs);
 
 void quick_settings_mediator_emit_will_show(QuickSettingsMediator *mediator,
-                                            QuickSettings *qs, Panel *panel);
+                                            QuickSettings *qs, GdkMonitor *mon);
 
 void quick_settings_mediator_emit_visible(QuickSettingsMediator *mediator,
-                                          QuickSettings *qs, Panel *panel);
+                                          QuickSettings *qs, GdkMonitor *mon);
 
 void quick_settings_mediator_emit_hidden(QuickSettingsMediator *mediator,
-                                         QuickSettings *qs, Panel *panel);
+                                         QuickSettings *qs, GdkMonitor *mon);
 
 void quick_settings_mediator_connect(QuickSettingsMediator *mediator);
 
 // Emits the message-tray-open signal on the MessageTrayMediator.
 // Tells the message tray to open on the provided monitor.
 void quick_settings_mediator_req_open(QuickSettingsMediator *mediator,
-                                      Panel *panel);
+                                      GdkMonitor *mon);
 
 // Emits the message-tray-close signal on the MessageTrayMediator.
 // Tells the message tray to close if its visible.
