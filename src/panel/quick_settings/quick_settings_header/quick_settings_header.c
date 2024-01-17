@@ -2,6 +2,8 @@
 
 #include <adwaita.h>
 
+#include "../quick_settings.h"
+#include "../quick_settings_mediator.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_battery_button.h"
 #include "quick_settings_power_menu.h"
@@ -22,8 +24,6 @@ G_DEFINE_TYPE(QuickSettingsHeader, quick_settings_header, G_TYPE_OBJECT);
 // stub out empty dispose, finalize, class_init, and init methods for this
 // GObject.
 static void quick_settings_header_dispose(GObject *gobject) {
-    QuickSettingsHeader *self = QUICK_SETTINGS_HEADER(gobject);
-
     g_debug("quick_settings_header.c:quick_settings_header_dispose() called.");
 
     // Chain-up
@@ -40,6 +40,16 @@ static void quick_settings_header_class_init(QuickSettingsHeaderClass *klass) {
     object_class->dispose = quick_settings_header_dispose;
     object_class->finalize = quick_settings_header_finalize;
 };
+
+static void on_reveal_finish(GtkRevealer *revealer, GParamSpec *spec,
+                             QuickSettingsHeader *self) {
+    gboolean revealed =
+        gtk_revealer_get_reveal_child(GTK_REVEALER(self->revealer));
+    if (!revealed) {
+        QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
+        quick_settings_mediator_req_shrink(mediator);
+    }
+}
 
 static void on_power_button_click(GtkButton *button,
                                   QuickSettingsHeader *self) {
@@ -65,6 +75,10 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     gtk_revealer_set_transition_duration(self->revealer, 250);
     gtk_revealer_set_reveal_child(self->revealer, FALSE);
     gtk_box_append(self->container, GTK_WIDGET(self->revealer));
+    // wire into child-revealed GObject notify signal to shrink QuickSettings
+    // when unrevealed.
+    g_signal_connect(self->revealer, "notify::child-revealed",
+                     G_CALLBACK(on_reveal_finish), self);
 
     // attach power menu to GtkRevealer
     gtk_revealer_set_child(

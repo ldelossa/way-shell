@@ -4,9 +4,7 @@
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 #include <upower.h>
 
-#include "../../services/upower_service.h"
 #include "../panel.h"
-#include "gtk/gtkrevealer.h"
 #include "quick_settings_audio_scales.h"
 #include "quick_settings_grid/quick_settings_grid.h"
 #include "quick_settings_header/quick_settings_header.h"
@@ -43,11 +41,6 @@ static void quick_settings_dispose(GObject *gobject) {
     g_object_unref(self->qs_grid);
     g_object_unref(self->underlay);
 
-    // if we are holding a panel un-ref it
-    if (self->panel) {
-        g_object_unref(self->panel);
-    }
-
     // Chain-up
     G_OBJECT_CLASS(quick_settings_parent_class)->dispose(gobject);
 };
@@ -63,25 +56,26 @@ static void quick_settings_class_init(QuickSettingsClass *klass) {
     object_class->finalize = quick_settings_finalize;
 };
 
-static void animation_close_done(AdwAnimation *animation, QuickSettings *qs) {
+static void animation_close_done(AdwAnimation *animation, QuickSettings *self) {
     g_debug("quick_settings.c:animation_close_done() called.");
 
     // disconnect done signal
-    g_signal_handlers_disconnect_by_func(qs->animation, animation_close_done,
-                                         qs);
+    g_signal_handlers_disconnect_by_func(self->animation, animation_close_done,
+                                         self);
 
     // make animation forward
-    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(qs->animation), FALSE);
+    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->animation),
+                                    FALSE);
 
     // hide qs
-    gtk_widget_set_visible(GTK_WIDGET(qs->win), false);
-    gtk_widget_set_visible(GTK_WIDGET(qs->underlay), false);
+    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
+    gtk_widget_set_visible(GTK_WIDGET(self->underlay), false);
 
     // emit hidden signal
-    quick_settings_mediator_emit_hidden(mediator, qs, qs->panel);
+    quick_settings_mediator_emit_hidden(mediator, self, self->panel);
 
-    // unref and clear panel
-    g_clear_object(&qs->panel);
+    // clear panel
+    self->panel = NULL;
 };
 
 void quick_settings_set_hidden(QuickSettings *self, Panel *panel) {
@@ -143,105 +137,6 @@ static void quick_settings_init_underlay(QuickSettings *self) {
     g_signal_connect(button, "clicked", G_CALLBACK(on_underlay_click), self);
 };
 
-// static void on_power_button_click(GtkButton *button, QuickSettings *qs) {
-//     g_debug("quick_settings.c:on_power_button_click() called.");
-
-//     gboolean revealed =
-//         gtk_revealer_get_reveal_child(GTK_REVEALER(qs->power_menu.revealer));
-//     gtk_revealer_set_reveal_child(qs->power_menu.revealer, !revealed);
-
-//     if (revealed) {
-//         gtk_window_set_default_size(GTK_WINDOW(qs->win), 400, 200);
-//     }
-// };
-
-// static void quick_settings_init_layout_header_power_button(
-//     QuickSettings *self) {
-//     self->header.power_button = GTK_BUTTON(gtk_button_new());
-
-//     gtk_widget_add_css_class(GTK_WIDGET(self->header.power_button),
-//     "circular");
-
-//     GtkWidget *icon =
-//     gtk_image_new_from_icon_name("system-shutdown-symbolic");
-
-//     gtk_button_set_child(self->header.power_button, icon);
-
-//     g_signal_connect(self->header.power_button, "clicked",
-//                      G_CALLBACK(on_power_button_click), self);
-// };
-
-// static void quick_settings_init_layout_header(QuickSettings *self) {
-//     // init embedded widgets
-//     self->header.bat_button =
-//         g_object_new(QUICK_SETTINGS_BATTERY_BUTTON_TYPE, NULL);
-//     quick_settings_init_layout_header_power_button(self);
-
-//     self->header.container = GTK_CENTER_BOX(gtk_center_box_new());
-//     gtk_widget_set_name(GTK_WIDGET(self->header.container),
-//                         "quick-settings-header");
-
-//     // battery button as start widget of header's center box
-//     gtk_center_box_set_start_widget(
-//         self->header.container,
-//         quick_settings_battery_button_get_widget(self->header.bat_button));
-
-//     // power button as first end widget of header's center box
-//     gtk_center_box_set_end_widget(self->header.container,
-//                                   GTK_WIDGET(self->header.power_button));
-
-//     // add header to quick setting's containe
-//     g_clear_object(&self->container);r gtk_box_append(self->container,
-//     GTK_WIDGET(self->header.container));
-// }
-
-// static void quick_settings_init_layout(QuickSettings *self) {
-//     gtk_widget_set_size_request(GTK_WIDGET(self->win), 400, 200);
-
-//     // create vertical container box
-//     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-
-//     // configure layer shell properties of window.
-//     gtk_layer_init_for_window(GTK_WINDOW(self->win));
-//     gtk_layer_set_layer((GTK_WINDOW(self->win)),
-//     GTK_LAYER_SHELL_LAYER_OVERLAY);
-//     gtk_widget_set_name(GTK_WIDGET(self->win), "quick-settings");
-
-//     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP,
-//     true); gtk_layer_set_anchor(GTK_WINDOW(self->win),
-//     GTK_LAYER_SHELL_EDGE_RIGHT,
-//                          true);
-//     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP,
-//     10); gtk_layer_set_margin(GTK_WINDOW(self->win),
-//     GTK_LAYER_SHELL_EDGE_RIGHT, 30);
-
-//     // add header
-//     quick_settings_init_layout_header(self);
-
-//     // add powermenu
-//     quick_settings_power_menu_init(&self->power_menu);
-//     gtk_box_append(GTK_BOX(self->container),
-//                    GTK_WIDGET(self->power_menu.revealer));
-
-//     // add audio scales
-//     quick_settings_audio_scales_init(&self->audio_scales);
-//     gtk_box_append(GTK_BOX(self->container),
-//                    GTK_WIDGET(self->audio_scales.container));
-
-//     // add quick settings grid
-//     quick_settings_grid_init(self);
-//     gtk_box_append(GTK_BOX(self->container),
-//                    quick_settings_grid_get_widget(self->qs_grid));
-
-//     // animation controller
-//     AdwAnimationTarget *target = adw_callback_animation_target_new(
-//         (AdwAnimationTargetFunc)opacity_animation, self, NULL);
-//     self->animation =
-//         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
-
-//     adw_window_set_content(self->win, GTK_WIDGET(self->container));
-// };
-
 // fwd declare
 static void on_window_destroy(GtkWindow *win, QuickSettings *self);
 
@@ -302,6 +197,9 @@ void quick_settings_reinitialize(QuickSettings *self) {
     // kill our signals
     g_signal_handlers_disconnect_by_func(self->win, on_window_destroy, self);
 
+    // reset mediator's pointer to us
+    quick_settings_mediator_set_qs(mediator, self);
+
     // reinitialize dependent widgets
     quick_settings_grid_reinitialize(self->qs_grid);
     quick_settings_header_reinitialize(self->header);
@@ -336,6 +234,16 @@ void quick_settings_set_visible(QuickSettings *self, Panel *panel) {
 
     if (!self || !panel) return;
 
+    // determine current state
+    if (self->panel && self->panel == panel) {
+        // panel is already opened on the requested panel, just return.
+        return;
+    }
+    if (self->panel && self->panel != panel) {
+        // panel is opened on another monitor, close it first
+        quick_settings_set_hidden(self, self->panel);
+    }
+
     // this ensures there are no in-flight animation done callbacks on the
     // event-loop before starting a new animation, and avoids timing bugs.
     anim_state = adw_animation_get_state(self->animation);
@@ -363,7 +271,6 @@ void quick_settings_set_visible(QuickSettings *self, Panel *panel) {
     gtk_window_present(GTK_WINDOW(self->win));
 
     // ref and store pointer to panel we attached to.
-    g_object_ref(panel);
     self->panel = panel;
 
     // connect animation done signal and play animation
@@ -402,3 +309,8 @@ void quick_settings_activate(AdwApplication *app, gpointer user_data) {
 };
 
 Panel *quick_settings_get_panel(QuickSettings *qs) { return qs->panel; };
+
+void quick_settings_shrink(QuickSettings *qs) {
+    g_debug("quick_settings.c:quick_settings_shrink() called.");
+    gtk_window_set_default_size(GTK_WINDOW(qs->win), 400, 200);
+};

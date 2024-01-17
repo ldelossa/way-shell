@@ -36,3 +36,5 @@ void quick_settings_mediator_req_open(QuickSettingsMediator *mediator,
 // Emits the message-tray-close signal on the MessageTrayMediator.
 // Tells the message tray to close if its visible.
 void quick_settings_mediator_req_close(QuickSettingsMediator *mediator);
+
+void quick_settings_mediator_req_shrink(QuickSettingsMediator *mediator);

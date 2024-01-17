@@ -63,6 +63,7 @@ void panel_mediator_connect(PanelMediator *mediator) {
                      G_CALLBACK(on_message_tray_visible), mediator);
     g_signal_connect(msg_tray_mediator, "message-tray-hidden",
                      G_CALLBACK(on_message_tray_hidden), mediator);
+
     QuickSettingsMediator *qs_mediator = quick_settings_get_global_mediator();
     g_signal_connect(qs_mediator, "quick-settings-visible",
                      G_CALLBACK(on_quick_settings_visible), mediator);

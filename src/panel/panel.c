@@ -2,13 +2,13 @@
 
 #include <adwaita.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
+#include <panel.h>
 
+#include "./panel_status_bar/panel_status_bar.h"
+#include "message_tray/message_tray_mediator.h"
 #include "panel_clock.h"
 #include "panel_mediator.h"
-#include "quick_settings_button.h"
-#include "workspaces_bar/workspaces_bar.h"
-#include "message_tray/message_tray.h"
-#include "message_tray/message_tray_mediator.h"
+#include "panel_workspaces_bar/panel_workspaces_bar.h"
 
 // Provides a mapping between monitors and valid Panels.
 // Keys are GdkMonitor pointers while values are *Panel pointers.
@@ -29,17 +29,19 @@ struct _Panel {
     GtkBox *left;
     GtkBox *center;
     GtkBox *right;
-    WorkSpacesBar *ws_bar;
+    PanelWorkspacesBar *ws_bar;
     PanelClock *clock;
-    QuickSettingsButton *qs_button;
+    PanelStatusBar *status_bar;
 };
 G_DEFINE_TYPE(Panel, panel, G_TYPE_OBJECT)
 
 static void panel_dispose(GObject *gobject) {
     Panel *self = PANEL_PANEL(gobject);
 
-    // will unref all children widgets.
-    gtk_window_destroy((GTK_WINDOW(self->win)));
+    g_object_unref(self->status_bar);
+    g_object_unref(self->ws_bar);
+    g_object_unref(self->monitor);
+    g_object_unref(self->clock);
 
     // Chain-up
     G_OBJECT_CLASS(panel_parent_class)->dispose(gobject);
@@ -56,8 +58,45 @@ static void panel_class_init(PanelClass *klass) {
     object_class->finalize = panel_finalize;
 };
 
-static void panel_init(Panel *self) {
+static void panel_init_workspaces_bar(Panel *self) {
+    self->ws_bar = g_object_new(PANEL_WORKSPACES_BAR_TYPE, NULL);
+    panel_workspaces_bar_set_panel(self->ws_bar, self);
+    gtk_box_append(self->left,
+                   GTK_WIDGET(panel_workspaces_bar_get_widget(self->ws_bar)));
+}
+
+static void panel_init_panel_clock(Panel *self) {
+    self->clock = g_object_new(PANEL_CLOCK_TYPE, NULL);
+    gtk_box_append(self->center, panel_clock_get_widget(self->clock));
+    gtk_widget_set_halign(GTK_WIDGET(self->center), GTK_ALIGN_CENTER);
+    self->clock = self->clock;
+    panel_clock_set_panel(self->clock, self);
+}
+
+static void panel_init_status_bar(Panel *self) {
+    self->status_bar = g_object_new(PANEL_STATUS_BAR_TYPE, NULL);
+    panel_status_bar_set_panel(self->status_bar, self);
+    gtk_box_append(self->right,
+                   GTK_WIDGET(panel_status_bar_get_widget(self->status_bar)));
+}
+
+void on_monitor_invalidate(GdkMonitor *monitor, Panel *self) {
+    g_debug("panel.c:on_monitor_invalidate() called.");
+    // will start to unref the entire tree of depedencies.
+    g_object_unref(self);
+    g_hash_table_remove(panels, monitor);
+}
+
+static void panel_init_layout(Panel *self) {
     self->win = ADW_WINDOW(adw_window_new());
+    gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
+    gtk_layer_auto_exclusive_zone_enable(GTK_WINDOW(self->win));
+    gtk_layer_set_anchor(GTK_WINDOW(self->win), 0, 1);
+    gtk_layer_set_anchor(GTK_WINDOW(self->win), 1, 1);
+    gtk_layer_set_anchor(GTK_WINDOW(self->win), 2, 1);
+    gtk_layer_set_anchor(GTK_WINDOW(self->win), 3, 0);
+    gtk_window_set_default_size(GTK_WINDOW(self->win), -1, 30);
 
     self->container = GTK_CENTER_BOX(gtk_center_box_new());
     gtk_widget_set_name(GTK_WIDGET(self->container), "panel");
@@ -65,91 +104,26 @@ static void panel_init(Panel *self) {
     self->center = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     self->right = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
 
-    adw_window_set_content(ADW_WINDOW(self->win), NULL);
     gtk_center_box_set_start_widget(self->container, GTK_WIDGET(self->left));
     gtk_center_box_set_center_widget(self->container, GTK_WIDGET(self->center));
     gtk_center_box_set_end_widget(self->container, GTK_WIDGET(self->right));
 
+    panel_init_workspaces_bar(self);
+    panel_init_panel_clock(self);
+    panel_init_status_bar(self);
+
     adw_window_set_content(ADW_WINDOW(self->win), GTK_WIDGET(self->container));
-};
-
-// Performs our runtime dispose before unref'ing the Panel.
-// Designed as a handler for GdkMonior::invalidate signal.
-static void panel_runtime_dispose(GdkMonitor *mon, Panel *panel) {
-    const char *desc = gdk_monitor_get_description(mon);
-    g_debug(
-        "panel.c:panel_runtime_dispose(): received monitor invalidation event "
-        "for: %s",
-        desc);
-
-    // request message tray to close
-    MessageTrayMediator *mtm  = message_tray_get_global_mediator();
-    message_tray_mediator_req_close(mtm);
-
-    g_hash_table_remove(panels, mon);
-    workspaces_bar_free(panel->ws_bar);
-    g_object_unref(panel->monitor);
-    g_object_unref(panel->clock);
-    g_object_unref(panel->qs_button);
-    g_object_unref(panel);
-
 }
 
-static void panel_init_attach_workspaces_bar(Panel *panel) {
-    panel->ws_bar = workspaces_bar_new(panel);
-    gtk_box_append(panel->left,
-                   GTK_WIDGET(workspaces_bar_get_widget(panel->ws_bar)));
-}
-
-static void panel_init_attach_clock(Panel *panel) {
-    panel->clock = g_object_new(PANEL_CLOCK_TYPE, NULL);
-    gtk_box_append(panel->center, panel_clock_get_widget(panel->clock));
-    gtk_widget_set_halign(GTK_WIDGET(panel->center), GTK_ALIGN_CENTER);
-    panel->clock = panel->clock;
-    panel_clock_set_panel(panel->clock, panel);
-}
-
-static void panel_init_attach_qs_button(Panel *panel) {
-    QuickSettingsButton *qs_button =
-        g_object_new(QUICK_SETTINGS_BUTTON_TYPE, NULL);
-    quick_settings_button_set_panel(qs_button, panel);
-    gtk_box_append(panel->right,
-                   GTK_WIDGET(quick_settings_button_get_widget(qs_button)));
-    panel->qs_button = qs_button;
-}
+static void panel_init(Panel *self) { panel_init_layout(self); };
 
 // Attach the Panel to the GtkApplication and fix it to the provided GdkMonitor
-static void panel_init_attach_monitor(Panel *panel, AdwApplication *app,
-                                      GdkMonitor *monitor) {
-    panel->monitor = monitor;
-    g_object_ref(panel->monitor);
+void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
+    self->monitor = monitor;
 
-    gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(panel->win));
-    gtk_layer_init_for_window(GTK_WINDOW(panel->win));
-    gtk_layer_set_layer((GTK_WINDOW(panel->win)), GTK_LAYER_SHELL_LAYER_TOP);
-    gtk_layer_auto_exclusive_zone_enable(GTK_WINDOW(panel->win));
-    gtk_layer_set_monitor(GTK_WINDOW(panel->win), monitor);
-
-    gtk_window_set_default_size(GTK_WINDOW(panel->win), -1, 30);
-
-    // anchor bar to left and right corners to it is streched across
-    // monitor.
-    gtk_layer_set_anchor(GTK_WINDOW(panel->win), 0, 1);
-    gtk_layer_set_anchor(GTK_WINDOW(panel->win), 1, 1);
-    gtk_layer_set_anchor(GTK_WINDOW(panel->win), 2, 1);
-    gtk_layer_set_anchor(GTK_WINDOW(panel->win), 3, 0);
-}
-
-// Further Panel initialize and registration with runtime depedencies.
-static int panel_runtime_init(AdwApplication *app, Panel *panel,
-                              GdkMonitor *monitor) {
-    panel_init_attach_monitor(panel, app, monitor);
-    panel_init_attach_workspaces_bar(panel);
-    panel_init_attach_clock(panel);
-    panel_init_attach_qs_button(panel);
-    g_hash_table_insert(panels, monitor, panel);
-    gtk_window_present(GTK_WINDOW(panel->win));
-    return 1;
+    gtk_layer_set_monitor(GTK_WINDOW(self->win), monitor);
+    g_hash_table_insert(panels, monitor, self);
+    gtk_window_present(GTK_WINDOW(self->win));
 }
 
 // Iterates over the monitors GListModel, creating panels for any new monitors.
@@ -190,14 +164,9 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
         }
 
         Panel *panel = g_object_new(PANEL_TYPE, NULL);
-        if (!panel_runtime_init(ADW_APPLICATION(gtk_app), panel, mon)) {
-            g_critical(
-                "panel.c:panel_on_monitor_change(): failed to initialize bar");
-            panel_runtime_dispose(mon, panel);
-            return;
-        }
+        panel_attach_to_monitor(panel, mon);
 
-        g_signal_connect(mon, "invalidate", G_CALLBACK(panel_runtime_dispose),
+        g_signal_connect(mon, "invalidate", G_CALLBACK(on_monitor_invalidate),
                          panel);
 
         g_debug(
@@ -227,12 +196,12 @@ void panel_on_msg_tray_hidden(Panel *panel) {
 
 void panel_on_qs_visible(Panel *panel) {
     g_debug("panel.c:panel_on_qs_visible() called.");
-    quick_settings_button_set_toggled(panel->qs_button, TRUE);
+    panel_status_bar_set_toggled(panel->status_bar, TRUE);
 }
 
 void panel_on_qs_hidden(Panel *panel) {
     g_debug("panel.c:panel_on_qs_hidden() called.");
-    quick_settings_button_set_toggled(panel->qs_button, FALSE);
+    panel_status_bar_set_toggled(panel->status_bar, FALSE);
 }
 
 void panel_activate(AdwApplication *app, gpointer user_data) {
@@ -252,6 +221,7 @@ void panel_activate(AdwApplication *app, gpointer user_data) {
     g_debug(
         "panel.c:panel_activate() init finished, listening for monitor "
         "events.");
+
     // Connect the callback function to the "items-changed" signal
     // so we'll destroy and recreate bars on monitor changes.
     //

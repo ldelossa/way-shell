@@ -43,3 +43,6 @@ void panel_on_qs_hidden(Panel *panel);
 
 // Returns the monitor the given Panel is on.
 GdkMonitor *panel_get_monitor(Panel *panel);
+
+// Attaches and displays a panel to the given monitor
+void panel_attach_to_monitor(Panel *panel, GdkMonitor *mon);

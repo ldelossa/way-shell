@@ -1,0 +1,141 @@
+#include "panel_status_bar_sound_button.h"
+
+#include <adwaita.h>
+
+#include "../../services/wireplumber_service.h"
+
+struct _PanelStatusBarSoundButton {
+    GObject parent_instance;
+    GtkImage *speaker_icon;
+    GtkImage *microphone_icon;
+    GtkBox *container;
+    guint32 signal_id;
+};
+G_DEFINE_TYPE(PanelStatusBarSoundButton, panel_status_bar_sound_button,
+              G_TYPE_OBJECT);
+
+static void on_default_nodes_changed(WirePlumberService *wp, guint32 id,
+                                     PanelStatusBarSoundButton *self) {
+    WirePlumberServiceDefaultNodes nodes;
+    wire_plumber_service_get_default_nodes(wp, &nodes);
+
+    g_debug("quick_settings_button.c:on_default_nodes_changed() called.");
+
+    if (id == nodes.sink.id || id == 0) {
+        if (nodes.sink.mute) {
+            gtk_image_set_from_icon_name(self->speaker_icon,
+                                         "audio-volume-muted-symbolic");
+            goto source;
+        }
+        if (nodes.sink.volume < 0.25) {
+            gtk_image_set_from_icon_name(self->speaker_icon,
+                                         "audio-volume-low-symbolic");
+        }
+        if (nodes.sink.volume >= 0.25 && nodes.sink.volume < 0.5) {
+            gtk_image_set_from_icon_name(self->speaker_icon,
+                                         "audio-volume-medium-symbolic");
+        }
+        if (nodes.sink.volume >= 0.50) {
+            gtk_image_set_from_icon_name(self->speaker_icon,
+                                         "audio-volume-high-symbolic");
+        }
+    }
+source:
+    if (id == nodes.source.id || id == 0) {
+        // debug active state
+        g_debug(
+            "quick_settings_button.c:on_default_nodes_changed() source "
+            "active: %d",
+            nodes.source.active);
+        if (nodes.source.active) {
+            // set icon visible if source is active
+            gtk_widget_set_visible(GTK_WIDGET(self->microphone_icon), true);
+        } else {
+            // set icon invisible if source is inactive
+            gtk_widget_set_visible(GTK_WIDGET(self->microphone_icon), false);
+            return;
+        }
+
+        if (nodes.source.mute) {
+            gtk_image_set_from_icon_name(
+                self->microphone_icon, "microphone-sensitivity-muted-symbolic");
+            return;
+        }
+        if (nodes.source.volume < 0.25) {
+            gtk_image_set_from_icon_name(self->microphone_icon,
+                                         "microphone-sensitivity-low-symbolic");
+        }
+        if (nodes.source.volume >= 0.25 && nodes.source.volume < 0.5) {
+            gtk_image_set_from_icon_name(
+                self->microphone_icon,
+                "microphone-sensitivity-medium-symbolic");
+        }
+        if (nodes.source.volume >= 0.50) {
+            gtk_image_set_from_icon_name(
+                self->microphone_icon, "microphone-sensitivity-high-symbolic");
+        }
+    }
+
+    return;
+}
+
+// stub out dispose, finalize, class_init, and init methods
+static void panel_status_bar_sound_button_dispose(GObject *gobject) {
+    PanelStatusBarSoundButton *self = PANEL_STATUS_BAR_SOUND_BUTTON(gobject);
+
+    // disconnect from signals
+    WirePlumberService *wps = wire_plumber_service_get_global();
+    g_signal_handler_disconnect(wps, self->signal_id);
+    // g_signal_handlers_disconnect_by_func(
+    //     wps, G_CALLBACK(on_default_nodes_changed), NULL);
+
+    // Chain-up
+    G_OBJECT_CLASS(panel_status_bar_sound_button_parent_class)
+        ->dispose(gobject);
+};
+
+static void panel_status_bar_sound_button_finalize(GObject *gobject) {
+    // Chain-up
+    G_OBJECT_CLASS(panel_status_bar_sound_button_parent_class)
+        ->finalize(gobject);
+};
+
+static void panel_status_bar_sound_button_class_init(
+    PanelStatusBarSoundButtonClass *klass) {
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+    object_class->dispose = panel_status_bar_sound_button_dispose;
+    object_class->finalize = panel_status_bar_sound_button_finalize;
+};
+
+static void panel_status_bar_sound_button_init_layout(
+    PanelStatusBarSoundButton *self) {
+    WirePlumberService *wps = wire_plumber_service_get_global();
+
+    self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+
+    // create icon
+    self->speaker_icon =
+        GTK_IMAGE(gtk_image_new_from_icon_name("audio-volume-muted-symbolic"));
+    self->microphone_icon = GTK_IMAGE(
+        gtk_image_new_from_icon_name("microphone-sensitivity-muted-symbolic"));
+
+    // attach both icons to container
+    gtk_box_append(self->container, GTK_WIDGET(self->microphone_icon));
+    gtk_box_append(self->container, GTK_WIDGET(self->speaker_icon));
+
+    on_default_nodes_changed(wps, 0, self);
+
+    self->signal_id =
+        g_signal_connect(wps, "default_nodes_changed",
+                         G_CALLBACK(on_default_nodes_changed), self);
+};
+
+static void panel_status_bar_sound_button_init(
+    PanelStatusBarSoundButton *self) {
+    panel_status_bar_sound_button_init_layout(self);
+}
+
+GtkWidget *panel_status_bar_sound_button_get_widget(
+    PanelStatusBarSoundButton *self) {
+    return GTK_WIDGET(self->container);
+}

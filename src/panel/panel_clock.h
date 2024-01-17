@@ -21,3 +21,5 @@ void panel_clock_set_panel(PanelClock *self, Panel *panel);
 void panel_clock_set_toggled(PanelClock *self, gboolean toggled);
 
 gboolean panel_clock_get_toggled(PanelClock *self);
+
+void panel_clock_reinitialize(PanelClock *self);

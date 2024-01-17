@@ -16,6 +16,7 @@ enum signals {
     // actions ...
     quick_settings_req_open,
     quick_settings_req_close,
+    quick_settings_req_shrink,
 
     signals_n
 };
@@ -67,6 +68,10 @@ static void quick_settings_mediator_class_init(
     signals[quick_settings_req_close] = g_signal_new(
         "quick-settings-req-close", G_TYPE_FROM_CLASS(object_class),
         G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    signals[quick_settings_req_shrink] = g_signal_new(
+        "quick-settings-req-shrink", G_TYPE_FROM_CLASS(object_class),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 };
 
 static void on_quick_settings_open(QuickSettingsMediator *mediator,
@@ -84,12 +89,22 @@ static void on_quick_settings_close(QuickSettingsMediator *mediator) {
                               quick_settings_get_panel(mediator->qs));
 };
 
+static void on_quick_settings_shrink(QuickSettingsMediator *mediator) {
+    g_debug("quick_settings_mediator.c:quick_settings_shrink() called.");
+    if (quick_settings_get_panel(mediator->qs) == NULL) {
+        return;
+    }
+    quick_settings_shrink(mediator->qs);
+};
+
 static void quick_settings_mediator_init(QuickSettingsMediator *self) {
     // write into out actions api
     g_signal_connect(self, "quick-settings-req-open",
                      G_CALLBACK(on_quick_settings_open), NULL);
     g_signal_connect(self, "quick-settings-req-close",
                      G_CALLBACK(on_quick_settings_close), NULL);
+    g_signal_connect(self, "quick-settings-req-shrink",
+                     G_CALLBACK(on_quick_settings_shrink), NULL);
 };
 
 // Sets a pointer to the Tray this QuickSettingsMediator mediates signals for.
@@ -101,22 +116,19 @@ void quick_settings_mediator_set_tray(QuickSettingsMediator *mediator,
 // Emits the "quick-settings-will-show" signal.
 void quick_settings_mediator_emit_will_show(QuickSettingsMediator *mediator,
                                             QuickSettings *tray, Panel *panel) {
-    g_signal_emit(mediator, signals[quick_settings_will_show], 0, tray,
-                  panel);
+    g_signal_emit(mediator, signals[quick_settings_will_show], 0, tray, panel);
 };
 
 // Emits the "quick-settings-visible" signal.
 void quick_settings_mediator_emit_visible(QuickSettingsMediator *mediator,
                                           QuickSettings *tray, Panel *panel) {
-    g_signal_emit(mediator, signals[quick_settings_visible], 0, tray,
-                  panel);
+    g_signal_emit(mediator, signals[quick_settings_visible], 0, tray, panel);
 };
 
 // Emits the "quick-settings-hidden" signal.
 void quick_settings_mediator_emit_hidden(QuickSettingsMediator *mediator,
                                          QuickSettings *tray, Panel *panel) {
-    g_signal_emit(mediator, signals[quick_settings_hidden], 0, tray,
-                  panel);
+    g_signal_emit(mediator, signals[quick_settings_hidden], 0, tray, panel);
 };
 
 // Emits the message-tray-open signal on the MessageTrayMediator.
@@ -134,6 +146,13 @@ void quick_settings_mediator_req_close(QuickSettingsMediator *mediator) {
         "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
         "signal.");
     g_signal_emit(mediator, signals[quick_settings_req_close], 0);
+};
+
+void quick_settings_mediator_req_shrink(QuickSettingsMediator *mediator) {
+    g_debug(
+        "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
+        "signal.");
+    g_signal_emit(mediator, signals[quick_settings_req_shrink], 0);
 };
 
 static void on_message_tray_will_show(MessageTrayMediator *msg_tray_mediator,

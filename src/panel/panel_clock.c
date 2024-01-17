@@ -39,10 +39,6 @@ static void on_tick(ClockService *cs, GDateTime *now, PanelClock *self) {
 static void panel_clock_dispose(GObject *gobject) {
     PanelClock *self = PANEL_CLOCK(gobject);
 
-    if (self->panel) {
-        g_object_unref(self->panel);
-    }
-
     // stop signal handler for tick
     ClockService *cs = clock_service_get_global();
     g_signal_handlers_disconnect_by_func(cs, G_CALLBACK(on_tick), self);
@@ -67,7 +63,19 @@ static void panel_clock_class_init(PanelClockClass *klass) {
     object_class->finalize = panel_clock_finalize;
 };
 
-static void panel_clock_init(PanelClock *self) {
+static void on_click(GtkWidget *w, PanelClock *clock) {
+    MessageTrayMediator *m = message_tray_get_global_mediator();
+    if (!m) return;
+    if (clock->toggled) {
+        message_tray_mediator_req_close(m);
+        return;
+    }
+    message_tray_mediator_req_open(m, clock->panel);
+}
+
+static void panel_clock_init_layout(PanelClock *self) {
+    self->toggled = false;
+
     // set initial value before we wait for clock service
     GDateTime *now = g_date_time_new_now_local();
     gchar *date = g_date_time_format(now, "%b %d %I:%M");
@@ -91,6 +99,8 @@ static void panel_clock_init(PanelClock *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->notif), false);
     gtk_box_append(self->container, GTK_WIDGET(self->notif));
 
+    g_signal_connect(self->button, "clicked", G_CALLBACK(on_click), self);
+
     // get notifications service and wire up to notification-changed
     NotificationsService *ns = notifications_service_get_global();
 
@@ -99,21 +109,24 @@ static void panel_clock_init(PanelClock *self) {
 
     g_signal_connect(ns, "notification-changed",
                      G_CALLBACK(panel_clock_on_notification_changed), self);
-};
-
-static void on_click(GtkWidget *w, PanelClock *clock) {
-    MessageTrayMediator *m = message_tray_get_global_mediator();
-    if (!m) return;
-    if (clock->toggled) {
-        message_tray_mediator_req_close(m);
-        return;
-    }
-    message_tray_mediator_req_open(m, clock->panel);
 }
 
+void panel_clock_reinitialize(PanelClock *self) {
+    // disconnect from signals
+    ClockService *cs = clock_service_get_global();
+    g_signal_handlers_disconnect_by_func(cs, G_CALLBACK(on_tick), self);
+    g_signal_handlers_disconnect_by_func(
+        notifications_service_get_global(),
+        G_CALLBACK(panel_clock_on_notification_changed), self);
+    // reset our layout
+    panel_clock_init_layout(self);
+}
+
+static void panel_clock_init(PanelClock *self) {
+    panel_clock_init_layout(self);
+};
+
 void panel_clock_set_panel(PanelClock *self, Panel *panel) {
-    g_signal_connect(self->button, "clicked", G_CALLBACK(on_click), self);
-    self->panel = g_object_ref(panel);
     self->panel = panel;
 }
 

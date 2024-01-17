@@ -36,4 +36,7 @@ void quick_settings_set_hidden(QuickSettings *qs, Panel *panel);
 // widget is visible or hidden under the give Panel.
 void quick_settings_toggle(QuickSettings *qs, Panel *panel);
 
+// Shrink the QuickSettings UI to its original size, if possible.
+void quick_settings_shrink(QuickSettings *qs);
+
 Panel *quick_settings_get_panel(QuickSettings *qs);

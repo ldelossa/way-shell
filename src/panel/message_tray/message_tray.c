@@ -3,7 +3,6 @@
 #include <adwaita.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "../../services/notifications_service/notifications_service.h"
 #include "../panel.h"
 #include "./notifications/notifications_list.h"
 #include "calendar/calendar.h"
@@ -34,8 +33,6 @@ static void message_tray_dispose(GObject *gobject) {
 
     g_object_unref(self->notifications_list);
 
-    if (self->panel) g_object_unref(self->panel);
-
     // Chain-up
     G_OBJECT_CLASS(message_tray_parent_class)->dispose(gobject);
 };
@@ -51,26 +48,26 @@ static void message_tray_class_init(MessageTrayClass *klass) {
     object_class->finalize = message_tray_finalize;
 };
 
-static void animation_close_done(AdwAnimation *animation, MessageTray *tray) {
+static void animation_close_done(AdwAnimation *animation, MessageTray *self) {
     g_debug("message_tray.c:animation_close_done() called.");
 
     // disconnect done signal
-    g_signal_handlers_disconnect_by_func(tray->animation, animation_close_done,
-                                         tray);
+    g_signal_handlers_disconnect_by_func(self->animation, animation_close_done,
+                                         self);
 
     // make animation forward
-    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(tray->animation),
+    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->animation),
                                     FALSE);
 
     // hide tray
-    gtk_widget_set_visible(GTK_WIDGET(tray->win), false);
-    gtk_widget_set_visible(GTK_WIDGET(tray->underlay), false);
+    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
+    gtk_widget_set_visible(GTK_WIDGET(self->underlay), false);
 
     // emit hidden signal
-    message_tray_mediator_emit_hidden(mediator, tray, tray->panel);
+    message_tray_mediator_emit_hidden(mediator, self, self->panel);
 
-    // unref and clear panel
-    g_clear_object(&tray->panel);
+    // clear panel
+    self->panel = NULL;
 };
 
 void message_tray_set_hidden(MessageTray *self, Panel *panel) {
@@ -251,6 +248,9 @@ static void message_tray_init_layout(MessageTray *self) {
 }
 
 void message_tray_reinitialize(MessageTray *self) {
+    // reset mediator's pointer to us
+    message_tray_mediator_set_tray(mediator, self);
+
     // reinitialize our depedencies
     notifications_list_reinitialize(self->notifications_list);
 
@@ -294,6 +294,16 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
 
     if (!self || !panel) return;
 
+    // determine current state
+    if (self->panel && self->panel == panel) {
+        // panel is already opened on the requested panel, just return.
+        return;
+    }
+    if (self->panel && self->panel != panel) {
+        // panel is opened on another monitor, close it first
+        message_tray_set_hidden(self, self->panel);
+    }
+
     // this ensures there are no in-flight animation done callbacks on the
     // event-loop before starting a new animation, and avoids timing bugs.
     anim_state = adw_animation_get_state(self->animation);
@@ -315,13 +325,11 @@ void message_tray_set_visible(MessageTray *self, Panel *panel) {
     message_tray_mediator_emit_will_show(mediator, self, panel);
 
     // present underlay
-    // gtk_window_present(GTK_WINDOW(self->underlay));
+    gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
 
-    // ref and store the pointer to the panel we attached to.
-    g_object_ref(panel);
     self->panel = panel;
 
     // connect animation done signal and play animation.

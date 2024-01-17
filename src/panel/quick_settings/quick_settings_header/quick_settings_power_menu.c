@@ -2,8 +2,6 @@
 
 #include <adwaita.h>
 
-#include "gtk/gtkrevealer.h"
-
 enum signals { signals_n };
 
 typedef struct _QuickSettingsPowerMenu {
@@ -21,8 +19,6 @@ G_DEFINE_TYPE(QuickSettingsPowerMenu, quick_settings_power_menu, G_TYPE_OBJECT);
 // stub out empty dispose, finalize, class_init, and init methods for this
 // GObject.
 static void quick_settings_power_menu_dispose(GObject *gobject) {
-    QuickSettingsPowerMenu *self = QUICK_SETTINGS_POWER_MENU(gobject);
-
     g_debug(
         "quick_settings_power_menu.c:quick_settings_power_menu_dispose() "
         "called.");

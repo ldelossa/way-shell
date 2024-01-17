@@ -1,4 +1,4 @@
-#include "workspaces_bar.h"
+#include "panel_workspaces_bar.h"
 
 #include <adwaita.h>
 
@@ -6,8 +6,21 @@
 #include "../../services/window_manager_service/window_manager_service.h"
 #include "../panel.h"
 
+typedef struct _Panel Panel;
+
+typedef struct _PanelWorkspacesBar {
+    GObject parent_instance;
+    Panel *panel;
+    GtkBox *container;
+    GtkScrolledWindow *scroll_win;
+    GtkBox *list;
+    GPtrArray *workspaces;
+    guint32 signal_id;
+} PanelWorkspacesBar;
+G_DEFINE_TYPE(PanelWorkspacesBar, panel_workspaces_bar, G_TYPE_OBJECT);
+
 // button on click handler
-static void on_button_clicked(GtkButton *button, WorkSpacesBar *self) {
+static void on_button_clicked(GtkButton *button, PanelWorkspacesBar *self) {
     WMWorkspace *ws = g_object_get_data(G_OBJECT(button), "workspace");
     WMServiceSway *sway = wm_service_sway_get_global();
 
@@ -16,7 +29,7 @@ static void on_button_clicked(GtkButton *button, WorkSpacesBar *self) {
 }
 
 GtkButton *create_workspace_button(WMServiceSway *srv, WMWorkspace *ws,
-                                   WorkSpacesBar *self) {
+                                   PanelWorkspacesBar *self) {
     // create button
     GtkWidget *button;
     button = gtk_button_new_with_label(ws->name);
@@ -47,7 +60,7 @@ GtkButton *create_workspace_button(WMServiceSway *srv, WMWorkspace *ws,
 }
 
 static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
-                                 WorkSpacesBar *self) {
+                                 PanelWorkspacesBar *self) {
     GtkWidget *child;
     GdkMonitor *mon = panel_get_monitor(self->panel);
     GtkButton *focused = NULL;
@@ -69,7 +82,7 @@ static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
     // check if we need to replace the workspaces array.
     if (!self->workspaces) {
         self->workspaces = g_ptr_array_ref(workspaces);
-    } else if(self->workspaces != workspaces) {
+    } else if (self->workspaces != workspaces) {
         g_ptr_array_unref(self->workspaces);
         self->workspaces = g_ptr_array_ref(workspaces);
     }
@@ -193,14 +206,41 @@ static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
     }
 }
 
-WorkSpacesBar *workspaces_bar_new(Panel *panel) {
-    WorkSpacesBar *self = g_malloc0(sizeof(WorkSpacesBar));
+// stub out dispose, finalize, class_init, and init methods
+static void panel_workspaces_bar_dispose(GObject *gobject) {
+    PanelWorkspacesBar *self = PANEL_WORKSPACES_BAR(gobject);
 
-    if (!panel) g_error("workspaces_bar.c:workspaces_bar_new() panel is NULL");
+    g_debug("panel_workspaces_bar.c:panel_workspaces_bar_dispose() called");
 
-    g_object_ref(panel);
-    self->panel = panel;
+    g_debug("workspaces_bar.c:workspaces_bar_dispose() called");
 
+    // disconnect from signals
+    WMServiceSway *sway = wm_service_sway_get_global();
+    g_signal_handler_disconnect(sway, self->signal_id);
+
+    // // release reference to current workspaces array
+    // g_ptr_array_unref(self->workspaces);
+
+    // Chain-up
+    G_OBJECT_CLASS(panel_workspaces_bar_parent_class)->dispose(gobject);
+};
+
+static void panel_workspaces_bar_finalize(GObject *gobject) {
+    PanelWorkspacesBar *self = PANEL_WORKSPACES_BAR(gobject);
+
+    g_debug("panel_workspaces_bar.c:panel_workspaces_bar_finalize() called");
+
+    // Chain-up
+    G_OBJECT_CLASS(panel_workspaces_bar_parent_class)->finalize(gobject);
+};
+
+static void panel_workspaces_bar_class_init(PanelWorkspacesBarClass *klass) {
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+    object_class->dispose = panel_workspaces_bar_dispose;
+    object_class->finalize = panel_workspaces_bar_finalize;
+};
+
+static void panel_workpaces_bar_init_layout(PanelWorkspacesBar *self) {
     // get sway window manager service
     WMServiceSway *sway = wm_service_sway_get_global();
 
@@ -228,31 +268,40 @@ WorkSpacesBar *workspaces_bar_new(Panel *panel) {
     // get initial list of workspaces
     self->workspaces = wm_service_sway_get_workspaces(sway);
 
-    // create initial buttons
-    on_workspaces_update(NULL, self->workspaces, self);
-
     // wire up to 'workspaces-changed' service
-    g_signal_connect(sway, "workspaces-changed",
-                     G_CALLBACK(on_workspaces_update), self);
-
-    return self;
+    self->signal_id = g_signal_connect(sway, "workspaces-changed",
+                                       G_CALLBACK(on_workspaces_update), self);
 }
 
-GtkWidget *workspaces_bar_get_widget(WorkSpacesBar *self) {
+static void panel_workspaces_bar_init(PanelWorkspacesBar *self) {
+    panel_workpaces_bar_init_layout(self);
+}
+
+GtkWidget *panel_workspaces_bar_get_widget(PanelWorkspacesBar *self) {
     return GTK_WIDGET(self->container);
 }
 
-void workspaces_bar_free(WorkSpacesBar *self) {
-    WMServiceSway *sway = wm_service_sway_get_global();
-
-    g_debug("workspaces_bar.c:workspaces_bar_free() called");
-
-    // remove signal handler
-    g_signal_handlers_disconnect_by_func(sway, on_workspaces_update, self);
-
-    // release referene to current workspaces array
-    g_ptr_array_unref(self->workspaces);
-
-    // release reference to associated panel
-    g_object_unref(self->panel);
+void panel_workspaces_bar_set_panel(PanelWorkspacesBar *self, Panel *panel) {
+    if (!panel)
+        g_error(
+            "panel_workspaces_bar.c:panel_workspaces_bar_set_panel() panel is "
+            "NULL");
+    self->panel = panel;
+    // create initial buttons
+    on_workspaces_update(NULL, self->workspaces, self);
 }
+
+// void workspaces_bar_free(WorkSpacesBar *self) {
+//     WMServiceSway *sway = wm_service_sway_get_global();
+
+//     g_debug("workspaces_bar.c:workspaces_bar_free() called");
+
+//     // remove signal handler
+//     g_signal_handlers_disconnect_by_func(sway, on_workspaces_update, self);
+
+//     // release referene to current workspaces array
+//     g_ptr_array_unref(self->workspaces);
+
+//     // release reference to associated panel
+//     g_object_unref(self->panel);
+// }
