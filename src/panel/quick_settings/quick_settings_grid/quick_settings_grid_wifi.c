@@ -1,21 +1,10 @@
-#pragma once
-
 #include "./quick_settings_grid_wifi.h"
 
 #include <adwaita.h>
 
+#include "../../../services/network_manager_service.h"
 #include "./quick_settings_grid_button.h"
 #include "nm-dbus-interface.h"
-
-static QuickSettingsGridWifiMenu *qs_grid_wifi_menu_init(
-    QuickSettingsGridWifiButton *button) {
-    QuickSettingsGridWifiMenu *self =
-        g_malloc0(sizeof(QuickSettingsGridWifiMenu));
-
-    return self;
-}
-
-static void qs_grid_wifi_menu_free(QuickSettingsGridWifiMenu *self) {}
 
 gboolean cleanup(QuickSettingsGridWifiButton *self, NMDevice *dev) {
     NMDeviceStateReason reason = nm_device_get_state_reason(dev);
@@ -74,34 +63,9 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
 
     NMAccessPoint *ap = nm_device_wifi_get_active_access_point(dev);
     if (ap) {
-        GBytes *buff = nm_access_point_get_ssid(ap);
-        if (buff) {
-            guint8 size = g_bytes_get_size(buff);
-            name = g_strdup(g_bytes_get_data(buff, NULL));
-            // replace first occurrence of a non utf-8 character with null
-            // byte.
-            for (int i = 0; i < size; i++) {
-                const char *c = &name[i];
-                if (!g_utf8_validate(c, 1, NULL)) {
-                    g_debug(
-                        "quick_settings_grid_wifi.c:on_active_access_point() "
-                        "found non utf-8 character");
-                    name[i] = '\0';
-                    break;
-                }
-            }
-        }
-
+        name = network_manager_service_ap_to_name(ap);
         guint8 strength = nm_access_point_get_strength(ap);
-        if (strength > 75) {
-            icon = "network-wireless-signal-excellent-symbolic";
-        } else if (strength > 50) {
-            icon = "network-wireless-signal-good-symbolic";
-        } else if (strength > 25) {
-            icon = "network-wireless-signal-ok-symbolic";
-        } else {
-            icon = "network-wireless-signal-weak-symbolic";
-        }
+        icon = network_manager_service_ap_strength_to_icon_name(strength);
     }
 
     // update self->subtitle label with ap name
@@ -132,13 +96,24 @@ QuickSettingsGridWifiButton *quick_settings_grid_wifi_button_init(
 
     g_object_ref(dev);
 
+    // create associated menu
+    self->menu = g_object_new(QUICK_SETTINGS_GRID_WIFI_MENU_TYPE, NULL);
+    quick_settings_grid_wifi_menu_set_device(self->menu, NM_DEVICE_WIFI(dev));
+
     return self;
+}
+
+GtkWidget *quick_settings_grid_wifi_button_get_menu_widget(
+    QuickSettingsGridWifiButton *self) {
+    return GTK_WIDGET(quick_settings_grid_wifi_menu_get_widget(self->menu));
 }
 
 void quick_settings_grid_wifi_button_free(QuickSettingsGridWifiButton *self) {
     g_debug("quick_settings_grid_wifi.c:qs_grid_wifi_button_free() called");
     // unref device
     g_object_unref(self->dev);
+    // unref our menu
+    g_object_unref(self->menu);
     // kill signal handlers
     g_signal_handlers_disconnect_by_func(self->dev, on_active_access_point,
                                          self);

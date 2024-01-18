@@ -76,27 +76,10 @@ static void on_nm_change(NetworkManagerService *nm,
                     return;
                 }
                 guint8 strength = nm_access_point_get_strength(ap);
-                if (strength < 25) {
-                    gtk_image_set_from_icon_name(
-                        self->icon, "network-wireless-signal-weak-symbolic");
-                    return;
-                }
-                if (strength >= 25 && strength < 50) {
-                    gtk_image_set_from_icon_name(
-                        self->icon, "network-wireless-signal-ok-symbolic");
-                    return;
-                }
-                if (strength >= 50 && strength < 75) {
-                    gtk_image_set_from_icon_name(
-                        self->icon, "network-wireless-signal-good-symbolic");
-                    return;
-                }
-                if (strength >= 75) {
-                    gtk_image_set_from_icon_name(
-                        self->icon,
-                        "network-wireless-signal-excellent-symbolic");
-                    return;
-                }
+                char *icon_name =
+                    network_manager_service_ap_strength_to_icon_name(strength);
+                gtk_image_set_from_icon_name(self->icon, icon_name);
+                return;
             }
             gtk_image_set_from_icon_name(self->icon, "network-wired-symbolic");
             return;

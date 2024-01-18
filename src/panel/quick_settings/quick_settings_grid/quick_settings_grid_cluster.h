@@ -9,8 +9,12 @@ enum QuickSettingsGridClusterSide {
     QUICK_SETTINGS_GRID_CLUSTER_NONE = -1
 };
 
-G_BEGIN_DECLS
+// Callback function invoked when a QuickSettingCluster revealed the widget
+// associated with a QuickSettingsGridButton's reveal button click.
+typedef void (*QuickSettingsClusterOnRevealFunc)(
+    QuickSettingsGridButton *revealed, gboolean is_revealed);
 
+G_BEGIN_DECLS
 
 // A QuickSettingsGridCluster consists of two QuickSettingsGridButtons layed out
 // side-by-side in a GtkCenterBox.
@@ -32,7 +36,8 @@ GtkWidget *quick_settings_grid_cluster_get_widget(
 
 int quick_settings_grid_cluster_add_button(
     QuickSettingsGridCluster *cluster, enum QuickSettingsGridClusterSide side,
-    QuickSettingsGridButton *button, GtkWidget *reveal);
+    QuickSettingsGridButton *button, GtkWidget *reveal,
+    QuickSettingsClusterOnRevealFunc on_reveal);
 
 gboolean quick_settings_grid_cluster_is_full(QuickSettingsGridCluster *cluster);
 

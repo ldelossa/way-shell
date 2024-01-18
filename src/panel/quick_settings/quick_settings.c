@@ -260,7 +260,7 @@ void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
     quick_settings_mediator_emit_will_show(mediator, self, monitor);
 
     // show underlay
-    gtk_window_present(GTK_WINDOW(self->underlay));
+    // gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));

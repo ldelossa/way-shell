@@ -43,3 +43,7 @@ NMDeviceState network_manager_service_wifi_state(NetworkManagerService *self);
 
 NMDevice *network_manager_service_get_primary_device(
     NetworkManagerService *self);
+
+char *network_manager_service_ap_strength_to_icon_name(guchar strength);
+
+char *network_manager_service_ap_to_name(NMAccessPoint *ap);

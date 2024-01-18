@@ -1,22 +1,10 @@
-#pragma once
 
 #include "./quick_settings_grid_ethernet.h"
 
 #include <adwaita.h>
 
-#include "../../../services/network_manager_service.h"
 #include "./quick_settings_grid_button.h"
 #include "nm-dbus-interface.h"
-
-static QuickSettingsGridEthernetMenu *qs_grid_ethernet_menu_init(
-    QuickSettingsGridEthernetButton *button) {
-    QuickSettingsGridEthernetMenu *self =
-        g_malloc0(sizeof(QuickSettingsGridEthernetMenu));
-
-    return self;
-}
-
-static void qs_grid_ethernet_menu_free(QuickSettingsGridEthernetMenu *self) {}
 
 static void on_state_changed_ether(NMDeviceEthernet *dev, GParamSpec *pspec,
                                    QuickSettingsGridEthernetButton *button) {

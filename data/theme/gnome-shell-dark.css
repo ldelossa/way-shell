@@ -11,6 +11,99 @@
 }
 
 /*
+/ Panel
+*/
+#panel {
+  background-color: #000000;
+  font-weight: normal;
+  transition-duration: 250ms;
+}
+
+#panel .panel-button label {
+  margin: 4px;
+}
+
+#panel .panel-button {
+  margin: 2px;
+  transition-duration: 150ms;
+  font-weight: bold;
+  background-color: transparent;
+  color: #f2f2f2;
+  box-shadow: none;
+  margin: 2px;
+  padding: 2px;
+  border-radius: 35px;
+}
+
+#panel .panel-button:hover {
+  background-color: rgba(242, 242, 242, 0.25);
+}
+
+#panel .panel-button:active {
+  background-color: rgba(242, 242, 242, 0.35);
+}
+
+#panel .panel-button-toggled {
+  background-color: rgba(242, 242, 242, 0.25);
+}
+
+#panel image {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+#panel #workspaces-bar {
+  border-radius: 5px;
+}
+
+#panel scrollbar {
+  opacity: 100;
+  margin-bottom: -12px;
+  margin-left: 12px;
+  margin-right: 12px;
+  border-radius: 0px;
+}
+
+#panel #workspaces-bar-list {
+  font-weight: normal;
+  font-size: 12px;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset -1px -1px 3px rgba(255, 255, 255, 0.04);
+}
+
+#panel #workspaces-bar-list .panel-button {
+  margin: 2px;
+  border-radius: 5px;
+}
+
+#panel #workspaces-bar-list .panel-button-toggled {
+  background: linear-gradient(to bottom, #4299e1, #2b6cb0);
+  animation: pulse 1s ease-in;
+}
+
+#panel #workspaces-bar-list .panel-button-urgent {
+  color: #f66151;
+  animation: pulse 1s ease-in;
+}
+
+#panel .panel-clock-notif {
+  color: #ffffff;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/*
 / Message Tray
 */
 #message-tray {
@@ -350,94 +443,62 @@ label.day-number.today:focus {
 }
 
 /*
-/ Panel
-*/
-#panel {
-  background-color: #000000;
-  font-weight: normal;
+ * Quick Settings Menu Widget
+ */
+
+#quick-settings-menu {
+  padding: 20px;
+}
+
+#quick-settings-menu #container {
+  padding: 5px;
+  border-radius: 20px;
+  background: #404040;
+
   transition-duration: 250ms;
 }
 
-#panel .panel-button label {
-  margin: 4px;
-}
-
-#panel .panel-button {
-  margin: 2px;
-  transition-duration: 150ms;
-  font-weight: bold;
-  background-color: transparent;
-  color: #f2f2f2;
-  box-shadow: none;
-  margin: 2px;
-  padding: 2px;
-  border-radius: 35px;
-}
-
-#panel .panel-button:hover {
-  background-color: rgba(242, 242, 242, 0.25);
-}
-
-#panel .panel-button:active {
-  background-color: rgba(242, 242, 242, 0.35);
-}
-
-#panel .panel-button-toggled {
-  background-color: rgba(242, 242, 242, 0.25);
-}
-
-#panel image {
-  margin-left: 6px;
-  margin-right: 6px;
-}
-
-#panel #workspaces-bar {
-  border-radius: 5px;
-}
-
-#panel scrollbar {
-  opacity: 100;
-  margin-bottom: -12px;
-  margin-left: 12px;
-  margin-right: 12px;
-  border-radius: 0px;
-}
-
-#panel #workspaces-bar-list {
+#quick-settings-menu #container button {
+  background-color: inherit;
   font-weight: normal;
-  font-size: 12px;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset -1px -1px 3px rgba(255, 255, 255, 0.04);
+  font-size: 16px;
 }
 
-#panel #workspaces-bar-list .panel-button {
+#quick-settings-menu #options-container button:hover {
+  background-color: #9a9996;
+}
+
+#quick-settings-menu #container #title-container {
+  padding: 4px;
+}
+
+#quick-settings-menu #container #title-container label,
+#quick-settings-menu #container #title-container image {
+  padding: 4px;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+#quick-settings-menu #container #title-container #icon-container {
+  margin: 4px;
+  padding: 4px;
+  background-color:#3584e4;
+  border-radius: 100px;
+}
+
+#quick-settings-menu #container #options-container {
   margin: 2px;
-  border-radius: 5px;
 }
 
-#panel #workspaces-bar-list .panel-button-toggled {
-  background: linear-gradient(to bottom, #4299e1, #2b6cb0);
-  animation: pulse 1s ease-in;
-}
+/*
+ * Quick Settings Menu Wifi Options
+ */
 
-#panel #workspaces-bar-list .panel-button-urgent {
-  color: #f66151;
-  animation: pulse 1s ease-in;
-}
-
-#panel .panel-clock-notif {
-  color: #ffffff;
-}
-
-@keyframes pulse {
-  0% {
-    opacity: 1;
-  }
-
-  50% {
-    opacity: 0.7;
-  }
-
-  100% {
-    opacity: 1;
-  }
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi label
+{
+  padding-left: 5px;
+  padding-right: 5px;
+  padding-top: 0px;
+  padding-bottom: 0px;
 }

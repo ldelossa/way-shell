@@ -14,12 +14,6 @@ typedef struct _QuickSettingsGridEthernetButton {
     NMDeviceEthernet *dev;
 } QuickSettingsGridEthernetButton;
 
-typedef struct _QuickSettingsGridEthernetMenu {
-    QuickSettingsGridEthernetButton *button;
-    GtkBox container;
-    GtkRevealer *revealer;
-} QuickSettingsGridEthernetMenu;
-
 QuickSettingsGridEthernetButton *quick_settings_grid_ethernet_button_init(
     NMDeviceEthernet *dev);
 

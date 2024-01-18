@@ -197,3 +197,29 @@ int network_manager_service_global_init(void) {
 // Will return NULL if `network_manager_service_global_init` has not been
 // called.
 NetworkManagerService *network_manager_service_get_global() { return global; };
+
+char *network_manager_service_ap_strength_to_icon_name(guchar strength) {
+    if (strength < 25) {
+        return "network-wireless-signal-weak-symbolic";
+    } else if (strength < 50) {
+        return "network-wireless-signal-ok-symbolic";
+    } else if (strength < 75) {
+        return "network-wireless-signal-good-symbolic";
+    } else {
+        return "network-wireless-signal-excellent-symbolic";
+    }
+};
+
+char *network_manager_service_ap_to_name(NMAccessPoint *ap) {
+    GBytes *bytes = nm_access_point_get_ssid(ap);
+
+    if (!bytes) return "";
+
+    if (nm_utils_is_empty_ssid(g_bytes_get_data(bytes, NULL),
+                               g_bytes_get_size(bytes)))
+        return "";
+
+    char *ssid = nm_utils_ssid_to_utf8(g_bytes_get_data(bytes, NULL),
+                                       g_bytes_get_size(bytes));
+    return ssid;
+}

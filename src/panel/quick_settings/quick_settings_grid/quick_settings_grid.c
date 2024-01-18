@@ -36,13 +36,15 @@ static void on_cluster_empty(QuickSettingsGridCluster *cluster,
 }
 
 static void add_button(QuickSettingsGrid *self, QuickSettingsGridButton *button,
-                       GtkWidget *reveal) {
+                       GtkWidget *reveal,
+                       QuickSettingsClusterOnRevealFunc on_reveal) {
     QuickSettingsGridCluster *cluster = NULL;
 
     g_debug("quick_settings_grid.c:add_button() called");
 
     enum QuickSettingsGridClusterSide side = QUICK_SETTINGS_GRID_CLUSTER_NONE;
 
+    // find a cluster which isn't full.
     if (self->clusters->len > 0) {
         for (int i = 0; i < self->clusters->len; i++) {
             QuickSettingsGridCluster *tmp =
@@ -69,7 +71,8 @@ static void add_button(QuickSettingsGrid *self, QuickSettingsGridButton *button,
 
     // the cluster owns this button now, will notify us when it is removed,
     // and will clean the button's memory.
-    quick_settings_grid_cluster_add_button(cluster, side, button, reveal);
+    quick_settings_grid_cluster_add_button(cluster, side, button, reveal,
+                                           on_reveal);
 }
 
 static void on_network_manager_change(NetworkManagerService *nm,
@@ -102,13 +105,16 @@ static void on_network_manager_change(NetworkManagerService *nm,
         if (type == NM_DEVICE_TYPE_WIFI) {
             QuickSettingsGridWifiButton *wifi_button =
                 quick_settings_grid_wifi_button_init(NM_DEVICE_WIFI(found));
-            add_button(self, (QuickSettingsGridButton *)wifi_button, NULL);
+            add_button(
+                self, (QuickSettingsGridButton *)wifi_button,
+                quick_settings_grid_wifi_button_get_menu_widget(wifi_button),
+                quick_settings_grid_wifi_menu_on_reveal);
         }
         if (type == NM_DEVICE_TYPE_ETHERNET) {
             QuickSettingsGridEthernetButton *ethernet_button =
                 quick_settings_grid_ethernet_button_init(
                     NM_DEVICE_ETHERNET(found));
-            add_button(self, (QuickSettingsGridButton *)ethernet_button, NULL);
+            add_button(self, (QuickSettingsGridButton *)ethernet_button, NULL, NULL);
         }
     next_dev:;
     }
