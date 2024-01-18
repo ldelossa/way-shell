@@ -7,7 +7,7 @@
 #include "quick_settings_grid_button.h"
 #include "quick_settings_grid_cluster.h"
 #include "quick_settings_grid_ethernet.h"
-#include "quick_settings_grid_wifi.h"
+#include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 
 enum signals { signals_n };
 
@@ -87,7 +87,11 @@ static void on_network_manager_change(NetworkManagerService *nm,
         NMDeviceType type = nm_device_get_device_type(dev);
         NMDeviceState state = nm_device_get_state(dev);
 
+        // ignore creating buttons for unmanaged devices.
         if (state == NM_DEVICE_STATE_UNMANAGED) continue;
+
+        // // ignore creating buttons for disconnected devices.
+        // if (state == NM_DEVICE_STATE_DISCONNECTED) continue;
 
         if (type == NM_DEVICE_TYPE_WIFI || type == NM_DEVICE_TYPE_ETHERNET) {
             found = dev;
@@ -114,7 +118,8 @@ static void on_network_manager_change(NetworkManagerService *nm,
             QuickSettingsGridEthernetButton *ethernet_button =
                 quick_settings_grid_ethernet_button_init(
                     NM_DEVICE_ETHERNET(found));
-            add_button(self, (QuickSettingsGridButton *)ethernet_button, NULL, NULL);
+            add_button(self, (QuickSettingsGridButton *)ethernet_button, NULL,
+                       NULL);
         }
     next_dev:;
     }
@@ -164,12 +169,20 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
     // setup change signal
     g_signal_connect(nm, "changed", G_CALLBACK(on_network_manager_change),
                      self);
+
 };
 
 void quick_settings_grid_reinitialize(QuickSettingsGrid *self) {
     // destroy signals
     NetworkManagerService *nm = network_manager_service_get_global();
     g_signal_handlers_disconnect_by_func(nm, on_network_manager_change, self);
+
+    // free clusters
+    for (int i = 0; i < self->clusters->len; i++) {
+        QuickSettingsGridCluster *cluster =
+            g_ptr_array_index(self->clusters, i);
+        g_object_unref(cluster);
+    }
 
     // reset clusters size to 0
     // the clusters inside the array have already been disposed if we are here.

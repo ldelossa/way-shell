@@ -160,6 +160,9 @@ static void quick_settings_init_layout(QuickSettings *self) {
                          true);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT, 30);
+    // gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
+    //                             GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+
 
     // create vertical container box
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -279,8 +282,8 @@ QuickSettingsMediator *quick_settings_get_global_mediator() {
 };
 
 void quick_settings_activate(AdwApplication *app, gpointer user_data) {
-    qs = g_object_new(QUICK_SETTINGS_TYPE, NULL);
     mediator = g_object_new(QUICK_SETTINGS_MEDIATOR_TYPE, NULL);
+    qs = g_object_new(QUICK_SETTINGS_TYPE, NULL);
     quick_settings_mediator_set_qs(mediator, qs);
 };
 

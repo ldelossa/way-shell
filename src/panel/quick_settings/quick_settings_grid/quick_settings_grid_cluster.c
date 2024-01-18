@@ -27,9 +27,22 @@ static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(QuickSettingsGridCluster, quick_settings_grid_cluster,
               G_TYPE_OBJECT);
 
+static void on_quick_settings_hidden(QuickSettingsMediator *mediator,
+                                     QuickSettings *qs, GdkMonitor *mon,
+                                     QuickSettingsGridCluster *self) {
+    g_debug("quick_settings_grid_cluster.c:on_quick_settings_hidden() called");
+    gtk_revealer_set_reveal_child(self->revealer_left, false);
+    gtk_revealer_set_reveal_child(self->revealer_right, false);
+}
+
 // stub out dispose, finalize, class_init, and init methods
 static void quick_settings_grid_cluster_dispose(GObject *gobject) {
     QuickSettingsGridCluster *self = QUICK_SETTINGS_GRID_CLUSTER(gobject);
+
+    // disconnect from quick settings global mediator signal
+    QuickSettingsMediator *m = quick_settings_get_global_mediator();
+    g_signal_handlers_disconnect_by_func(
+        m, G_CALLBACK(on_quick_settings_hidden), self);
 
     if (self->left != self->dummy_left) {
         quick_settings_grid_button_free(self->left);
@@ -279,6 +292,11 @@ static void quick_settings_grid_cluster_init_layout(
                                     GTK_WIDGET(self->dummy_left->container));
     gtk_center_box_set_end_widget(self->center_box,
                                   GTK_WIDGET(self->dummy_right->container));
+
+    // connect to quick settings mediator's hidden event
+    QuickSettingsMediator *m = quick_settings_get_global_mediator();
+    g_signal_connect(m, "quick-settings-hidden",
+                     G_CALLBACK(on_quick_settings_hidden), self);
 
     // wire into our own 'remove_button_req' to handle emittions of this signal
     // from our buttons.

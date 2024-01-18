@@ -2,8 +2,8 @@
 
 #include <adwaita.h>
 
-#include "../../../services/network_manager_service.h"
-#include "./quick_settings_grid_button.h"
+#include "../../../../services/network_manager_service.h"
+#include "./../quick_settings_grid_button.h"
 #include "nm-dbus-interface.h"
 
 gboolean cleanup(QuickSettingsGridWifiButton *self, NMDevice *dev) {
@@ -33,7 +33,10 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
                                    QuickSettingsGridWifiButton *self) {
     char *name = "";
     char *icon = "";
+    gboolean preparing = false;
     NMDeviceState state = 0;
+
+    on_state_changed(NM_DEVICE(dev), NULL, self);
 
     g_debug("quick_settings_grid_wifi.c:on_active_access_point() called");
 
@@ -55,6 +58,8 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
             case NM_DEVICE_STATE_IP_CONFIG:
             case NM_DEVICE_STATE_IP_CHECK:
             case NM_DEVICE_STATE_SECONDARIES:
+                preparing = true;
+                icon = "network-wireless-acquiring-symbolic";
                 break;
             default:
                 break;
@@ -65,7 +70,8 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
     if (ap) {
         name = network_manager_service_ap_to_name(ap);
         guint8 strength = nm_access_point_get_strength(ap);
-        icon = network_manager_service_ap_strength_to_icon_name(strength);
+        if (!preparing)
+            icon = network_manager_service_ap_strength_to_icon_name(strength);
     }
 
     // update self->subtitle label with ap name
@@ -89,10 +95,10 @@ QuickSettingsGridWifiButton *quick_settings_grid_wifi_button_init(
 
     on_active_access_point(dev, NULL, self);
 
-    // connect to wifi device's notify::active-access-point
-    g_signal_connect(dev, "notify::active-access-point",
-                     G_CALLBACK(on_active_access_point), self);
-    g_signal_connect(dev, "state-changed", G_CALLBACK(on_state_changed), self);
+    // connect notify to device's state change, this should capture all ap
+    // events and device events as well like disconnnects.
+    g_signal_connect(dev, "notify::state", G_CALLBACK(on_active_access_point),
+                     self);
 
     g_object_ref(dev);
 
@@ -110,14 +116,13 @@ GtkWidget *quick_settings_grid_wifi_button_get_menu_widget(
 
 void quick_settings_grid_wifi_button_free(QuickSettingsGridWifiButton *self) {
     g_debug("quick_settings_grid_wifi.c:qs_grid_wifi_button_free() called");
+    // kill signal handlers
+    g_signal_handlers_disconnect_by_func(self->dev, on_active_access_point,
+                                         self);
     // unref device
     g_object_unref(self->dev);
     // unref our menu
     g_object_unref(self->menu);
-    // kill signal handlers
-    g_signal_handlers_disconnect_by_func(self->dev, on_active_access_point,
-                                         self);
-    g_signal_handlers_disconnect_by_func(self->dev, on_state_changed, self);
     // unref button's container
     g_object_unref(self->button.container);
     // free ourselves

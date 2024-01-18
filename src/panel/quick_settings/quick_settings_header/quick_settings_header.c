@@ -21,10 +21,36 @@ typedef struct _QuickSettingsHeader {
 } QuickSettingsHeader;
 G_DEFINE_TYPE(QuickSettingsHeader, quick_settings_header, G_TYPE_OBJECT);
 
+static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
+                                               QuickSettings *qs,
+                                               GdkMonitor *mon,
+                                               QuickSettingsHeader *self) {
+    g_debug(
+        "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
+    gtk_revealer_set_reveal_child(self->revealer, FALSE);
+}
+
+static void on_power_button_click(GtkButton *button,
+                                  QuickSettingsHeader *self) {
+    g_debug("quick_settings.c:on_power_button_click() called.");
+    gboolean revealed =
+        gtk_revealer_get_reveal_child(GTK_REVEALER(self->revealer));
+    gtk_revealer_set_reveal_child(self->revealer, !revealed);
+};
+
 // stub out empty dispose, finalize, class_init, and init methods for this
 // GObject.
 static void quick_settings_header_dispose(GObject *gobject) {
     g_debug("quick_settings_header.c:quick_settings_header_dispose() called.");
+
+    QuickSettingsHeader *self = QUICK_SETTINGS_HEADER(gobject);
+
+    // destroy our signals
+    QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
+    g_signal_handlers_disconnect_by_func(
+        self->power_button, G_CALLBACK(on_power_button_click), self);
+    g_signal_handlers_disconnect_by_func(
+        mediator, G_CALLBACK(quick_settings_header_on_qs_hidden), self);
 
     // Chain-up
     G_OBJECT_CLASS(quick_settings_header_parent_class)->dispose(gobject);
@@ -50,14 +76,6 @@ static void on_reveal_finish(GtkRevealer *revealer, GParamSpec *spec,
         quick_settings_mediator_req_shrink(mediator);
     }
 }
-
-static void on_power_button_click(GtkButton *button,
-                                  QuickSettingsHeader *self) {
-    g_debug("quick_settings.c:on_power_button_click() called.");
-    gboolean revealed =
-        gtk_revealer_get_reveal_child(GTK_REVEALER(self->revealer));
-    gtk_revealer_set_reveal_child(self->revealer, !revealed);
-};
 
 static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     // create main layouts
@@ -97,6 +115,11 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
 
     gtk_center_box_set_end_widget(self->center_box,
                                   GTK_WIDGET(self->power_button));
+
+    // wire into quick settings mediator hidden event
+    QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
+    g_signal_connect(mediator, "quick-settings-hidden",
+                     G_CALLBACK(quick_settings_header_on_qs_hidden), self);
 }
 
 static void quick_settings_header_init(QuickSettingsHeader *self) {
@@ -111,8 +134,11 @@ static void quick_settings_header_init(QuickSettingsHeader *self) {
 
 void quick_settings_header_reinitialize(QuickSettingsHeader *self) {
     // destroy our signals
+    QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
     g_signal_handlers_disconnect_by_func(
         self->power_button, G_CALLBACK(on_power_button_click), self);
+    g_signal_handlers_disconnect_by_func(
+        mediator, G_CALLBACK(quick_settings_header_on_qs_hidden), self);
 
     // call reinitialize on children widget
     quick_settings_battery_button_reinitialize(self->battery_button);

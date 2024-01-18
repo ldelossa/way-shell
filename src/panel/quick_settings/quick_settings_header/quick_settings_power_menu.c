@@ -2,6 +2,9 @@
 
 #include <adwaita.h>
 
+#include "../quick_settings.h"
+#include "../quick_settings_mediator.h"
+
 enum signals { signals_n };
 
 typedef struct _QuickSettingsPowerMenu {
@@ -105,8 +108,7 @@ static void quick_settings_power_menu_init_layout(
                    GTK_WIDGET(self->buttons_container));
 }
 
-void quick_settings_power_menu_reinitialize(
-    QuickSettingsPowerMenu *self) {
+void quick_settings_power_menu_reinitialize(QuickSettingsPowerMenu *self) {
     quick_settings_power_menu_init_layout(self);
 }
 

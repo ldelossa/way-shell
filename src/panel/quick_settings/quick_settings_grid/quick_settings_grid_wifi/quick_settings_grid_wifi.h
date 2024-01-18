@@ -3,12 +3,12 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
-#include "quick_settings_grid_button.h"
+#include "../quick_settings_grid_button.h"
 #include "quick_settings_grid_wifi_menu.h"
 
 #define QUICK_SETTINGS_WIFI_TYPE "wifi"
 
-typedef struct _QSGridWifiButton {
+typedef struct _QuickSesstingsGridWifiButton {
     // embedd this as first argument so we can cast to it.
     QuickSettingsGridButton button;
     QuickSettingsGridWifiMenu *menu;

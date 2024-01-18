@@ -482,7 +482,7 @@ label.day-number.today:focus {
 #quick-settings-menu #container #title-container #icon-container {
   margin: 4px;
   padding: 4px;
-  background-color:#3584e4;
+  background-color: #3584e4;
   border-radius: 100px;
 }
 
@@ -494,11 +494,15 @@ label.day-number.today:focus {
  * Quick Settings Menu Wifi Options
  */
 
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container {
+  padding: 4px;
+  margin: 4px;
+}
+
 #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi image,
-#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi label
-{
-  padding-left: 5px;
-  padding-right: 5px;
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi label {
+  padding-left: 7px;
+  padding-right: 4px;
   padding-top: 0px;
   padding-bottom: 0px;
 }

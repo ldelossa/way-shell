@@ -3,7 +3,7 @@
 #include <adwaita.h>
 
 #include "quick_settings_grid_ethernet.h"
-#include "quick_settings_grid_wifi.h"
+#include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 
 void quick_settings_grid_button_init(QuickSettingsGridButton *self,
                                      enum QuickSettingsButtonType type,
