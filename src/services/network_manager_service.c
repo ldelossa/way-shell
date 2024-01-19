@@ -3,6 +3,9 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
+#include "nm-core-types.h"
+#include "nm-dbus-interface.h"
+
 static NetworkManagerService *global = NULL;
 
 enum signals { changed, signals_n };
@@ -14,6 +17,10 @@ struct _NetworkManagerService {
     NMState last_state;
     gboolean has_wifi;
     gboolean has_ethernet;
+    struct {
+        NMDeviceWifi *dev;
+        NMAccessPoint *ap;
+    } wireless_cache;
 };
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(NetworkManagerService, network_manager_service, G_TYPE_OBJECT);
@@ -222,4 +229,166 @@ char *network_manager_service_ap_to_name(NMAccessPoint *ap) {
     char *ssid = nm_utils_ssid_to_utf8(g_bytes_get_data(bytes, NULL),
                                        g_bytes_get_size(bytes));
     return ssid;
+}
+
+static void on_ap_join(GObject *source_object, GAsyncResult *res,
+                       gpointer data) {
+    g_debug("network_manager_service.c:on_ap_join() called");
+
+    // parse out GAsyncResult and print error
+    GError *error = NULL;
+    NMClient *client = NM_CLIENT(source_object);
+    NetworkManagerService *self = NETWORK_MANAGER_SERVICE(data);
+    NMActiveConnection *conn =
+        nm_client_add_and_activate_connection_finish(client, res, &error);
+
+    if (error) {
+        g_debug(
+            "network_manager_service.c:on_ap_join() failed to join access "
+            "point: %s",
+            error->message);
+        g_error_free(error);
+        return;
+    }
+
+    g_debug(
+        "network_manager_service.c:on_ap_join() successfully joined access "
+        "point");
+}
+
+static void on_remote_conn_sync(GObject *source_object, GAsyncResult *res,
+                                gpointer data) {
+    // parse out GAsyncResult and print error
+    GError *error = NULL;
+    NetworkManagerService *self = NETWORK_MANAGER_SERVICE(data);
+    NMRemoteConnection *conn = NM_REMOTE_CONNECTION(source_object);
+    GCancellable *cancel = g_cancellable_new();
+
+    nm_remote_connection_commit_changes_finish(conn, res, &error);
+
+    if (error) {
+        g_debug(
+            "network_manager_service.c:on_ap_join() failed to join access "
+            "point: %s",
+            error->message);
+        g_error_free(error);
+        return;
+    }
+
+    g_debug(
+        "network_manager_service.c:on_ap_join() successfully synced remote "
+        "connection ");
+
+    nm_client_activate_connection_async(self->client, NM_CONNECTION(conn),
+                                        NM_DEVICE(self->wireless_cache.dev),
+                                        NULL, cancel, on_ap_join, self);
+
+    // clear cache
+    self->wireless_cache.dev = NULL;
+    self->wireless_cache.ap = NULL;
+}
+
+void network_manager_service_ap_join(NetworkManagerService *self,
+                                     NMDeviceWifi *dev, NMAccessPoint *ap,
+                                     const char *password) {
+    g_debug(
+        "network_manager_service.c:network_manager_service_wifi_join() called");
+
+    // debug password
+    g_debug(
+        "network_manager_service.c:network_manager_service_wifi_join() "
+        "password: %s",
+        password);
+
+    NMClient *client = self->client;
+    GBytes *ap_ssid = nm_access_point_get_ssid(ap);
+    NMConnection *found_conn = NULL;
+    gboolean new = false;
+    GCancellable *cancel = g_cancellable_new();
+
+    if (!dev || !ap || !self) {
+        g_debug(
+            "network_manager_service.c:network_manager_service_wifi_join() "
+            "missing required arguments");
+        return;
+    }
+
+    const GPtrArray *connections = nm_client_get_connections(self->client);
+
+    for (int i = 0; i < connections->len; i++) {
+        NMConnection *conn = connections->pdata[i];
+        NMSettingWireless *wireless = nm_connection_get_setting_wireless(conn);
+        if (!wireless) continue;
+
+        GBytes *conn_ssid = nm_setting_wireless_get_ssid(wireless);
+        if (g_bytes_equal(ap_ssid, conn_ssid)) {
+            g_debug(
+                "network_manager_service.c:network_manager_service_wifi_join() "
+                "found matching connection");
+            found_conn = conn;
+            break;
+        }
+    }
+
+    // didn't find one...
+    if (!found_conn) {
+        new = true;
+        char *ssid_name = network_manager_service_ap_to_name(ap);
+        found_conn = nm_simple_connection_new();
+
+        NMSettingConnection *conn_settings =
+            NM_SETTING_CONNECTION(nm_setting_connection_new());
+        g_object_set(conn_settings, NM_SETTING_CONNECTION_ID, ssid_name,
+                     NM_SETTING_CONNECTION_AUTOCONNECT, true, NULL);
+        nm_connection_add_setting(found_conn, NM_SETTING(conn_settings));
+
+        NMSettingWireless *wireless_settings =
+            NM_SETTING_WIRELESS(nm_setting_wireless_new());
+        g_object_set(wireless_settings, NM_SETTING_WIRELESS_SSID, ap_ssid,
+                     NULL);
+        nm_connection_add_setting(found_conn, NM_SETTING(wireless_settings));
+
+        g_debug(
+            "network_manager_service.c:network_manager_service_wifi_join() "
+            "created new connection [%s] and connecting...",
+            ssid_name);
+    }
+
+    // update the password even if we found a conn, the UI does not currently
+    // check for cached passwords and requires the user to enter a password.
+    //
+    // this is kinda useful because if the password has changed, they can just
+    // re-enter it withou any special conditions in the UI code.
+    // this may change tho if it becomes too inconenvient to put in a password
+    // when switching between known networks...
+    if (password) {
+        g_debug(
+            "network_manager_service.c:network_manager_service_wifi_join() "
+            "setting password: %s",
+            password);
+        NMSettingWirelessSecurity *sec_settings =
+            NM_SETTING_WIRELESS_SECURITY(nm_setting_wireless_security_new());
+        g_object_set(sec_settings, NM_SETTING_WIRELESS_SECURITY_PSK, password,
+                     NM_SETTING_WIRELESS_SECURITY_KEY_MGMT, "wpa-psk", NULL);
+        nm_connection_add_setting(found_conn, NM_SETTING(sec_settings));
+    }
+
+    if (new) {
+        nm_client_add_and_activate_connection_async(
+            client, found_conn, NM_DEVICE(dev), NULL, cancel, on_ap_join, self);
+    } else {
+        // stash Wifi device and AP in cache for next callback
+        self->wireless_cache.dev = dev;
+        self->wireless_cache.ap = ap;
+
+        g_debug(
+            "network_manager_service.c:network_manager_service_wifi_join() "
+            "found existing connection, syncing changes...");
+
+        // if connection existed, sync the password change back up to NM and
+        // save it to disk.
+        nm_remote_connection_commit_changes_async(
+            NM_REMOTE_CONNECTION(found_conn), true, cancel, on_remote_conn_sync,
+            self);
+    }
 }

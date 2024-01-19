@@ -135,7 +135,9 @@ static void on_button_click_no_sec(GtkButton *button, gpointer user_data) {
 
     g_debug("quick_settings_grid_wifi_menu_option.c:on_button_click_no_sec");
 
-    // todo - connect to wifi
+    // join specified ap
+    NetworkManagerService *nm = network_manager_service_get_global();
+    network_manager_service_ap_join(nm, self->dev, self->ap, NULL);
 }
 
 static void on_button_click_with_sec(GtkButton *button, gpointer user_data) {
@@ -160,13 +162,33 @@ static void on_password_entry_activate(GtkPasswordEntry *entry,
     QuickSettingsGridWifiMenuOption *self =
         QUICK_SETTINGS_GRID_WIFI_MENU_OPTION(user_data);
 
-    // todo - connect to wifi with password
+    g_debug(
+        "quick_settings_grid_wifi_menu_option.c:on_password_entry_activate");
+
+    const gchar *password;
+    password =
+        g_strdup(gtk_editable_get_text(GTK_EDITABLE(self->password_entry)));
+
+    // debug password
+    g_debug(
+        "quick_settings_grid_wifi_menu_option.c:on_password_entry_activate: %s",
+        password);
+
+    // clear text field
+    gtk_editable_delete_text(GTK_EDITABLE(self->password_entry), 0, -1);
+
+    // we can reuse the on_click handler to close the password entry
+    on_button_click_with_sec(NULL, self);
+
+    // join specified AP with given password
+    NetworkManagerService *nm = network_manager_service_get_global();
+    network_manager_service_ap_join(nm, self->dev, self->ap, password);
 }
 
 void quick_settings_grid_wifi_menu_option_update_ap(
     QuickSettingsGridWifiMenuOption *self, NMDeviceWifi *dev,
     NMAccessPoint *ap) {
-    if ((nm_access_point_get_flags(ap) & NM_802_11_AP_SEC_NONE)) {
+    if ((nm_access_point_get_flags(ap) == NM_802_11_AP_FLAGS_NONE)) {
         self->has_sec = false;
     } else {
         self->has_sec = true;

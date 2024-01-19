@@ -160,8 +160,8 @@ static void quick_settings_init_layout(QuickSettings *self) {
                          true);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT, 30);
-    // gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
-    //                             GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+    gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
+                                GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
 
     // create vertical container box

@@ -47,3 +47,7 @@ NMDevice *network_manager_service_get_primary_device(
 char *network_manager_service_ap_strength_to_icon_name(guchar strength);
 
 char *network_manager_service_ap_to_name(NMAccessPoint *ap);
+
+void network_manager_service_ap_join(NetworkManagerService *self,
+                                     NMDeviceWifi *dev, NMAccessPoint *ap,
+                                     const char *password);
