@@ -22,9 +22,16 @@ struct _Calendar {
 };
 G_DEFINE_TYPE(Calendar, calendar, G_TYPE_OBJECT);
 
+static void calendar_handle_clock_tick(ClockService *cs, GDateTime *now,
+                                       Calendar *self);
+
 // stub out dispose, finalize, class_init, and init methods
 static void calendar_dispose(GObject *gobject) {
     Calendar *self = MESSAGE_TRAY_CALENDAR(gobject);
+
+    // cancel signals
+    ClockService *cs = clock_service_get_global();
+    g_signal_handlers_disconnect_by_func(cs, calendar_handle_clock_tick, self);
 
     // Chain-up
     G_OBJECT_CLASS(calendar_parent_class)->dispose(gobject);
@@ -91,8 +98,7 @@ static void on_month_selector_back(GtkButton *button, Calendar *self) {
     calendar_set_dirty(self);
 }
 
-static void on_month_selector_forward(GtkButton *button,
-                                              Calendar *self) {
+static void on_month_selector_forward(GtkButton *button, Calendar *self) {
     GDateTime *current = gtk_calendar_get_date(self->calendar);
     GDateTime *new = g_date_time_add_months(current, 1);
 

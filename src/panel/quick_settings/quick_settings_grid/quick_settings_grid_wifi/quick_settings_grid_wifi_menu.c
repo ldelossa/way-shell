@@ -3,6 +3,7 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
+#include "../../quick_settings.h"
 #include "../../quick_settings_menu_widget.h"
 #include "nm-dbus-interface.h"
 #include "quick_settings_grid_wifi.h"
@@ -18,6 +19,9 @@ typedef struct _QuickSettingsGridWifiMenu {
     GCancellable *cancel_scan;
     gint64 last_scan;
     GtkSpinner *spinner;
+    GtkBox *failure_banner_container;
+    GtkLabel *failure_banner_label;
+    GtkButton *failure_banner_dismiss_button;
 } QuickSettingsGridWifiMenu;
 G_DEFINE_TYPE(QuickSettingsGridWifiMenu, quick_settings_grid_wifi_menu,
               G_TYPE_OBJECT);
@@ -66,6 +70,21 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
                                 QuickSettingsGridWifiMenu *self) {
     const GPtrArray *aps = nm_device_wifi_get_access_points(wifi);
     NMDeviceState state = nm_device_get_state(NM_DEVICE(wifi));
+    NMAccessPoint *active = nm_device_wifi_get_active_access_point(wifi);
+
+    g_debug(
+        "quick_settings_grid_wifi_menu.c:wifi_device_get_aps() called, device "
+        "state "
+        "[%d]",
+        state);
+
+    if (state == NM_DEVICE_STATE_FAILED) {
+        g_debug("quick_settings_grid_wifi_menu.c:wifi_device_get_aps() failed");
+        gtk_revealer_set_reveal_child(self->menu.banner, true);
+    }
+    if (state == NM_DEVICE_STATE_ACTIVATED) {
+        gtk_revealer_set_reveal_child(self->menu.banner, false);
+    }
 
     g_debug("quick_settings_grid_wifi_menu.c:wifi_device_get_aps() called");
 
@@ -95,6 +114,8 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
         default:;
     }
 
+    QuickSettingsGridWifiMenuOption *active_option = NULL;
+
     // check if we have a pointer to this ap in our hash table
     // if not, add it.
     for (int i = 0; i < aps->len; i++) {
@@ -110,9 +131,29 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
 
         quick_settings_grid_wifi_menu_option_set_ap(opt, self, wifi, ap);
 
+        // check if this is the active ap
+        if (active == ap) {
+            active_option = opt;
+            continue;
+        }
+
         gtk_box_append(self->menu.options,
                        quick_settings_grid_wifi_menu_option_get_widget(opt));
     }
+
+    // always keep active option on top
+    if (active_option) {
+        gtk_box_prepend(
+            self->menu.options,
+            quick_settings_grid_wifi_menu_option_get_widget(active_option));
+    }
+}
+
+static void on_failure_banner_clicked(GtkButton *button,
+                                      QuickSettingsGridWifiMenu *self) {
+    gtk_revealer_set_reveal_child(self->menu.banner, false);
+    QuickSettingsMediator *m = quick_settings_get_global_mediator();
+    quick_settings_mediator_req_shrink(m);
 }
 
 static void quick_settings_grid_wifi_menu_init_layout(
@@ -121,6 +162,27 @@ static void quick_settings_grid_wifi_menu_init_layout(
     quick_settings_menu_widget_set_icon(
         &self->menu, "network-wireless-signal-excellent-symbolic");
     quick_settings_menu_widget_set_title(&self->menu, "Wi-Fi");
+
+    // create failure banner
+    self->failure_banner_container =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_add_css_class(GTK_WIDGET(self->failure_banner_container),
+                             "failure-banner");
+    self->failure_banner_label =
+        GTK_LABEL(gtk_label_new("Failed to connect to network"));
+    gtk_widget_set_hexpand(GTK_WIDGET(self->failure_banner_label), TRUE);
+    self->failure_banner_dismiss_button = GTK_BUTTON(gtk_button_new_with_label(
+        gtk_label_get_text(self->failure_banner_label)));
+    gtk_button_set_child(self->failure_banner_dismiss_button,
+                         GTK_WIDGET(self->failure_banner_label));
+    gtk_box_append(self->failure_banner_container,
+                   GTK_WIDGET(self->failure_banner_dismiss_button));
+    gtk_revealer_set_child(self->menu.banner,
+                           GTK_WIDGET(self->failure_banner_container));
+
+    // wire in button click
+    g_signal_connect(self->failure_banner_dismiss_button, "clicked",
+                     G_CALLBACK(on_failure_banner_clicked), self);
 
     // add spinner to title_container
     self->spinner = GTK_SPINNER(gtk_spinner_new());

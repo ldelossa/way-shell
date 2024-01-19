@@ -19,13 +19,13 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
                              "quick-settings-grid-button");
 
     // create and append toggle button
-    self->button = GTK_BUTTON(gtk_button_new());
-    gtk_widget_add_css_class(GTK_WIDGET(self->button),
+    self->toggle = GTK_BUTTON(gtk_button_new());
+    gtk_widget_add_css_class(GTK_WIDGET(self->toggle),
                              "quick-settings-grid-button-toggle");
-    gtk_widget_set_hexpand(GTK_WIDGET(self->button), TRUE);
+    gtk_widget_set_hexpand(GTK_WIDGET(self->toggle), TRUE);
 
     // append pointer to self on container's data
-    g_object_set_data(G_OBJECT(self->button), "self", self);
+    g_object_set_data(G_OBJECT(self->toggle), "self", self);
 
     // GtkCenterBox *center_box = GTK_CENTER_BOX(gtk_center_box_new());
     GtkBox *button_contents =
@@ -65,8 +65,8 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
         gtk_box_append(text_area, GTK_WIDGET(self->subtitle));
     }
     gtk_box_append(button_contents, GTK_WIDGET(text_area));
-    gtk_button_set_child(self->button, GTK_WIDGET(button_contents));
-    gtk_box_append(self->container, GTK_WIDGET(self->button));
+    gtk_button_set_child(self->toggle, GTK_WIDGET(button_contents));
+    gtk_box_append(self->container, GTK_WIDGET(self->toggle));
 
     self->reveal =
         GTK_BUTTON(gtk_button_new_from_icon_name("go-next-symbolic"));

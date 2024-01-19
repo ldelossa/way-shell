@@ -159,6 +159,7 @@ static void on_button_click_with_sec(GtkButton *button, gpointer user_data) {
         gtk_revealer_set_reveal_child(self->revealer, false);
     } else {
         gtk_revealer_set_reveal_child(self->revealer, true);
+        gtk_widget_grab_focus(GTK_WIDGET(self->password_entry));
         // emit password revealed signal on behalf of menu
         g_signal_emit_by_name(self->menu, "password-entry-revealed", self);
     }

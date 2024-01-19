@@ -18,6 +18,8 @@ typedef struct _QuickSettingsMenuWidget {
     // css id: "#quick-settings-menu #options-container #options-title"
     GtkBox *title_container;
     GtkLabel *title;
+    // A banner which can be revealed under the title.
+    GtkRevealer *banner;
     // container that icon in title sits in
     // css id: "#quick-settings-menu #options-container #options-title
     // #icon-container"

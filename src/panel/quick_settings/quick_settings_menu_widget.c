@@ -8,14 +8,13 @@ void quick_settings_menu_widget_init(QuickSettingsMenuWidget *self,
 
     // create container for options area
     self->options_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->options_container),
-                        "container");
+    gtk_widget_set_name(GTK_WIDGET(self->options_container), "container");
 
     // create title box [icon label]
     self->title_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->title_container), "title-container");
 
-    // create power icon in title box
+    // create icon area in title box
     self->title_icon_container =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->title_icon_container),
@@ -30,6 +29,13 @@ void quick_settings_menu_widget_init(QuickSettingsMenuWidget *self,
     self->title = GTK_LABEL(gtk_label_new(""));
     gtk_box_append(self->title_container, GTK_WIDGET(self->title));
 
+    // create banner revealer
+    self->banner = GTK_REVEALER(gtk_revealer_new());
+    gtk_widget_set_name(GTK_WIDGET(self->banner), "banner");
+    gtk_revealer_set_transition_type(self->banner,
+                                     GTK_REVEALER_TRANSITION_TYPE_SWING_DOWN);
+    gtk_revealer_set_transition_duration(self->banner, 400);
+
     // create button container
     self->options = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->options), "options-container");
@@ -37,6 +43,7 @@ void quick_settings_menu_widget_init(QuickSettingsMenuWidget *self,
     // wire it up
     gtk_box_append(self->container, GTK_WIDGET(self->options_container));
     gtk_box_append(self->options_container, GTK_WIDGET(self->title_container));
+    gtk_box_append(self->options_container, GTK_WIDGET(self->banner));
     if (scrolling) {
         self->scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
         gtk_widget_set_size_request(GTK_WIDGET(self->scroll), -1, 240);
