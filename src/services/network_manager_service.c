@@ -392,3 +392,59 @@ void network_manager_service_ap_join(NetworkManagerService *self,
             self);
     }
 }
+
+static void on_wifi_disconnect(GObject *source_object, GAsyncResult *res,
+                               gpointer data) {
+    GError *error = NULL;
+    NMClient *client = NM_CLIENT(source_object);
+    nm_client_deactivate_connection_finish(client, res, &error);
+
+    if (error) {
+        g_debug(
+            "network_manager_service.c:on_ap_join() failed to disconnect wifi: "
+            "%s",
+            error->message);
+        g_error_free(error);
+        return;
+    }
+}
+
+void network_manager_service_ap_disconnect(NetworkManagerService *self,
+                                           NMDeviceWifi *dev) {
+    NMActiveConnection *active_con =
+        nm_device_get_active_connection(NM_DEVICE(dev));
+
+    if (!active_con) return;
+
+    nm_client_deactivate_connection_async(self->client, active_con, NULL,
+                                          on_wifi_disconnect, self);
+}
+
+void on_wireless_enabled_changed(GObject *source_object, GAsyncResult *res,
+                                 gpointer data) {
+    g_debug("network_manager_service.c:on_wireless_enabled_changed() called");
+
+    GError *error = NULL;
+    NMClient *client = NM_CLIENT(source_object);
+    nm_client_dbus_set_property_finish(client, res, &error);
+
+    if (error) {
+        g_debug(
+            "network_manager_service.c:on_wireless_enabled_changed() failed to "
+            "set wireless enabled: %s",
+            error->message);
+        g_error_free(error);
+        return;
+    }
+}
+
+void network_manager_service_wireless_enable(NetworkManagerService *self,
+                                             gboolean enabled) {
+    // make a GVariant from the passed in gboolean value
+    GVariant *value = g_variant_new_boolean(enabled);
+
+    // nm_client_wireless_set_enabled(self->client, enabled);
+    nm_client_dbus_set_property(self->client, NM_DBUS_PATH, NM_DBUS_INTERFACE,
+                                "WirelessEnabled", value, 1000, NULL,
+                                on_wireless_enabled_changed, self);
+}

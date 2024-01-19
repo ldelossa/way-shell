@@ -5,6 +5,7 @@
 
 #include "../../../../services/network_manager_service.h"
 #include "gtk/gtkrevealer.h"
+#include "nm-dbus-interface.h"
 #include "quick_settings_grid_wifi_menu.h"
 
 typedef struct _QuickSettingsGridWifiMenuOption {
@@ -21,6 +22,7 @@ typedef struct _QuickSettingsGridWifiMenuOption {
     GtkRevealer *revealer;
     GtkBox *password_entry_container;
     GtkPasswordEntry *password_entry;
+    GtkSpinner *spinner;
     gboolean has_sec;
 } QuickSettingsGridWifiMenuOption;
 
@@ -67,6 +69,10 @@ static void quick_settings_grid_wifi_menu_option_class_init_layout(
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_add_css_class(GTK_WIDGET(self->container),
                              "quick-settings-menu-option-wifi");
+
+    // create spinner
+    self->spinner = GTK_SPINNER(gtk_spinner_new());
+    gtk_widget_set_visible(GTK_WIDGET(self->spinner), false);
 
     // make the main horizontal row box
     GtkBox *row = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
@@ -119,6 +125,7 @@ static void quick_settings_grid_wifi_menu_option_class_init_layout(
     gtk_box_append(row, GTK_WIDGET(self->sec_icon));
     gtk_box_append(row, GTK_WIDGET(self->ssid_label));
     gtk_box_append(row, GTK_WIDGET(self->active_icon));
+    gtk_box_append(row, GTK_WIDGET(self->spinner));
 
     self->button = GTK_BUTTON(gtk_button_new());
     gtk_button_set_child(self->button, GTK_WIDGET(row));
@@ -188,10 +195,24 @@ static void on_password_entry_activate(GtkPasswordEntry *entry,
 void quick_settings_grid_wifi_menu_option_update_ap(
     QuickSettingsGridWifiMenuOption *self, NMDeviceWifi *dev,
     NMAccessPoint *ap) {
+    NMDeviceState state = nm_device_get_state(NM_DEVICE(dev));
+    gboolean is_active_ap = nm_device_wifi_get_active_access_point(dev) == ap;
     if ((nm_access_point_get_flags(ap) == NM_802_11_AP_FLAGS_NONE)) {
         self->has_sec = false;
     } else {
         self->has_sec = true;
+    }
+
+    if (is_active_ap) {
+        // unhide spinner and start it
+        gtk_widget_set_visible(GTK_WIDGET(self->spinner), true);
+        gtk_spinner_start(self->spinner);
+    }
+
+    if (is_active_ap && state == NM_DEVICE_STATE_FAILED) {
+        // stop spinner and hide it
+        gtk_spinner_stop(self->spinner);
+        gtk_widget_set_visible(GTK_WIDGET(self->spinner), false);
     }
 
     // update ssid label with ap name
@@ -209,8 +230,11 @@ void quick_settings_grid_wifi_menu_option_update_ap(
     }
 
     // if active ap set active icon visible
-    if (nm_device_wifi_get_active_access_point(dev) == ap) {
+    if (is_active_ap && state == NM_DEVICE_STATE_ACTIVATED) {
         gtk_widget_set_visible(GTK_WIDGET(self->active_icon), true);
+        // hide spinner and stop it
+        gtk_spinner_stop(self->spinner);
+        gtk_widget_set_visible(GTK_WIDGET(self->spinner), false);
     } else
         gtk_widget_set_visible(GTK_WIDGET(self->active_icon), false);
 }
@@ -268,4 +292,16 @@ static void quick_settings_grid_wifi_menu_option_class_init(
 static void quick_settings_grid_wifi_menu_option_init(
     QuickSettingsGridWifiMenuOption *self) {
     quick_settings_grid_wifi_menu_option_class_init_layout(self);
+}
+
+// ap getter
+NMAccessPoint *quick_settings_grid_wifi_menu_option_get_ap(
+    QuickSettingsGridWifiMenuOption *self) {
+    return self->ap;
+}
+
+// device getter
+NMDeviceWifi *quick_settings_grid_wifi_menu_option_get_device(
+    QuickSettingsGridWifiMenuOption *self) {
+    return self->dev;
 }

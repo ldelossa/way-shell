@@ -51,3 +51,8 @@ char *network_manager_service_ap_to_name(NMAccessPoint *ap);
 void network_manager_service_ap_join(NetworkManagerService *self,
                                      NMDeviceWifi *dev, NMAccessPoint *ap,
                                      const char *password);
+
+void network_manager_service_ap_disconnect(NetworkManagerService *self,
+                                             NMDeviceWifi *dev);
+
+void network_manager_service_wireless_enable(NetworkManagerService *self, gboolean enabled);

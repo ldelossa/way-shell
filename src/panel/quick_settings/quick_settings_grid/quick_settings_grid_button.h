@@ -13,7 +13,7 @@ typedef struct _QuickSettingsGridCluster QuickSettingsGridCluster;
 typedef struct _QuickSettingsGridButton {
     enum QuickSettingsButtonType type;
     GtkBox *container;
-    GtkButton *button;
+    GtkButton *toggle;
     GtkLabel *title;
     GtkLabel *subtitle;
     GtkImage *icon;

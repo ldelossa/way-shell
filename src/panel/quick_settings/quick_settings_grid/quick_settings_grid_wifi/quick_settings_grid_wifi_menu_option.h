@@ -20,3 +20,12 @@ GtkWidget *quick_settings_grid_wifi_menu_option_get_widget(
 void quick_settings_grid_wifi_menu_option_set_ap(
     QuickSettingsGridWifiMenuOption *self, QuickSettingsGridWifiMenu *menu,
     NMDeviceWifi *dev, NMAccessPoint *ap);
+
+// ap getter
+NMAccessPoint *quick_settings_grid_wifi_menu_option_get_ap(
+    QuickSettingsGridWifiMenuOption *self);
+
+// device getter
+NMDeviceWifi *quick_settings_grid_wifi_menu_option_get_device(
+    QuickSettingsGridWifiMenuOption *self);
+

@@ -42,28 +42,28 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
 
     state = nm_device_get_state(NM_DEVICE(dev));
 
-    if (state != NM_DEVICE_STATE_ACTIVATED) {
-        switch (state) {
-            case NM_DEVICE_STATE_UNKNOWN:
-            case NM_DEVICE_STATE_UNMANAGED:
-            case NM_DEVICE_STATE_UNAVAILABLE:
-            case NM_DEVICE_STATE_DISCONNECTED:
-            case NM_DEVICE_STATE_FAILED:
-            case NM_DEVICE_STATE_DEACTIVATING:
-                icon = "network-wireless-offline-symbolic";
-                break;
-            case NM_DEVICE_STATE_PREPARE:
-            case NM_DEVICE_STATE_CONFIG:
-            case NM_DEVICE_STATE_NEED_AUTH:
-            case NM_DEVICE_STATE_IP_CONFIG:
-            case NM_DEVICE_STATE_IP_CHECK:
-            case NM_DEVICE_STATE_SECONDARIES:
-                preparing = true;
-                icon = "network-wireless-acquiring-symbolic";
-                break;
-            default:
-                break;
-        }
+    switch (state) {
+        case NM_DEVICE_STATE_UNKNOWN:
+        case NM_DEVICE_STATE_UNMANAGED:
+        case NM_DEVICE_STATE_UNAVAILABLE:
+        case NM_DEVICE_STATE_DISCONNECTED:
+        case NM_DEVICE_STATE_FAILED:
+        case NM_DEVICE_STATE_DEACTIVATING:
+            gtk_widget_add_css_class(GTK_WIDGET(self->button.toggle), "off");
+            icon = "network-wireless-offline-symbolic";
+            break;
+        case NM_DEVICE_STATE_PREPARE:
+        case NM_DEVICE_STATE_CONFIG:
+        case NM_DEVICE_STATE_NEED_AUTH:
+        case NM_DEVICE_STATE_IP_CONFIG:
+        case NM_DEVICE_STATE_IP_CHECK:
+        case NM_DEVICE_STATE_SECONDARIES:
+            gtk_widget_add_css_class(GTK_WIDGET(self->button.toggle), "off");
+            preparing = true;
+            icon = "network-wireless-acquiring-symbolic";
+            break;
+        default:
+            gtk_widget_remove_css_class(GTK_WIDGET(self->button.toggle), "off");
     }
 
     NMAccessPoint *ap = nm_device_wifi_get_active_access_point(dev);
@@ -84,27 +84,55 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
     gtk_image_set_from_icon_name(self->button.icon, icon);
 }
 
-QuickSettingsGridWifiButton *quick_settings_grid_wifi_button_init(
-    NMDeviceWifi *dev) {
-    QuickSettingsGridWifiButton *self =
-        g_malloc0(sizeof(QuickSettingsGridWifiButton));
+static void on_toggle_button_clicked(GtkToggleButton *toggle_button,
+                                     QuickSettingsGridWifiButton *self) {
+    g_debug("quick_settings_grid_wifi.c:on_toggle_button_clicked() called");
+    if (self->enabled) {
+        // turn off wifi
+        network_manager_service_wireless_enable(
+            network_manager_service_get_global(), false);
+    } else {
+        // turn on wifi
+        network_manager_service_wireless_enable(
+            network_manager_service_get_global(), true);
+    }
+    self->enabled = !self->enabled;
+}
 
+void quick_settings_grid_wifi_button_layout(QuickSettingsGridWifiButton *self,
+                                            NMDeviceWifi *dev) {
     quick_settings_grid_button_init(&self->button, QUICK_SETTINGS_BUTTON_WIFI,
                                     "Wi-Fi", "", "network-wireless", true);
     self->dev = dev;
 
     on_active_access_point(dev, NULL, self);
 
-    // connect notify to device's state change, this should capture all ap
-    // events and device events as well like disconnnects.
-    g_signal_connect(dev, "notify::state", G_CALLBACK(on_active_access_point),
-                     self);
-
     g_object_ref(dev);
 
     // create associated menu
     self->menu = g_object_new(QUICK_SETTINGS_GRID_WIFI_MENU_TYPE, NULL);
     quick_settings_grid_wifi_menu_set_device(self->menu, NM_DEVICE_WIFI(dev));
+
+    // connect notify to device's state change, this should capture all ap
+    // events and device events as well like disconnnects.
+    g_signal_connect(dev, "notify::state", G_CALLBACK(on_active_access_point),
+                     self);
+
+    // write into toggle button's click event
+    g_signal_connect(self->button.toggle, "clicked",
+                     G_CALLBACK(on_toggle_button_clicked), self);
+}
+
+QuickSettingsGridWifiButton *quick_settings_grid_wifi_button_init(
+    NMDeviceWifi *dev) {
+    QuickSettingsGridWifiButton *self =
+        g_malloc0(sizeof(QuickSettingsGridWifiButton));
+
+    // determine if device is enabled
+    self->enabled = network_manager_service_wifi_available(
+        network_manager_service_get_global());
+
+    quick_settings_grid_wifi_button_layout(self, dev);
 
     return self;
 }

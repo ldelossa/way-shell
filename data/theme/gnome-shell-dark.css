@@ -387,14 +387,6 @@ label.day-number.today:focus {
   margin: 0px;
 }
 
-#quick-settings #quick-settings-grid button:hover {
-  background-color: #62a0ea;
-}
-
-#quick-settings #quick-settings-grid button:active {
-  background-color: #3584e4;
-}
-
 #quick-settings .quick-settings-grid-button-icon {
   padding: 4px;
   margin: 3px;
@@ -405,6 +397,18 @@ label.day-number.today:focus {
   border-bottom-left-radius: 99px;
   background-color: #3584e4;
   padding: 2px;
+}
+
+#quick-settings .quick-settings-grid-button-toggle.off {
+  background-color: rgba(242, 242, 242, 0.35);
+}
+
+#quick-settings .quick-settings-grid-button-toggle.off:hover {
+  background-color: rgba(242, 242, 242, 0.25);
+}
+
+#quick-settings .quick-settings-grid-button-toggle.off:active {
+  background-color: rgba(242, 242, 242, 0.35);
 }
 
 #quick-settings .quick-settings-grid-button-reveal-hidden {
@@ -497,6 +501,12 @@ label.day-number.today:focus {
 #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container {
   padding: 4px;
   margin: 4px;
+}
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container  image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container  label
+{
+ padding: 10px;
 }
 
 #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi image,

@@ -13,6 +13,7 @@ typedef struct _QuickSesstingsGridWifiButton {
     QuickSettingsGridButton button;
     QuickSettingsGridWifiMenu *menu;
     NMDeviceWifi *dev;
+    gboolean enabled;
 
 } QuickSettingsGridWifiButton;
 
