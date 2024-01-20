@@ -101,17 +101,21 @@ static void on_toggle_button_clicked(GtkToggleButton *toggle_button,
 
 void quick_settings_grid_wifi_button_layout(QuickSettingsGridWifiButton *self,
                                             NMDeviceWifi *dev) {
-    quick_settings_grid_button_init(&self->button, QUICK_SETTINGS_BUTTON_WIFI,
-                                    "Wi-Fi", "", "network-wireless", true);
+    // create associated menu
+    self->menu = g_object_new(QUICK_SETTINGS_GRID_WIFI_MENU_TYPE, NULL);
+    quick_settings_grid_wifi_menu_set_device(self->menu, NM_DEVICE_WIFI(dev));
+
+    quick_settings_grid_button_init(
+        &self->button, QUICK_SETTINGS_BUTTON_WIFI, "Wi-Fi", "",
+        "network-wireless",
+        quick_settings_grid_wifi_button_get_menu_widget(self),
+        quick_settings_grid_wifi_menu_on_reveal);
+
     self->dev = dev;
 
     on_active_access_point(dev, NULL, self);
 
     g_object_ref(dev);
-
-    // create associated menu
-    self->menu = g_object_new(QUICK_SETTINGS_GRID_WIFI_MENU_TYPE, NULL);
-    quick_settings_grid_wifi_menu_set_device(self->menu, NM_DEVICE_WIFI(dev));
 
     // connect notify to device's state change, this should capture all ap
     // events and device events as well like disconnnects.

@@ -27,7 +27,6 @@ typedef struct _QuickSettingsGrid {
     GPtrArray *managed_network_devices;
 } QuickSettingsGrid;
 
-static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(QuickSettingsGrid, quick_settings_grid, G_TYPE_OBJECT);
 
 static void on_cluster_empty(QuickSettingsGridCluster *cluster,
@@ -53,9 +52,8 @@ static void on_will_reveal(QuickSettingsGridCluster *cluster,
     }
 }
 
-static void add_button(QuickSettingsGrid *self, QuickSettingsGridButton *button,
-                       GtkWidget *reveal,
-                       QuickSettingsClusterOnRevealFunc on_reveal) {
+static void quick_settings_grid_add_button(QuickSettingsGrid *self,
+                                           QuickSettingsGridButton *button) {
     QuickSettingsGridCluster *cluster = NULL;
 
     g_debug("quick_settings_grid.c:add_button() called");
@@ -96,8 +94,7 @@ static void add_button(QuickSettingsGrid *self, QuickSettingsGridButton *button,
 
     // the cluster owns this button now, will notify us when it is removed,
     // and will clean the button's memory.
-    quick_settings_grid_cluster_add_button(cluster, side, button, reveal,
-                                           on_reveal);
+    quick_settings_grid_cluster_add_button(cluster, side, button);
 }
 
 static void on_network_manager_change(NetworkManagerService *nm,
@@ -131,17 +128,15 @@ static void on_network_manager_change(NetworkManagerService *nm,
         if (type == NM_DEVICE_TYPE_WIFI) {
             QuickSettingsGridWifiButton *wifi_button =
                 quick_settings_grid_wifi_button_init(NM_DEVICE_WIFI(found));
-            add_button(
-                self, (QuickSettingsGridButton *)wifi_button,
-                quick_settings_grid_wifi_button_get_menu_widget(wifi_button),
-                quick_settings_grid_wifi_menu_on_reveal);
+            quick_settings_grid_add_button(
+                self, (QuickSettingsGridButton *)wifi_button);
         }
         if (type == NM_DEVICE_TYPE_ETHERNET) {
             QuickSettingsGridEthernetButton *ethernet_button =
                 quick_settings_grid_ethernet_button_init(
                     NM_DEVICE_ETHERNET(found));
-            add_button(self, (QuickSettingsGridButton *)ethernet_button, NULL,
-                       NULL);
+            quick_settings_grid_add_button(
+                self, (QuickSettingsGridButton *)ethernet_button);
         }
     next_dev:;
     }
@@ -197,12 +192,26 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
     if (pps) {
         QuickSettingsGridPowerProfilesButton *pps_button =
             quick_settings_grid_power_profiles_button_init();
-        add_button(self, (QuickSettingsGridButton *)pps_button,
-                   quick_settings_grid_power_profiles_button_get_menu_widget(
-                       pps_button),
-                   quick_settings_grid_power_profiles_menu_on_reveal);
+        quick_settings_grid_add_button(self,
+                                       (QuickSettingsGridButton *)pps_button);
     }
 
+    // add some one shot buttons for testing
+
+    QuickSettingsGridOneShotButton *oneshot1 =
+        quick_settings_grid_oneshot_button_init(
+            "one shot 1", "one shot 1 subtitle", "unavailable");
+    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)oneshot1);
+
+    QuickSettingsGridOneShotButton *oneshot2 =
+        quick_settings_grid_oneshot_button_init(
+            "one shot 2", "one shot 2 subtitle", "unavailable");
+    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)oneshot2);
+
+    QuickSettingsGridOneShotButton *oneshot3 =
+        quick_settings_grid_oneshot_button_init(
+            "one shot 3", "one shot 3 subtitle", "unavailable");
+    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)oneshot3);
 
     // setup change signal
     g_signal_connect(nm, "changed", G_CALLBACK(on_network_manager_change),

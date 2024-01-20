@@ -1,3 +1,5 @@
+#pragma once
+
 #include <adwaita.h>
 
 #include "quick_settings_grid_button.h"
@@ -8,11 +10,6 @@ enum QuickSettingsGridClusterSide {
     QUICK_SETTINGS_GRID_CLUSTER_LEFT,
     QUICK_SETTINGS_GRID_CLUSTER_RIGHT,
 };
-
-// Callback function invoked when a QuickSettingCluster revealed the widget
-// associated with a QuickSettingsGridButton's reveal button click.
-typedef void (*QuickSettingsClusterOnRevealFunc)(
-    QuickSettingsGridButton *revealed, gboolean is_revealed);
 
 G_BEGIN_DECLS
 
@@ -36,8 +33,7 @@ GtkWidget *quick_settings_grid_cluster_get_widget(
 
 int quick_settings_grid_cluster_add_button(
     QuickSettingsGridCluster *cluster, enum QuickSettingsGridClusterSide side,
-    QuickSettingsGridButton *button, GtkWidget *reveal,
-    QuickSettingsClusterOnRevealFunc on_reveal);
+    QuickSettingsGridButton *button);
 
 gboolean quick_settings_grid_cluster_is_full(QuickSettingsGridCluster *cluster);
 

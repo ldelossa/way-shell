@@ -6,12 +6,13 @@
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "quick_settings_grid_ethernet.h"
 
-void quick_settings_grid_button_init(QuickSettingsGridButton *self,
-                                     enum QuickSettingsButtonType type,
-                                     const gchar *title, const gchar *subtitle,
-                                     const gchar *icon_name,
-                                     gboolean with_reveal) {
+void quick_settings_grid_button_init(
+    QuickSettingsGridButton *self, enum QuickSettingsButtonType type,
+    const gchar *title, const gchar *subtitle, const gchar *icon_name,
+    GtkWidget *reveal_widget, QuickSettingsClusterOnRevealFunc on_reveal) {
     self->type = type;
+    self->reveal_widget = reveal_widget;
+    self->on_reveal = on_reveal;
 
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_hexpand(GTK_WIDGET(self->container), TRUE);
@@ -82,7 +83,7 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
                              "quick-settings-grid-button-reveal-hidden");
     gtk_box_append(self->container, GTK_WIDGET(self->reveal));
 
-    if (with_reveal) {
+    if (self->reveal_widget) {
         gtk_widget_add_css_class(GTK_WIDGET(self->reveal),
                                  "quick-settings-grid-button-reveal-visible");
     }
@@ -90,11 +91,12 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
 
 QuickSettingsGridButton *quick_settings_grid_button_new(
     enum QuickSettingsButtonType type, const gchar *title,
-    const gchar *subtitle, const gchar *icon_name, gboolean with_reveal) {
+    const gchar *subtitle, const gchar *icon_name, GtkWidget *reveal_widget,
+    QuickSettingsClusterOnRevealFunc on_reveal) {
     QuickSettingsGridButton *self = g_malloc0(sizeof(QuickSettingsGridButton));
 
     quick_settings_grid_button_init(self, type, title, subtitle, icon_name,
-                                    with_reveal);
+                                    reveal_widget, on_reveal);
 
     return self;
 }

@@ -4,6 +4,7 @@
 
 #include "../../../../services/power_profiles_service/power_profiles_service.h"
 #include "./../quick_settings_grid_button.h"
+#include "quick_settings_grid_power_profiles_menu.h"
 
 static void on_active_profile_change(
     PowerProfilesService *pps, char *power_profile,
@@ -25,9 +26,10 @@ void quick_settings_grid_power_profiles_button_layout(
         power_profiles_service_get_active_profile(power_profiles_service);
 
     const char *icon = power_profiles_service_profile_to_icon(active_profile);
-    quick_settings_grid_button_init(&self->button,
-                                    QUICK_SETTINGS_BUTTON_PERFORMANCE,
-                                    "Performance", active_profile, icon, true);
+    quick_settings_grid_button_init(
+        &self->button, QUICK_SETTINGS_BUTTON_PERFORMANCE, "Performance",
+        active_profile, icon,
+        quick_settings_grid_power_profiles_button_get_menu_widget(self), NULL);
 
     // attach to active profile changed event
     g_signal_connect(power_profiles_service, "active-profile-changed",

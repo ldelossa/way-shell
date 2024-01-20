@@ -72,7 +72,7 @@ QuickSettingsGridEthernetButton *quick_settings_grid_ethernet_button_init(
 
     quick_settings_grid_button_init(&self->button,
                                     QUICK_SETTINGS_BUTTON_ETHERNET, "Wired", "",
-                                    "network-wired-symbolic", true);
+                                    "network-wired-symbolic", NULL, NULL);
     self->dev = dev;
 
     NMDeviceStateReason reason = nm_device_get_state_reason(NM_DEVICE(dev));

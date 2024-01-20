@@ -15,7 +15,7 @@ void quick_settings_grid_oneshot_button_init_layout(
     const char *subtitle, const char *icon) {
     quick_settings_grid_button_init(&self->button,
                                     QUICK_SETTINGS_BUTTON_ONESHOT, title,
-                                    subtitle, icon, false);
+                                    subtitle, icon, NULL, NULL);
 
     // wire button click
     g_signal_connect(self->button.toggle, "clicked", G_CALLBACK(on_clicked),
