@@ -66,7 +66,6 @@ static const char *caps[] = {"action-icons",    "actions",     "body",
 struct _NotificationsService {
     GObject parent_instance;
     DbusNotifications *dbus;
-    DbusNotificationsProxy *proxy;
     GDBusConnection *conn;
     GPtrArray *notifications;
     uint32_t last_id;

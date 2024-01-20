@@ -3,10 +3,10 @@
 #include "quick_settings_grid_button.h"
 
 enum QuickSettingsGridClusterSide {
+    QUICK_SETTINGS_GRID_CLUSTER_NONE,
     QUICK_SETTINGS_GRID_CLUSTER_BOTH,
     QUICK_SETTINGS_GRID_CLUSTER_LEFT,
     QUICK_SETTINGS_GRID_CLUSTER_RIGHT,
-    QUICK_SETTINGS_GRID_CLUSTER_NONE = -1
 };
 
 // Callback function invoked when a QuickSettingCluster revealed the widget
@@ -52,3 +52,7 @@ GtkRevealer *quick_settings_grid_cluster_get_left_revealer(
 
 GtkRevealer *quick_settings_grid_cluster_get_right_revealer(
     QuickSettingsGridCluster *cluster);
+
+void quick_settings_grid_cluster_slide_left(QuickSettingsGridCluster *cluster);
+
+void quick_settings_grid_cluster_hide_all(QuickSettingsGridCluster *cluster);

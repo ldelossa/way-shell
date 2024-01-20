@@ -6,6 +6,7 @@
 #include "./services/clock_service.h"
 #include "./services/network_manager_service.h"
 #include "./services/notifications_service/notifications_service.h"
+#include "./services/power_profiles_service/power_profiles_service.h"
 #include "./services/upower_service.h"
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
@@ -70,6 +71,12 @@ static void activate(AdwApplication *app, gpointer user_data) {
     if (notifications_service_global_init() != 0) {
         g_error(
             "main.c: activate(): failed to initialize notifications "
+            "service.");
+    }
+
+    if (power_profiles_service_global_init() != 0) {
+        g_error(
+            "main.c: activate(): failed to initialize power profiles "
             "service.");
     }
 

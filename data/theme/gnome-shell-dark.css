@@ -383,7 +383,7 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button {
-  padding: 2px;
+  padding: 3px;
   margin: 0px;
 }
 
@@ -503,10 +503,9 @@ label.day-number.today:focus {
   margin: 4px;
 }
 
-#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container  image,
-#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container  label
-{
- padding: 10px;
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container label {
+  padding: 10px;
 }
 
 #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi image,
@@ -522,4 +521,12 @@ label.day-number.today:focus {
   font-size: 20px;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
+}
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles label {
+  padding-left: 7px;
+  padding-right: 4px;
+  padding-top: 0px;
+  padding-bottom: 0px;
 }

@@ -3,11 +3,14 @@
 #include <adwaita.h>
 
 #include "../../../services/network_manager_service.h"
+#include "../../../services/power_profiles_service/power_profiles_service.h"
+#include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
+#include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "nm-dbus-interface.h"
 #include "quick_settings_grid_button.h"
 #include "quick_settings_grid_cluster.h"
 #include "quick_settings_grid_ethernet.h"
-#include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
+#include "quick_settings_grid_oneshot_button.h"
 
 enum signals { signals_n };
 
@@ -33,6 +36,21 @@ static void on_cluster_empty(QuickSettingsGridCluster *cluster,
     gtk_box_remove(self->container,
                    quick_settings_grid_cluster_get_widget(cluster));
     g_ptr_array_remove(self->clusters, cluster);
+    g_object_unref(cluster);
+}
+
+static void on_will_reveal(QuickSettingsGridCluster *cluster,
+                           enum QuickSettingsGridClusterSide *side,
+                           QuickSettingsGrid *self) {
+    g_debug("quick_settings_grid.c:on_will_reveal() called");
+    // when a grid cluster informs us it will reveal a child, we want to ask
+    // all other clusters to hide theirs.
+    for (int i = 0; i < self->clusters->len; i++) {
+        QuickSettingsGridCluster *tmp = g_ptr_array_index(self->clusters, i);
+        if (tmp != cluster) {
+            quick_settings_grid_cluster_hide_all(tmp);
+        }
+    }
 }
 
 static void add_button(QuickSettingsGrid *self, QuickSettingsGridButton *button,
@@ -60,10 +78,17 @@ static void add_button(QuickSettingsGrid *self, QuickSettingsGridButton *button,
     // we couldn't find a cluster with an empty slot for our button, create it.
     if (!cluster) {
         cluster = g_object_new(QUICK_SETTINGS_GRID_CLUSTER_TYPE, NULL);
+
+        // attach to cluster's will reveal so we can ask other clusters to hide
+        // their widgets.
+        g_signal_connect(cluster, "will-reveal", G_CALLBACK(on_will_reveal),
+                         self);
+
         side = QUICK_SETTINGS_GRID_CLUSTER_LEFT;
         gtk_box_append(self->container,
                        quick_settings_grid_cluster_get_widget(cluster));
         g_ptr_array_add(self->clusters, cluster);
+
         // wire into cluster's empty signal so we know when to remove
         // the cluster from our inventory.
         g_signal_connect(cluster, "empty", G_CALLBACK(on_cluster_empty), self);
@@ -89,9 +114,6 @@ static void on_network_manager_change(NetworkManagerService *nm,
 
         // ignore creating buttons for unmanaged devices.
         if (state == NM_DEVICE_STATE_UNMANAGED) continue;
-
-        // // ignore creating buttons for disconnected devices.
-        // if (state == NM_DEVICE_STATE_DISCONNECTED) continue;
 
         if (type == NM_DEVICE_TYPE_WIFI || type == NM_DEVICE_TYPE_ETHERNET) {
             found = dev;
@@ -137,6 +159,10 @@ static void quick_settings_grid_dispose(GObject *gobject) {
     for (int i = 0; i < self->clusters->len; i++) {
         QuickSettingsGridCluster *cluster =
             g_ptr_array_index(self->clusters, i);
+
+        // remove from will-reveal signals
+        g_signal_handlers_disconnect_by_func(cluster, on_will_reveal, self);
+
         g_object_unref(cluster);
     }
 
@@ -166,10 +192,21 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
     NetworkManagerService *nm = network_manager_service_get_global();
     on_network_manager_change(nm, self);
 
+    // if power profiles service available create button for it
+    PowerProfilesService *pps = power_profiles_service_get_global();
+    if (pps) {
+        QuickSettingsGridPowerProfilesButton *pps_button =
+            quick_settings_grid_power_profiles_button_init();
+        add_button(self, (QuickSettingsGridButton *)pps_button,
+                   quick_settings_grid_power_profiles_button_get_menu_widget(
+                       pps_button),
+                   quick_settings_grid_power_profiles_menu_on_reveal);
+    }
+
+
     // setup change signal
     g_signal_connect(nm, "changed", G_CALLBACK(on_network_manager_change),
                      self);
-
 };
 
 void quick_settings_grid_reinitialize(QuickSettingsGrid *self) {

@@ -4,8 +4,10 @@
 
 enum QuickSettingsButtonType {
     QUICK_SETTINGS_BUTTON_GENERIC,
+    QUICK_SETTINGS_BUTTON_ONESHOT,
     QUICK_SETTINGS_BUTTON_ETHERNET,
     QUICK_SETTINGS_BUTTON_WIFI,
+    QUICK_SETTINGS_BUTTON_PERFORMANCE,
 };
 
 typedef struct _QuickSettingsGridCluster QuickSettingsGridCluster;

@@ -2,8 +2,9 @@
 
 #include <adwaita.h>
 
-#include "quick_settings_grid_ethernet.h"
+#include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
+#include "quick_settings_grid_ethernet.h"
 
 void quick_settings_grid_button_init(QuickSettingsGridButton *self,
                                      enum QuickSettingsButtonType type,
@@ -14,7 +15,7 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
 
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_hexpand(GTK_WIDGET(self->container), TRUE);
-    gtk_widget_set_size_request(GTK_WIDGET(self->container), 100, -1);
+    gtk_widget_set_size_request(GTK_WIDGET(self->container), 100, 50);
     gtk_widget_add_css_class(GTK_WIDGET(self->container),
                              "quick-settings-grid-button");
 
@@ -30,6 +31,8 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
     // GtkCenterBox *center_box = GTK_CENTER_BOX(gtk_center_box_new());
     GtkBox *button_contents =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    // valign center
+    gtk_widget_set_valign(GTK_WIDGET(button_contents), GTK_ALIGN_CENTER);
     // create and append icon
     if (icon_name) {
         self->icon = GTK_IMAGE(gtk_image_new_from_icon_name(icon_name));
@@ -64,6 +67,11 @@ void quick_settings_grid_button_init(QuickSettingsGridButton *self,
         gtk_widget_set_halign(GTK_WIDGET(self->subtitle), GTK_ALIGN_START);
         gtk_box_append(text_area, GTK_WIDGET(self->subtitle));
     }
+    // if no subtitle adjust title so its centered
+    if (!subtitle) {
+        gtk_widget_set_vexpand(GTK_WIDGET(self->title), TRUE);
+        gtk_widget_set_valign(GTK_WIDGET(self->title), GTK_ALIGN_CENTER);
+    }
     gtk_box_append(button_contents, GTK_WIDGET(text_area));
     gtk_button_set_child(self->toggle, GTK_WIDGET(button_contents));
     gtk_box_append(self->container, GTK_WIDGET(self->toggle));
@@ -93,6 +101,7 @@ QuickSettingsGridButton *quick_settings_grid_button_new(
 
 void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
     switch (self->type) {
+        case QUICK_SETTINGS_BUTTON_ONESHOT:
         case QUICK_SETTINGS_BUTTON_GENERIC:
             break;
         case QUICK_SETTINGS_BUTTON_ETHERNET:
@@ -102,6 +111,10 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
         case QUICK_SETTINGS_BUTTON_WIFI:
             quick_settings_grid_wifi_button_free(
                 (QuickSettingsGridWifiButton *)self);
+            break;
+        case QUICK_SETTINGS_BUTTON_PERFORMANCE:
+            quick_settings_grid_power_profiles_button_free(
+                (QuickSettingsGridPowerProfilesButton *)self);
             break;
     }
 }
