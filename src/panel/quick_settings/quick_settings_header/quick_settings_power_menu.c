@@ -4,14 +4,12 @@
 
 #include "../quick_settings.h"
 #include "../quick_settings_mediator.h"
+#include "../quick_settings_menu_widget.h"
 
 enum signals { signals_n };
 
 typedef struct _QuickSettingsPowerMenu {
-    GtkBox *container;
-    GtkBox *options_container;
-    GtkBox *options_title;
-    GtkBox *buttons_container;
+    QuickSettingsMenuWidget menu;
     GtkButton *suspend;
     GtkButton *restart;
     GtkButton *power_off;
@@ -48,36 +46,10 @@ static void quick_settings_power_menu_init_layout(
         "quick_settings_power_menu.c:quick_settings_power_menu_init() "
         "called.");
 
-    // create container for entire widget
-    self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->container), "power-menu");
-
-    // create container for options area
-    self->options_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->options_container),
-                        "options-container");
-
-    // create title box [icon label]
-    self->options_title = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->options_title), "options-title");
-
-    // create power icon in title box
-    GtkBox *icon_container =
-        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(icon_container), "icon-container");
-    GtkImage *icon =
-        GTK_IMAGE(gtk_image_new_from_icon_name("system-shutdown-symbolic"));
-    gtk_image_set_pixel_size(icon, 24);
-
-    // append icon to title box and add "Power Off" label adjacent.
-    gtk_box_append(icon_container, GTK_WIDGET(icon));
-    gtk_box_append(self->options_title, GTK_WIDGET(icon_container));
-    gtk_box_append(self->options_title, gtk_label_new("Power Off"));
-
-    // create button container
-    self->buttons_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->buttons_container),
-                        "buttons-container");
+    quick_settings_menu_widget_init(&self->menu, false);
+    quick_settings_menu_widget_set_title(&self->menu, "Power Off");
+    quick_settings_menu_widget_set_icon(&self->menu,
+                                        "system-shutdown-symbolic");
 
     // create power buttons
     self->suspend = GTK_BUTTON(gtk_button_new_with_label("Suspend"));
@@ -90,22 +62,15 @@ static void quick_settings_power_menu_init_layout(
     gtk_label_set_xalign(GTK_LABEL(gtk_button_get_child(self->logout)), 0.0);
 
     // wire it up
+    gtk_box_append(self->menu.options, GTK_WIDGET(self->suspend));
+    gtk_box_append(self->menu.options, GTK_WIDGET(self->restart));
+    gtk_box_append(self->menu.options, GTK_WIDGET(self->power_off));
 
-    // options_container child of container
-    gtk_box_append(self->container, GTK_WIDGET(self->options_container));
-    // title is first child of options_container
-    gtk_box_append(self->options_container, GTK_WIDGET(self->options_title));
-    // add all buttons to button container
-    gtk_box_append(self->buttons_container, GTK_WIDGET(self->suspend));
-    gtk_box_append(self->buttons_container, GTK_WIDGET(self->restart));
-    gtk_box_append(self->buttons_container, GTK_WIDGET(self->power_off));
-    gtk_box_append(self->buttons_container,
-                   gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
-    gtk_box_append(self->buttons_container, GTK_WIDGET(self->logout));
+    // append separator
+    GtkSeparator *separator = GTK_SEPARATOR(gtk_separator_new(GTK_ORIENTATION_HORIZONTAL));
+    gtk_widget_set_margin_start(GTK_WIDGET(separator), 12);
+    gtk_box_append(self->menu.options, GTK_WIDGET(self->logout));
 
-    // add buttons container as next child in options container
-    gtk_box_append(self->options_container,
-                   GTK_WIDGET(self->buttons_container));
 }
 
 void quick_settings_power_menu_reinitialize(QuickSettingsPowerMenu *self) {
@@ -117,5 +82,5 @@ static void quick_settings_power_menu_init(QuickSettingsPowerMenu *self) {
 }
 
 GtkWidget *quick_settings_power_menu_get_widget(QuickSettingsPowerMenu *self) {
-    return GTK_WIDGET(self->container);
+    return GTK_WIDGET(self->menu.container);
 }

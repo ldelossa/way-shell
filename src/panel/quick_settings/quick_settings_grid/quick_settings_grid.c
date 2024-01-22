@@ -25,12 +25,13 @@ typedef struct _QuickSettingsGrid {
     // If an NMDevice is in this list a QuickSettingGridButton exists for it
     // and is watching the device's status.
     GPtrArray *managed_network_devices;
+    gboolean compacting;
 } QuickSettingsGrid;
 
 G_DEFINE_TYPE(QuickSettingsGrid, quick_settings_grid, G_TYPE_OBJECT);
 
-static void on_cluster_empty(QuickSettingsGridCluster *cluster,
-                             QuickSettingsGrid *self) {
+static void clean_empty_cluster(QuickSettingsGridCluster *cluster,
+                                QuickSettingsGrid *self) {
     g_debug("quick_settings_grid.c:on_cluster_empty() called");
     gtk_box_remove(self->container,
                    quick_settings_grid_cluster_get_widget(cluster));
@@ -39,7 +40,7 @@ static void on_cluster_empty(QuickSettingsGridCluster *cluster,
 }
 
 static void on_will_reveal(QuickSettingsGridCluster *cluster,
-                           enum QuickSettingsGridClusterSide *side,
+                           QuickSettingsGridButton *button,
                            QuickSettingsGrid *self) {
     g_debug("quick_settings_grid.c:on_will_reveal() called");
     // when a grid cluster informs us it will reveal a child, we want to ask
@@ -50,6 +51,58 @@ static void on_will_reveal(QuickSettingsGridCluster *cluster,
             quick_settings_grid_cluster_hide_all(tmp);
         }
     }
+}
+
+static void compact_grid_on_remove(QuickSettingsGridCluster *cluster,
+                                   enum QuickSettingsGridClusterSide side,
+                                   QuickSettingsGrid *self) {
+    g_debug("quick_settings_grid.c:compact_grid_on_remove_button_req() called");
+
+    // no need to perform any nested compaction.
+    if (self->compacting) return;
+
+    self->compacting = true;
+
+    // we only need to consider compaction if we have more then one cluster.
+    if (self->clusters->len <= 1) {
+        self->compacting = false;
+        return;
+    }
+
+    for (int i = 0; i < self->clusters->len - 1; i++) {
+        QuickSettingsGridCluster *cluster =
+            g_ptr_array_index(self->clusters, i);
+        QuickSettingsGridCluster *next_cluster =
+            g_ptr_array_index(self->clusters, i + 1);
+        enum QuickSettingsGridClusterSide vacant_side = -1;
+
+        vacant_side = quick_settings_grid_cluster_vacant_side(cluster);
+        if (vacant_side != QUICK_SETTINGS_GRID_CLUSTER_RIGHT) continue;
+
+        // move next_cluster's left button to right
+        QuickSettingsGridButton *next_left =
+            quick_settings_grid_cluster_get_left_button(next_cluster);
+        quick_settings_grid_cluster_remove_button(next_cluster, next_left);
+
+        // add it to cluster's right side.
+        quick_settings_grid_cluster_add_button(
+            cluster, QUICK_SETTINGS_GRID_CLUSTER_RIGHT, next_left);
+    }
+
+    // prune any empty clusters
+    for (int i = self->clusters->len - 1; i < self->clusters->len; i--) {
+        QuickSettingsGridCluster *cluster =
+            g_ptr_array_index(self->clusters, i);
+
+        enum QuickSettingsGridClusterSide vacant_side =
+            quick_settings_grid_cluster_vacant_side(cluster);
+
+        if (vacant_side == QUICK_SETTINGS_GRID_CLUSTER_BOTH) {
+            clean_empty_cluster(cluster, self);
+        }
+    }
+
+    self->compacting = false;
 }
 
 static void quick_settings_grid_add_button(QuickSettingsGrid *self,
@@ -87,9 +140,8 @@ static void quick_settings_grid_add_button(QuickSettingsGrid *self,
                        quick_settings_grid_cluster_get_widget(cluster));
         g_ptr_array_add(self->clusters, cluster);
 
-        // wire into cluster's empty signal so we know when to remove
-        // the cluster from our inventory.
-        g_signal_connect(cluster, "empty", G_CALLBACK(on_cluster_empty), self);
+        g_signal_connect(cluster, "removed", G_CALLBACK(compact_grid_on_remove),
+                         self);
     }
 
     // the cluster owns this button now, will notify us when it is removed,
@@ -195,23 +247,6 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
         quick_settings_grid_add_button(self,
                                        (QuickSettingsGridButton *)pps_button);
     }
-
-    // add some one shot buttons for testing
-
-    QuickSettingsGridOneShotButton *oneshot1 =
-        quick_settings_grid_oneshot_button_init(
-            "one shot 1", "one shot 1 subtitle", "unavailable");
-    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)oneshot1);
-
-    QuickSettingsGridOneShotButton *oneshot2 =
-        quick_settings_grid_oneshot_button_init(
-            "one shot 2", "one shot 2 subtitle", "unavailable");
-    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)oneshot2);
-
-    QuickSettingsGridOneShotButton *oneshot3 =
-        quick_settings_grid_oneshot_button_init(
-            "one shot 3", "one shot 3 subtitle", "unavailable");
-    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)oneshot3);
 
     // setup change signal
     g_signal_connect(nm, "changed", G_CALLBACK(on_network_manager_change),

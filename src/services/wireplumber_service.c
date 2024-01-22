@@ -1,7 +1,6 @@
 #include "wireplumber_service.h"
 
 #include <adwaita.h>
-#include <math.h>
 #include <pipewire/keys.h>
 #include <wireplumber-0.4/wp/wp.h>
 

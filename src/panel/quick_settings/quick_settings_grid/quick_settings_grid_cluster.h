@@ -52,3 +52,13 @@ GtkRevealer *quick_settings_grid_cluster_get_right_revealer(
 void quick_settings_grid_cluster_slide_left(QuickSettingsGridCluster *cluster);
 
 void quick_settings_grid_cluster_hide_all(QuickSettingsGridCluster *cluster);
+
+int quick_settings_grid_cluster_remove_button(QuickSettingsGridCluster *self,
+                                              QuickSettingsGridButton *button);
+
+QuickSettingsGridButton *quick_settings_grid_cluster_get_left_button(
+    QuickSettingsGridCluster *self);
+
+QuickSettingsGridButton *quick_settings_grid_cluster_get_right_button(
+    QuickSettingsGridCluster *self);
+

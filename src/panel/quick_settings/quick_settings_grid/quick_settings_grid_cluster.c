@@ -4,7 +4,6 @@
 
 #include "../quick_settings.h"
 #include "../quick_settings_mediator.h"
-#include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_button.h"
 
 enum signals { empty, removed, remove_button_req, will_reveal, signals_n };
@@ -15,8 +14,6 @@ typedef struct _QuickSettingsGridCluster {
     GtkCenterBox *center_box;
     QuickSettingsGridButton *left;
     QuickSettingsGridButton *right;
-    GtkRevealer *revealer_left;
-    GtkRevealer *revealer_right;
     QuickSettingsGridButton *dummy_left;
     QuickSettingsGridButton *dummy_right;
     QuickSettingsClusterOnRevealFunc on_reveal_left;
@@ -27,12 +24,18 @@ static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(QuickSettingsGridCluster, quick_settings_grid_cluster,
               G_TYPE_OBJECT);
 
+void quick_settings_grid_cluster_hide_all(QuickSettingsGridCluster *self) {
+    if (self->left->revealer)
+        gtk_revealer_set_reveal_child(self->left->revealer, false);
+    if (self->right->revealer)
+        gtk_revealer_set_reveal_child(self->right->revealer, false);
+}
+
 static void on_quick_settings_hidden(QuickSettingsMediator *mediator,
                                      QuickSettings *qs, GdkMonitor *mon,
                                      QuickSettingsGridCluster *self) {
     g_debug("quick_settings_grid_cluster.c:on_quick_settings_hidden() called");
-    gtk_revealer_set_reveal_child(self->revealer_left, false);
-    gtk_revealer_set_reveal_child(self->revealer_right, false);
+    quick_settings_grid_cluster_hide_all(self);
 }
 
 // stub out dispose, finalize, class_init, and init methods
@@ -103,53 +106,29 @@ static void quick_settings_grid_cluster_class_init(
     // cluster's must hide their revealed widgets.
     signals[will_reveal] = g_signal_new("will_reveal", G_TYPE_FROM_CLASS(klass),
                                         G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL,
-                                        G_TYPE_NONE, 1, G_TYPE_INT);
+                                        G_TYPE_NONE, 1, G_TYPE_POINTER);
 };
 
-static void on_left_reveal_click(GtkButton *button,
-                                 QuickSettingsGridCluster *self) {
-    gboolean revealed = gtk_revealer_get_child_revealed(self->revealer_left);
-    if (revealed) {
-        gtk_revealer_set_reveal_child(self->revealer_left, false);
-        if (self->on_reveal_left) self->on_reveal_left(self->left, false);
-        QuickSettingsMediator *m = quick_settings_get_global_mediator();
-        quick_settings_mediator_req_shrink(m);
-        return;
+static void on_will_reveal(QuickSettingsGridCluster *self,
+                           QuickSettingsGridButton *button) {
+    g_debug("quick_settings_grid_cluster.c:on_will_reveal() called");
+
+    if (self->right == button) {
+        if (self->left->revealer) {
+            gtk_revealer_set_reveal_child(self->left->revealer, false);
+        }
     }
-    // opportunistically close right revealer
-    gtk_revealer_set_reveal_child(self->revealer_right, false);
 
-    g_signal_emit(self, signals[will_reveal], 0, self->left);
-
-    gtk_revealer_set_reveal_child(self->revealer_left, true);
-
-    if (self->on_reveal_left) self->on_reveal_left(self->left, true);
-}
-
-static void on_right_reveal_click(GtkButton *button,
-                                  QuickSettingsGridCluster *self) {
-    gboolean revealed = gtk_revealer_get_child_revealed(self->revealer_right);
-    if (revealed) {
-        gtk_revealer_set_reveal_child(self->revealer_right, false);
-        if (self->on_reveal_right) self->on_reveal_right(self->right, false);
-        QuickSettingsMediator *m = quick_settings_get_global_mediator();
-        quick_settings_mediator_req_shrink(m);
-        return;
+    if (self->left == button) {
+        if (self->right->revealer) {
+            gtk_revealer_set_reveal_child(self->right->revealer, false);
+        }
     }
-    // opportunistically close left revealer
-    gtk_revealer_set_reveal_child(self->revealer_left, false);
-
-    g_signal_emit(self, signals[will_reveal], 0, self->right);
-    gtk_revealer_set_reveal_child(self->revealer_right, true);
-
-    if (self->on_reveal_right) self->on_reveal_right(self->right, true);
 }
 
 int quick_settings_grid_cluster_add_button(
     QuickSettingsGridCluster *self, enum QuickSettingsGridClusterSide side,
     QuickSettingsGridButton *button) {
-    GtkRevealer *revealer = NULL;
-
     if (side == QUICK_SETTINGS_GRID_CLUSTER_NONE) return -1;
 
     if (side == QUICK_SETTINGS_GRID_CLUSTER_LEFT) {
@@ -161,14 +140,8 @@ int quick_settings_grid_cluster_add_button(
         // is removed from the center box.
         g_object_ref(button->container);
 
-        revealer = self->revealer_left;
-
         gtk_center_box_set_start_widget(self->center_box,
                                         GTK_WIDGET(button->container));
-
-        // wire reveal button to 'on_left_reveal_click'
-        g_signal_connect(button->reveal, "clicked",
-                         G_CALLBACK(on_left_reveal_click), self);
 
         self->on_reveal_left = button->on_reveal;
 
@@ -180,29 +153,23 @@ int quick_settings_grid_cluster_add_button(
         // see above comment
         g_object_ref(button->container);
 
-        revealer = self->revealer_right;
-
         gtk_center_box_set_end_widget(self->center_box,
                                       GTK_WIDGET(button->container));
-
-        // wire reveal button to 'on_right_reveal_click'
-        g_signal_connect(button->reveal, "clicked",
-                         G_CALLBACK(on_right_reveal_click), self);
 
         self->on_reveal_right = button->on_reveal;
 
         self->right = button;
     }
 
-    if (button->reveal_widget) {
-        gtk_revealer_set_reveal_child(revealer, false);
-        gtk_revealer_set_child(revealer, button->reveal_widget);
-    }
-
     button->cluster = self;
 
     // keep a ref to the button's container
     g_object_ref(button->container);
+
+    // if button has a GtkRevealer append it to container
+    if (button->revealer) {
+        gtk_box_append(self->container, GTK_WIDGET(button->revealer));
+    }
 
     return 0;
 }
@@ -229,47 +196,44 @@ void quick_settings_grid_cluster_slide_left(QuickSettingsGridCluster *self) {
 
     // our right button is now a dummy
     self->right = self->dummy_right;
-
-    // move right revealer child to left.
-    gtk_revealer_set_child(self->revealer_left,
-                           gtk_revealer_get_child(self->revealer_right));
-    gtk_revealer_set_child(self->revealer_right, NULL);
 }
 
 int quick_settings_grid_cluster_remove_button(QuickSettingsGridCluster *self,
                                               QuickSettingsGridButton *button) {
-    GtkRevealer *revealer = NULL;
     enum QuickSettingsGridClusterSide side = QUICK_SETTINGS_GRID_CLUSTER_NONE;
 
     if (self->left == button) {
         side = QUICK_SETTINGS_GRID_CLUSTER_LEFT;
 
-        // this will unref the object for us
+        // ref the start widget, unref'ing it is the callers descision as they
+        // may be removing this button just to move it somewhere else.
+        g_object_ref(gtk_center_box_get_start_widget(self->center_box));
+
         gtk_center_box_set_start_widget(
             self->center_box, GTK_WIDGET(self->dummy_left->container));
-        revealer = self->revealer_left;
+
         self->left = self->dummy_left;
 
         // check if we have button on the right and slide it left.
         quick_settings_grid_cluster_slide_left(self);
+
     } else if (self->right == button) {
         side = QUICK_SETTINGS_GRID_CLUSTER_RIGHT;
 
         // this will unref the object for us
         gtk_center_box_set_end_widget(self->center_box,
                                       GTK_WIDGET(self->dummy_right->container));
-        revealer = self->revealer_right;
         self->right = self->dummy_right;
     }
 
-    gtk_revealer_set_reveal_child(revealer, false);
-    gtk_revealer_set_child(revealer, NULL);
-
-    if (self->left == self->dummy_left && self->right == self->dummy_right) {
-        g_signal_emit(self, signals[empty], 0);
-    } else {
-        g_signal_emit(self, signals[removed], 0, side);
+    // remove revealer if present, don't kill the ref incase this is just a
+    // button move.
+    if (button->revealer) {
+        g_object_ref(button->revealer);
+        gtk_box_remove(self->container, GTK_WIDGET(button->revealer));
     }
+
+    g_signal_emit(self, signals[removed], 0, side);
 
     return 0;
 }
@@ -282,19 +246,6 @@ static void quick_settings_grid_cluster_init_layout(
     // create center box for buttons
     self->center_box = GTK_CENTER_BOX(gtk_center_box_new());
     gtk_box_append(self->container, GTK_WIDGET(self->center_box));
-
-    // create left and right revealers
-    self->revealer_left = GTK_REVEALER(gtk_revealer_new());
-    gtk_revealer_set_transition_type(self->revealer_left,
-                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-    gtk_revealer_set_transition_duration(self->revealer_left, 250);
-    gtk_box_append(self->container, GTK_WIDGET(self->revealer_left));
-
-    self->revealer_right = GTK_REVEALER(gtk_revealer_new());
-    gtk_revealer_set_transition_type(self->revealer_right,
-                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-    gtk_revealer_set_transition_duration(self->revealer_right, 250);
-    gtk_box_append(self->container, GTK_WIDGET(self->revealer_right));
 
     // add transparent dummy buttons to keep spacing consistent.
     self->dummy_left =
@@ -327,6 +278,9 @@ static void quick_settings_grid_cluster_init_layout(
     g_signal_connect(self, "remove_button_req",
                      G_CALLBACK(quick_settings_grid_cluster_remove_button),
                      NULL);
+
+    // connect to own's will-reveal signal
+    g_signal_connect(self, "will-reveal", G_CALLBACK(on_will_reveal), NULL);
 }
 
 static void quick_settings_grid_cluster_init(QuickSettingsGridCluster *self) {
@@ -360,19 +314,12 @@ GtkCenterBox *quick_settings_grid_cluster_get_center_box(
     return self->center_box;
 }
 
-GtkRevealer *quick_settings_grid_cluster_get_left_revealer(
+QuickSettingsGridButton *quick_settings_grid_cluster_get_left_button(
     QuickSettingsGridCluster *self) {
-    return self->revealer_left;
+    return self->left;
 }
 
-GtkRevealer *quick_settings_grid_cluster_get_right_revealer(
+QuickSettingsGridButton *quick_settings_grid_cluster_get_right_button(
     QuickSettingsGridCluster *self) {
-    return self->revealer_right;
-}
-
-void quick_settings_grid_cluster_hide_all(QuickSettingsGridCluster *self) {
-    if (self->left != self->dummy_left)
-        gtk_revealer_set_reveal_child(self->revealer_left, false);
-    if (self->right != self->dummy_right)
-        gtk_revealer_set_reveal_child(self->revealer_right, false);
+    return self->right;
 }

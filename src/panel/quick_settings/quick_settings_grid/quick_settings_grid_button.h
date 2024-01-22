@@ -26,8 +26,9 @@ typedef struct _QuickSettingsGridButton {
     GtkLabel *title;
     GtkLabel *subtitle;
     GtkImage *icon;
-    GtkButton *reveal;
+    GtkButton *reveal_button;
     GtkWidget *reveal_widget;
+    GtkRevealer *revealer;
     QuickSettingsClusterOnRevealFunc on_reveal;
 } QuickSettingsGridButton;
 

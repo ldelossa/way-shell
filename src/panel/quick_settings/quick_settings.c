@@ -163,7 +163,6 @@ static void quick_settings_init_layout(QuickSettings *self) {
     gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
                                 GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-
     // create vertical container box
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
 

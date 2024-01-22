@@ -81,9 +81,10 @@ static void calendar_handle_clock_tick(ClockService *cs, GDateTime *now,
     // update the action row subtitle
     adw_action_row_set_subtitle(ADW_ACTION_ROW(self->today),
                                 g_date_time_format(now, "%B %d %Y"));
-    g_object_unref(self->now);
-    g_object_ref(now);
-    self->now = now;
+
+
+    // make a copy of GDateTime
+    self->now = g_date_time_add(now, 0);
     calendar_set_dirty(self);
 };
 

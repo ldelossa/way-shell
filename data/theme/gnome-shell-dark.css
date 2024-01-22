@@ -387,6 +387,13 @@ label.day-number.today:focus {
   margin: 0px;
 }
 
+#quick-settings .quick-settings-grid-button button:hover {
+  background-color: #62a0ea;
+}
+#quick-settings .quick-settings-grid-button button:active {
+  background-color: #3584e4;
+}
+
 #quick-settings .quick-settings-grid-button-icon {
   padding: 4px;
   margin: 3px;
@@ -529,4 +536,8 @@ label.day-number.today:focus {
   padding-right: 4px;
   padding-top: 0px;
   padding-bottom: 0px;
+}
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi entry {
+	margin: 6px;
 }

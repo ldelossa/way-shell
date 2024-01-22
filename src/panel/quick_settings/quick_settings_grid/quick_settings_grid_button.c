@@ -4,7 +4,32 @@
 
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
+#include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_ethernet.h"
+#include "../quick_settings.h"
+
+static void quick_settings_grid_button_on_reveal(
+    GtkButton *button, QuickSettingsGridButton *self) {
+    g_debug(
+        "quick_settings_grid_button.c:quick_settings_grid_button_on_reveal() "
+        "called");
+
+    if (gtk_revealer_get_child_revealed(self->revealer)) {
+        gtk_revealer_set_reveal_child(self->revealer, false);
+
+        QuickSettingsMediator *qsm = quick_settings_get_global_mediator();
+        quick_settings_mediator_req_shrink(qsm);
+
+        if (self->on_reveal) self->on_reveal(self, false);
+    } else {
+
+        // emit will-reveal signal on behalf of our cluster
+        g_signal_emit_by_name(self->cluster, "will-reveal", self);
+
+        gtk_revealer_set_reveal_child(self->revealer, true);
+        if (self->on_reveal) self->on_reveal(self, true);
+    }
+}
 
 void quick_settings_grid_button_init(
     QuickSettingsGridButton *self, enum QuickSettingsButtonType type,
@@ -77,14 +102,31 @@ void quick_settings_grid_button_init(
     gtk_button_set_child(self->toggle, GTK_WIDGET(button_contents));
     gtk_box_append(self->container, GTK_WIDGET(self->toggle));
 
-    self->reveal =
+    // setup revealer
+    self->revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->revealer,
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+    gtk_revealer_set_transition_duration(self->revealer, 350);
+    gtk_revealer_set_reveal_child(self->revealer, false);
+    gtk_widget_add_css_class(GTK_WIDGET(self->revealer),
+                             "quick-settings-grid-button-revealer");
+
+    self->reveal_button =
         GTK_BUTTON(gtk_button_new_from_icon_name("go-next-symbolic"));
-    gtk_widget_add_css_class(GTK_WIDGET(self->reveal),
+    gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
                              "quick-settings-grid-button-reveal-hidden");
-    gtk_box_append(self->container, GTK_WIDGET(self->reveal));
+    gtk_box_append(self->container, GTK_WIDGET(self->reveal_button));
 
     if (self->reveal_widget) {
-        gtk_widget_add_css_class(GTK_WIDGET(self->reveal),
+        // add reveal_widget as child of revealer
+        gtk_revealer_set_child(self->revealer, self->reveal_widget);
+
+        // wire reveal button to revealer
+        g_signal_connect(self->reveal_button, "clicked",
+                         G_CALLBACK(quick_settings_grid_button_on_reveal),
+                         self);
+
+        gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
                                  "quick-settings-grid-button-reveal-visible");
     }
 }

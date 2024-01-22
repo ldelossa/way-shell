@@ -50,9 +50,7 @@ static void quick_settings_grid_wifi_menu_dispose(GObject *object) {
     g_signal_handlers_disconnect_by_func(self->dev, wifi_device_get_aps, self);
 }
 
-static void quick_settings_grid_wifi_menu_finalize(GObject *object) {
-    QuickSettingsGridWifiMenu *self = QUICK_SETTINGS_GRID_WIFI_MENU(object);
-}
+static void quick_settings_grid_wifi_menu_finalize(GObject *object) {}
 
 static void quick_settings_grid_wifi_menu_class_init(
     QuickSettingsGridWifiMenuClass *klass) {
