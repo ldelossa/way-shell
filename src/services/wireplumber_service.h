@@ -1,6 +1,6 @@
 #pragma once
-
 #include <adwaita.h>
+#include <wireplumber-0.4/wp/wp.h>
 
 enum {
     SCALE_LINEAR,
@@ -35,7 +35,28 @@ typedef struct WirePlumberServiceNode {
     gboolean active;
     gdouble step;
     gdouble base;
+    WpNodeState state;
 } WirePlumberServiceNode;
+
+// A Pipewire Node inventoried by the WirePlumberService.
+typedef struct WirePlumberServiceAudioStream {
+    const gchar *name;
+    const gchar *app_name;
+    const gchar *media_class;
+    guint32 id;
+    gdouble volume;
+    gboolean mute;
+    gboolean active;
+    gdouble step;
+    gdouble base;
+    WpNodeState state;
+} WirePlumberAudioStream;
+
+typedef struct WirePlumberServiceLink {
+    guint32 id;
+    guint32 input_node_id;
+    guint32 output_node_id;
+} WirePlumberServiceLink;
 
 // Provides access to important fields of the currently configured default
 // Sink (Audio Output) and Source (Audio Input).
@@ -75,7 +96,7 @@ void wire_plumber_service_get_default_nodes(
 
 void wire_plumber_service_set_volume(WirePlumberService *self,
                                      const WirePlumberServiceNode *node,
-                                     gdouble volume);
+                                     float volume);
 
 void wire_plumber_service_volume_up(WirePlumberService *self,
                                     const WirePlumberServiceNode *node);
@@ -88,3 +109,17 @@ void wire_plumber_service_volume_mute(WirePlumberService *self,
 
 void wire_plumber_service_volume_unmute(WirePlumberService *self,
                                         const WirePlumberServiceNode *node);
+
+// Methods
+
+WirePlumberServiceNode *wire_plumber_service_get_default_sink(
+    WirePlumberService *self);
+
+WirePlumberServiceNode *wire_plumber_service_get_default_source(
+    WirePlumberService *self);
+
+GPtrArray *wire_plumber_service_get_sinks(WirePlumberService *self);
+
+GPtrArray *wire_plumber_service_get_sources(WirePlumberService *self);
+
+gboolean wire_plumber_service_microphone_active(WirePlumberService *self);

@@ -6,21 +6,40 @@
 
 #include "wp/core.h"
 #include "wp/node.h"
-#include "wp/proxy-interfaces.h"
+#include "wp/object-interest.h"
+#include "wp/object-manager.h"
+#include "wp/proxy.h"
 
-enum signals { default_nodes_change, signals_n };
+enum signals {
+    node_changed,
+    default_nodes_change,
+    default_sink_changed,
+    default_source_changed,
+    microphone_active,
+    signals_n
+};
 
 static WirePlumberService *global = NULL;
 
 struct _WirePlumberService {
     GObject parent_instance;
     WpCore *core;
-    WpObjectManager *obj_mgr;
+    WpObjectManager *om;
     WpPlugin *default_nodes_api;
     WpPlugin *mixer_api;
     WirePlumberServiceDefaultNodes default_nodes;
+    WirePlumberServiceNode *default_sink;
+    WirePlumberServiceNode *default_source;
+    guint32 default_sink_id;
+    guint32 default_source_id;
+    GPtrArray *sinks;
+    GPtrArray *sources;
+    GPtrArray *streams;
+    GPtrArray *links;
+    GHashTable *db;
     int pending_plugins;
 };
+
 static guint service_signals[signals_n] = {0};
 G_DEFINE_TYPE(WirePlumberService, wire_plumber_service, G_TYPE_OBJECT);
 
@@ -47,167 +66,353 @@ static void wire_plumber_service_class_init(WirePlumberServiceClass *klass) {
     service_signals[default_nodes_change] = g_signal_new(
         "default-nodes-changed", G_TYPE_FROM_CLASS(object_class),
         G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
+
+    // define 'default_sink_changed' signal
+    service_signals[default_sink_changed] =
+        g_signal_new("default-sink-changed", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
+                     G_TYPE_POINTER);
+
+    // define 'default_source_changed' signal
+    service_signals[default_source_changed] =
+        g_signal_new("default-source-changed", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
+                     G_TYPE_POINTER);
+
+    // define 'node_changed' signal
+    service_signals[node_changed] = g_signal_new(
+        "node-changed", G_TYPE_FROM_CLASS(object_class), G_SIGNAL_RUN_FIRST, 0,
+        NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+    // define microphone-active signal
+    service_signals[microphone_active] =
+        g_signal_new("microphone-active", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
+                     G_TYPE_BOOLEAN);
 };
 
-static void set_default_sink(WirePlumberService *self) {
-    GVariant *mixer = NULL;
-    WpNode *sink = NULL;
-
-    g_debug("wireplumber_service.c:set_default_sink() called");
-
-    g_signal_emit_by_name(self->mixer_api, "get-volume",
-                          self->default_nodes.sink.id, &mixer);
-
-    if (!mixer)
-        g_error("wireplumber_service.c:set_default_sink() failed to get mixer");
-
-    g_variant_lookup(mixer, "volume", "d", &self->default_nodes.sink.volume);
-    g_variant_lookup(mixer, "mute", "b", &self->default_nodes.sink.mute);
-    g_variant_lookup(mixer, "step", "b", &self->default_nodes.sink.step);
-    g_variant_lookup(mixer, "base", "d", &self->default_nodes.sink.base);
-
-    // convert volume to cubic
-    self->default_nodes.sink.volume =
-        volume_from_linear(self->default_nodes.sink.volume, SCALE_CUBIC);
-
-    sink = wp_object_manager_lookup(self->obj_mgr, WP_TYPE_NODE,
-                                    WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-                                    "=u", self->default_nodes.sink.id, NULL);
-    if (!sink)
-        g_error(
-            "wireplumber_service.c:set_default_nodes() failed to find default "
-            "sink "
-            "node");
-
-    self->default_nodes.sink.name = wp_pipewire_object_get_property(
-        WP_PIPEWIRE_OBJECT(sink), PW_KEY_NODE_DESCRIPTION);
-
-    self->default_nodes.sink.media_class = wp_pipewire_object_get_property(
-        WP_PIPEWIRE_OBJECT(sink), PW_KEY_MEDIA_CLASS);
-
-    g_debug(
-        "wireplumber_service.c:set_default_sink() settings default Audio Sink "
-        "[%s] [%s]"
-        "volume: "
-        "%.2f mute: %d step: %.2f base: %.2f",
-        self->default_nodes.sink.name, self->default_nodes.sink.media_class,
-        self->default_nodes.sink.volume, self->default_nodes.sink.mute,
-        self->default_nodes.sink.step, self->default_nodes.sink.base);
-
-    g_signal_emit(self, service_signals[default_nodes_change], 0,
-                  self->default_nodes.sink.id);
+gboolean wire_plumber_service_microphone_active(WirePlumberService *self) {
+    gboolean active = false;
+    for (int i = 0; i < self->sources->len; i++) {
+        WirePlumberServiceNode *node = g_ptr_array_index(self->sources, i);
+        if (node->state == WP_NODE_STATE_RUNNING) {
+            active = true;
+            break;
+        }
+    }
+    return active;
 }
 
-static void init_default_sink(WirePlumberService *self) {
-    g_debug("wireplumber_service.c:init_default_sink() called");
+static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
+                                           WpGlobalProxy *proxy,
+                                           WirePlumberService *self) {
+    WpProperties *props = wp_global_proxy_get_global_properties(proxy);
+    GVariant *mixer_values = NULL;
+    GValue value = G_VALUE_INIT;
 
-    g_signal_emit_by_name(self->default_nodes_api, "get-default-node",
-                          "Audio/Sink", &self->default_nodes.sink.id);
+    // fill in id and state fields
+    node->id = wp_proxy_get_bound_id(WP_PROXY(proxy));
+    node->state = wp_node_get_state(WP_NODE(proxy), NULL);
 
-    set_default_sink(self);
-}
-
-static void set_default_source(WirePlumberService *self) {
-    GVariant *mixer = NULL;
-    WpNode *source = NULL;
-    WpNodeState state = {0};
-
-    g_debug("wireplumber_service.c:set_default_source() called");
-
-    g_signal_emit_by_name(self->mixer_api, "get-volume",
-                          self->default_nodes.source.id, &mixer);
-
-    g_variant_lookup(mixer, "volume", "d", &self->default_nodes.source.volume);
-    g_variant_lookup(mixer, "mute", "b", &self->default_nodes.source.mute);
-    g_variant_lookup(mixer, "step", "b", &self->default_nodes.source.step);
-    g_variant_lookup(mixer, "base", "d", &self->default_nodes.source.base);
+    // fill in audio details from mixer api
+    g_signal_emit_by_name(self->mixer_api, "get-volume", node->id,
+                          &mixer_values);
+    g_variant_lookup(mixer_values, "volume", "d", &node->volume);
+    g_variant_lookup(mixer_values, "mute", "b", &node->mute);
+    g_variant_lookup(mixer_values, "step", "b", &node->step);
+    g_variant_lookup(mixer_values, "base", "d", &node->base);
 
     // convert volume to cubic
-    self->default_nodes.source.volume =
-        volume_from_linear(self->default_nodes.source.volume, SCALE_CUBIC);
+    node->volume = volume_from_linear(node->volume, SCALE_CUBIC);
 
-    source = wp_object_manager_lookup(
-        self->obj_mgr, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-        "=u", self->default_nodes.source.id, NULL);
-    if (!source)
-        g_error(
-            "wireplumber_service.c:set_default_nodes() failed to find source "
-            "node");
+    // fill in WpNode info.
+    WpIterator *i = wp_properties_new_iterator(props);
+    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
+        WpPropertiesItem *item = g_value_get_boxed(&value);
 
-    // if input is running set the state.
-    self->default_nodes.source.active = true;
-    state = wp_node_get_state(source, NULL);
-    if (state != WP_NODE_STATE_RUNNING) {
-        self->default_nodes.source.active = false;
+        const gchar *key = wp_properties_item_get_key(item);
+        const gchar *val = wp_properties_item_get_value(item);
+
+        if (g_strcmp0(key, PW_KEY_NODE_DESCRIPTION) == 0) {
+            node->name = g_strdup(val);
+        }
+        if (g_strcmp0(key, PW_KEY_MEDIA_CLASS) == 0) {
+            node->media_class = g_strdup(val);
+        }
+    }
+}
+
+static void wire_plumber_service_fill_link(WirePlumberServiceLink *link,
+                                           WpGlobalProxy *proxy,
+                                           WirePlumberService *self) {
+    GValue value = G_VALUE_INIT;
+    WpProperties *props = wp_global_proxy_get_global_properties(proxy);
+
+    link->id = wp_proxy_get_bound_id(WP_PROXY(proxy));
+
+    // fill in Link info
+    WpIterator *i = wp_properties_new_iterator(props);
+    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
+        WpPropertiesItem *item = g_value_get_boxed(&value);
+
+        const gchar *key = wp_properties_item_get_key(item);
+        const gchar *val = wp_properties_item_get_value(item);
+
+        if (g_strcmp0(key, PW_KEY_LINK_INPUT_NODE) == 0) {
+            link->input_node_id = g_ascii_strtoull(val, NULL, 10);
+        }
+        if (g_strcmp0(key, PW_KEY_LINK_OUTPUT_NODE) == 0) {
+            link->output_node_id = g_ascii_strtoull(val, NULL, 10);
+        }
+    }
+};
+
+WirePlumberServiceLink *wire_plumber_service_link_new(
+    WpGlobalProxy *proxy, WirePlumberService *self) {
+    g_debug("wireplumber_service.c:wire_plumber_service_node_link() called");
+
+    WirePlumberServiceLink *link = g_malloc0(sizeof(WirePlumberServiceLink));
+    wire_plumber_service_fill_link(link, proxy, self);
+
+    return link;
+}
+
+static void on_mixer_changed(void *_, guint id, WirePlumberService *self) {
+    g_debug("wireplumber_service.c:on_node_property_change() id: %d", id);
+
+    WpGlobalProxy *pw = wp_object_manager_lookup(self->om, WP_TYPE_GLOBAL_PROXY,
+                                                 WP_CONSTRAINT_TYPE_G_PROPERTY,
+                                                 "bound-id", "=u", id, NULL);
+    if (!pw) {
+        g_debug("wireplumber_service.c:on_node_property_change() pw not found");
+        return;
     }
 
-    self->default_nodes.source.name = wp_pipewire_object_get_property(
-        WP_PIPEWIRE_OBJECT(source), PW_KEY_NODE_DESCRIPTION);
+    // find node in db
+    WirePlumberServiceNode *node =
+        g_hash_table_lookup(self->db, GUINT_TO_POINTER(id));
 
-    self->default_nodes.source.media_class = wp_pipewire_object_get_property(
-        WP_PIPEWIRE_OBJECT(source), PW_KEY_MEDIA_CLASS);
+    if (!node) {
+        g_debug(
+            "wireplumber_service.c:on_node_property_change() node not found %d",
+            id);
+        return;
+    }
 
+    if (g_strcmp0(node->media_class, "Audio/Source") == 0 ||
+        g_strcmp0(node->media_class, "Audio/Sink") == 0) {
+        // update node
+        wire_plumber_service_fill_node(node, WP_GLOBAL_PROXY(pw), self);
+
+        if (node == self->default_sink) {
+            g_signal_emit(self, service_signals[default_sink_changed], 0, node);
+        }
+
+        if (node == self->default_source) {
+            g_signal_emit(self, service_signals[default_source_changed], 0,
+                          node);
+        }
+
+        g_signal_emit(self, service_signals[node_changed], 0, node);
+    }
+
+    // debug WirePlumberServiceNode struct
     g_debug(
-        "wireplumber_service.c:set_default_source() setting default Audio "
-        "Source [%s] [%s]"
-        "volume: %.2f mute: %d step: %.2f base: %.2f active: %d",
-        self->default_nodes.source.name, self->default_nodes.source.media_class,
-        self->default_nodes.source.volume, self->default_nodes.source.mute,
-        self->default_nodes.source.step, self->default_nodes.source.base,
-        self->default_nodes.source.active);
+        "wireplumber_service.c:on_node_property_change() id: %d, name: %s, "
+        "media_class: %s, volume: %f, mute: %d, step: %d, base: %f, state: %d",
+        node->id, node->name, node->media_class, node->volume, node->mute,
+        node->step, node->base, node->state);
 
-    g_signal_emit(self, service_signals[default_nodes_change], 0,
-                  self->default_nodes.source.id);
+    if (wire_plumber_service_microphone_active(self))
+        g_signal_emit(self, service_signals[microphone_active], 0, true);
+    else
+        g_signal_emit(self, service_signals[microphone_active], 0, false);
 }
 
-static void on_source_state_change(WpNode *node, WpNodeState *old_state,
-                                   WpNodeState *new_state,
-                                   WirePlumberService *self) {
-    set_default_source(self);
+static void on_state_change(WpNode *node, WpNodeState old_state,
+                            WpNodeState new_state, WirePlumberService *self) {
+    g_debug("wireplumber_service.c:on_state_change() called");
+    guint32 id = wp_proxy_get_bound_id(WP_PROXY(node));
+    on_mixer_changed(NULL, id, self);
 }
 
-static void init_default_source(WirePlumberService *self) {
-    WpNode *source = NULL;
+static void wire_plumber_service_prune_db(WirePlumberService *self) {
+    g_auto(GValue) value = G_VALUE_INIT;
+    WpIterator *it = NULL;
+    GHashTable *set = g_hash_table_new(g_direct_hash, g_direct_equal);
 
-    g_debug("wireplumber_service.c:init_default_source() called");
+    // iterate and create sinks
+    it = wp_object_manager_new_iterator(self->om);
+
+    for (; wp_iterator_next(it, &value); g_value_unset(&value)) {
+        GObject *obj = g_value_get_object(&value);
+        guint32 id = wp_proxy_get_bound_id(WP_PROXY(obj));
+        g_hash_table_add(set, GUINT_TO_POINTER(id));
+    }
+
+    // prune db hashmap
+    GHashTableIter iter;
+    gpointer key, val;
+    GList *keys_to_remove = NULL;
+    GList *i;
+
+    g_hash_table_iter_init(&iter, self->db);
+    while (g_hash_table_iter_next(&iter, &key, &val)) {
+        if (!g_hash_table_contains(set, key)) {
+            keys_to_remove = g_list_prepend(keys_to_remove, key);
+        }
+    }
+    for (i = keys_to_remove; i != NULL; i = i->next) {
+        g_hash_table_remove(self->db, i->data);
+    }
+    g_list_free(keys_to_remove);
+
+    // prune sinks array
+    if (self->sinks->len > 0)
+        for (int i = self->sinks->len - 1; i >= 0; i--) {
+            WirePlumberServiceNode *node = g_ptr_array_index(self->sinks, i);
+            if (!g_hash_table_contains(set, GUINT_TO_POINTER(node->id))) {
+                g_ptr_array_remove_index(self->sinks, i);
+                g_free(node);
+            }
+        }
+
+    // prune source array
+    if (self->sinks->len > 0)
+        for (int i = self->sources->len - 1; i >= 0; i--) {
+            WirePlumberServiceNode *node = g_ptr_array_index(self->sources, i);
+            if (!g_hash_table_contains(set, GUINT_TO_POINTER(node->id))) {
+                g_ptr_array_remove_index(self->sources, i);
+                g_free(node);
+            }
+        }
+
+    // prune links
+    if (self->links->len > 0)
+        for (int i = self->links->len - 1; i >= 0; i--) {
+            WirePlumberServiceLink *link = g_ptr_array_index(self->links, i);
+            if (!g_hash_table_contains(set, GUINT_TO_POINTER(link->id))) {
+                g_ptr_array_remove_index(self->links, i);
+                g_free(link);
+            }
+        }
+}
+
+WirePlumberServiceNode *wire_plumber_service_node_new(
+    WpGlobalProxy *proxy, WirePlumberService *self) {
+    g_debug("wireplumber_service.c:set_default_source() called");
+
+    WirePlumberServiceNode *node = g_malloc0(sizeof(WirePlumberServiceNode));
+
+    wire_plumber_service_fill_node(node, proxy, self);
+    return node;
+}
+
+static void on_object_manager_change_get_source_sinks(WpObjectManager *om,
+                                                      WirePlumberService *self,
+                                                      char *media_class) {
+    g_auto(GValue) value = G_VALUE_INIT;
+    WpIterator *it = NULL;
+    GPtrArray *node_array = NULL;
+    WirePlumberServiceNode **default_node;
+    guint32 default_node_id = 0;
+
+    g_debug("wireplumber_service.c:on_object_manager_change() called");
+
+    if (g_strcmp0(media_class, "Audio/Sink") == 0) {
+        node_array = self->sinks;
+        default_node = &self->default_sink;
+        default_node_id = self->default_sink_id;
+    }
+
+    if (g_strcmp0(media_class, "Audio/Source") == 0) {
+        node_array = self->sources;
+        default_node = &self->default_source;
+        default_node_id = self->default_source_id;
+    }
+
+    it = wp_object_manager_new_filtered_iterator(
+        self->om, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY,
+        PW_KEY_MEDIA_CLASS, "=s", media_class, NULL);
+
+    for (; wp_iterator_next(it, &value); g_value_unset(&value)) {
+        GObject *obj = g_value_get_object(&value);
+        guint32 id = wp_proxy_get_bound_id(WP_PROXY(obj));
+        WirePlumberServiceNode *node = NULL;
+
+        node = g_hash_table_lookup(self->db, GUINT_TO_POINTER(id));
+        if (node) {
+            wire_plumber_service_fill_node(node, WP_GLOBAL_PROXY(obj), self);
+        } else {
+            node = wire_plumber_service_node_new(WP_GLOBAL_PROXY(obj), self);
+
+            // connect to state changes to monitor devices state.
+            g_signal_connect(WP_NODE(obj), "state-changed",
+                             G_CALLBACK(on_state_change), self);
+
+            g_hash_table_insert(self->db, GUINT_TO_POINTER(id), node);
+            g_ptr_array_add(node_array, node);
+        }
+
+        if (node->id == default_node_id) *default_node = node;
+    }
+}
+
+static void on_object_manager_change_get_links(WpObjectManager *om,
+                                               WirePlumberService *self) {
+    g_debug("wireplumber_service.c:on_object_manager_change() called");
+    g_auto(GValue) value = G_VALUE_INIT;
+    WpIterator *it = NULL;
+
+    it = wp_object_manager_new_filtered_iterator(self->om, WP_TYPE_LINK, NULL);
+
+    for (; wp_iterator_next(it, &value); g_value_unset(&value)) {
+        GObject *obj = g_value_get_object(&value);
+        guint32 id = wp_proxy_get_bound_id(WP_PROXY(obj));
+        WirePlumberServiceLink *link = NULL;
+
+        link = g_hash_table_lookup(self->db, GUINT_TO_POINTER(id));
+        if (link) {
+            wire_plumber_service_fill_link(link, WP_GLOBAL_PROXY(obj), self);
+        } else {
+            link = wire_plumber_service_link_new(WP_GLOBAL_PROXY(obj), self);
+            g_hash_table_insert(self->db, GUINT_TO_POINTER(id), link);
+            g_ptr_array_add(self->links, link);
+        }
+    }
+}
+
+static void on_object_manager_change(WpObjectManager *om,
+                                     WirePlumberService *self) {
+    g_auto(GValue) value = G_VALUE_INIT;
+
+    g_debug("wireplumber_service.c:on_object_manager_change() called");
+
+    // fill in default sink and source ids.
+    g_signal_emit_by_name(self->default_nodes_api, "get-default-node",
+                          "Audio/Sink", &self->default_sink_id);
 
     g_signal_emit_by_name(self->default_nodes_api, "get-default-node",
-                          "Audio/Source", &self->default_nodes.source.id);
+                          "Audio/Source", &self->default_source_id);
 
-    set_default_source(self);
+    // prune the database first
+    wire_plumber_service_prune_db(self);
 
-    source = wp_object_manager_lookup(
-        self->obj_mgr, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
-        "=u", self->default_nodes.source.id, NULL);
-    if (!source)
-        g_error(
-            "wireplumber_service.c:set_default_nodes() failed to find source "
-            "node");
+    // find sinks
+    on_object_manager_change_get_source_sinks(om, self, "Audio/Sink");
 
-    // wire up to state change to signal microphone active or not
-    g_signal_connect(WP_NODE(source), "state-changed",
-                     G_CALLBACK(on_source_state_change), self);
+    // find sources
+    on_object_manager_change_get_source_sinks(om, self, "Audio/Source");
+
+    // find links
+    on_object_manager_change_get_links(om, self);
+
+    // debug default nodes ids
+    g_debug(
+        "wireplumber_service.c:on_object_manager_change() default sink id: %d "
+        "default source id: %d",
+        self->default_sink_id, self->default_source_id);
 }
-
-static void on_mixer_change(WirePlumberService *self, gint32 id) {
-    g_debug("wireplumber_service.c:on_mixer_change() called");
-
-    if (id == self->default_nodes.sink.id) {
-        set_default_sink(self);
-        return;
-    };
-
-    if (id == self->default_nodes.source.id) {
-        set_default_source(self);
-        return;
-    };
-}
-
-static void set_default_nodes(WirePlumberService *self) {
-    g_debug("wireplumber_service.c:set_default_nodes() called");
-    init_default_sink(self);
-    init_default_source(self);
-};
 
 static void on_installed(WirePlumberService *self) {
     g_info(
@@ -217,12 +422,24 @@ static void on_installed(WirePlumberService *self) {
         wp_core_get_remote_name(self->core),
         wp_core_get_remote_version(self->core));
 
-    // set default nodes
-    set_default_nodes(self);
+    on_object_manager_change(self->om, self);
 
-    // connect to mixer api changed event
-    g_signal_connect_swapped(self->mixer_api, "changed",
-                             G_CALLBACK(on_mixer_change), self);
+    // emit initial signals
+    g_signal_emit(self, service_signals[default_sink_changed], 0,
+                  self->default_sink);
+    g_signal_emit(self, service_signals[default_source_changed], 0,
+                  self->default_source);
+    g_signal_emit(self, service_signals[node_changed], 0, self->db);
+    g_signal_emit(self, service_signals[microphone_active], 0,
+                  wire_plumber_service_microphone_active(self));
+
+    // listne for object manager changes
+    g_signal_connect(self->om, "objects-changed",
+                     G_CALLBACK(on_object_manager_change), self);
+
+    // listen for mixer changes
+    g_signal_connect(self->mixer_api, "changed", G_CALLBACK(on_mixer_changed),
+                     self);
 };
 
 static void on_plugin_activate(WpObject *p, GAsyncResult *res,
@@ -240,7 +457,7 @@ static void on_plugin_activate(WpObject *p, GAsyncResult *res,
     }
 
     if (--self->pending_plugins == 0)
-        wp_core_install_object_manager(self->core, self->obj_mgr);
+        wp_core_install_object_manager(self->core, self->om);
 }
 
 static void wire_plumber_service_init(WirePlumberService *self) {
@@ -249,13 +466,32 @@ static void wire_plumber_service_init(WirePlumberService *self) {
     g_debug("wireplumber_service.c:wire_plumber_service_init() called");
     wp_init(WP_INIT_PIPEWIRE);
 
+    self->db = g_hash_table_new(g_direct_hash, g_direct_equal);
+    self->sources = g_ptr_array_new();
+    self->sinks = g_ptr_array_new();
+    self->streams = g_ptr_array_new();
+    self->links = g_ptr_array_new();
+
     self->core = wp_core_new(NULL, NULL);
-    self->obj_mgr = wp_object_manager_new();
+    self->om = wp_object_manager_new();
     self->pending_plugins = 2;
 
-    wp_object_manager_add_interest(self->obj_mgr, WP_TYPE_NODE, NULL);
-    wp_object_manager_request_object_features(self->obj_mgr, WP_TYPE_NODE,
-                                              WP_PIPEWIRE_OBJECT_FEATURES_ALL);
+    WpObjectInterest *all_nodes = wp_object_interest_new_type(WP_TYPE_NODE);
+    // enabling these features will determine what 'events' are set when the
+    // WpObject params change. We want to know when the SPA data has changed
+    // so we need both _ROUTE and _PROPS feaures enabled.
+    wp_object_manager_request_object_features(
+        self->om, WP_TYPE_NODE,
+        WP_PROXY_FEATURE_BOUND | WP_PIPEWIRE_OBJECT_FEATURE_PARAM_PROPS |
+            WP_PIPEWIRE_OBJECT_FEATURE_INFO |
+            WP_PIPEWIRE_OBJECT_FEATURE_PARAM_ROUTE);
+
+    WpObjectInterest *all_links = wp_object_interest_new_type(WP_TYPE_LINK);
+    wp_object_manager_request_object_features(self->om, WP_TYPE_LINK,
+                                              WP_PROXY_FEATURE_BOUND);
+
+    wp_object_manager_add_interest_full(self->om, all_nodes);
+    wp_object_manager_add_interest_full(self->om, all_links);
 
     // load the mixer and default nodes apis.
     if (!wp_core_load_component(self->core,
@@ -298,8 +534,8 @@ static void wire_plumber_service_init(WirePlumberService *self) {
 
     // signal which runs after object manager is installed on core (after plugin
     // activation)
-    g_signal_connect_swapped(self->obj_mgr, "installed",
-                             G_CALLBACK(on_installed), self);
+    g_signal_connect_swapped(self->om, "installed", G_CALLBACK(on_installed),
+                             self);
 
     // activate plugins
     wp_object_activate(WP_OBJECT(self->default_nodes_api),
@@ -335,3 +571,121 @@ int wire_plumber_service_global_init() {
 }
 
 WirePlumberService *wire_plumber_service_get_global() { return global; }
+
+WirePlumberServiceNode *wire_plumber_service_get_default_sink(
+    WirePlumberService *self) {
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_get_default_sink() "
+        "called");
+    return self->default_sink;
+}
+
+WirePlumberServiceNode *wire_plumber_service_get_default_source(
+    WirePlumberService *self) {
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_get_default_source() "
+        "called");
+    return self->default_source;
+}
+
+GPtrArray *wire_plumber_service_get_sinks(WirePlumberService *self) {
+    g_debug("wireplumber_service.c:wire_plumber_service_get_sinks() called");
+    return self->sinks;
+}
+
+GPtrArray *wire_plumber_service_get_sources(WirePlumberService *self) {
+    g_debug("wireplumber_service.c:wire_plumber_service_get_sources() called");
+    return self->sources;
+}
+
+void wire_plumber_service_set_volume(WirePlumberService *self,
+                                     const WirePlumberServiceNode *node,
+                                     float volume) {
+    g_debug("wireplumber_service.c:wire_plumber_service_set_volume() called");
+
+    g_auto(GVariantBuilder) b = G_VARIANT_BUILDER_INIT(G_VARIANT_TYPE_VARDICT);
+    GVariant *variant = NULL;
+    gboolean res = FALSE;
+
+    g_variant_builder_add(&b, "{sv}", "volume", g_variant_new_double(volume));
+    variant = g_variant_builder_end(&b);
+
+    g_signal_emit_by_name(self->mixer_api, "set-volume", node->id, variant,
+                          &res);
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_set_volume() id: %d, "
+        "res: %d",
+        node->id, res);
+}
+
+void wire_plumber_service_volume_up(WirePlumberService *self,
+                                    const WirePlumberServiceNode *node) {
+    g_debug("wireplumber_service.c:wire_plumber_service_volume_up() called");
+    if (node->volume == 1.0) {
+        g_debug(
+            "wireplumber_service.c:wire_plumber_service_volume_up() volume is "
+            "already at max");
+        return;
+    }
+    float volume = node->volume + .5;
+    wire_plumber_service_set_volume(self, node, volume);
+}
+
+void wire_plumber_service_volume_down(WirePlumberService *self,
+                                      const WirePlumberServiceNode *node) {
+    g_debug("wireplumber_service.c:wire_plumber_service_volume_down() called");
+
+    if (node->volume == 0.0) {
+        g_debug(
+            "wireplumber_service.c:wire_plumber_service_volume_down() volume "
+            "is already at min");
+        return;
+    }
+    float volume = node->volume - .5;
+    wire_plumber_service_set_volume(self, node, volume);
+}
+
+void wire_plumber_service_volume_mute(WirePlumberService *self,
+                                      const WirePlumberServiceNode *node) {
+    gboolean res = FALSE;
+
+    g_debug("wireplumber_service.c:wire_plumber_service_volume_mute() called");
+
+    g_auto(GVariantBuilder) b = G_VARIANT_BUILDER_INIT(G_VARIANT_TYPE_VARDICT);
+    GVariant *variant = NULL;
+
+    g_variant_builder_add(&b, "{sv}", "mute", g_variant_new_boolean(true));
+    variant = g_variant_builder_end(&b);
+
+    g_signal_emit_by_name(self->mixer_api, "set-volume", node->id, variant,
+                          &res);
+
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_volume_mute() id: %d, res: "
+        "%d",
+        node->id, res);
+}
+
+void wire_plumber_service_volume_unmute(WirePlumberService *self,
+                                        const WirePlumberServiceNode *node) {
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_volume_unmute() called");
+
+    gboolean res = FALSE;
+
+    g_debug("wireplumber_service.c:wire_plumber_service_volume_mute() called");
+
+    g_auto(GVariantBuilder) b = G_VARIANT_BUILDER_INIT(G_VARIANT_TYPE_VARDICT);
+    GVariant *variant = NULL;
+
+    g_variant_builder_add(&b, "{sv}", "mute", g_variant_new_boolean(false));
+    variant = g_variant_builder_end(&b);
+
+    g_signal_emit_by_name(self->mixer_api, "set-volume", node->id, variant,
+                          &res);
+
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_volume_mute() id: %d, res: "
+        "%d",
+        node->id, res);
+}

@@ -9,6 +9,8 @@ static void on_default_nodes_changed(WirePlumberService *self, guint32 id,
     WirePlumberServiceDefaultNodes nodes;
     wire_plumber_service_get_default_nodes(self, &nodes);
 
+    return;
+
     g_debug("quick_settings_audio_scales.c:on_default_nodes_changed() called.");
 
     if (id == nodes.sink.id || id == 0) {
