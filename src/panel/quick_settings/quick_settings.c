@@ -8,6 +8,7 @@
 #include "quick_settings_grid/quick_settings_grid.h"
 #include "quick_settings_header/quick_settings_header.h"
 #include "quick_settings_mediator.h"
+#include "quick_settings_scales/quick_settings_scales.h"
 
 // global QuickSettingsMediator.
 static QuickSettingsMediator *mediator = NULL;
@@ -23,6 +24,7 @@ struct _QuickSettings {
     QuickSettingsHeader *header;
     QuickSettingsGrid *qs_grid;
     AudioScales audio_scales;
+    QuickSettingsScales *scales;
     AdwWindow *underlay;
     GdkMonitor *monitor;
 };
@@ -39,6 +41,7 @@ static void quick_settings_dispose(GObject *gobject) {
     g_object_unref(self->header);
     g_object_unref(self->qs_grid);
     g_object_unref(self->underlay);
+    g_object_unref(self->scales);
 
     // Chain-up
     G_OBJECT_CLASS(quick_settings_parent_class)->dispose(gobject);
@@ -171,8 +174,13 @@ static void quick_settings_init_layout(QuickSettings *self) {
                    quick_settings_header_get_widget(self->header));
 
     // attach audio scales
-    quick_settings_audio_scales_init(&self->audio_scales);
-    gtk_box_append(self->container, GTK_WIDGET(self->audio_scales.container));
+    // quick_settings_audio_scales_init(&self->audio_scales);
+    // gtk_box_append(self->container,
+    // GTK_WIDGET(self->audio_scales.container));
+
+    self->scales = g_object_new(QUICK_SETTINGS_SCALES_TYPE, NULL);
+    gtk_box_append(self->container,
+                   quick_settings_scales_get_widget(self->scales));
 
     // attach quick settings grid
     gtk_box_append(self->container,
@@ -204,6 +212,7 @@ void quick_settings_reinitialize(QuickSettings *self) {
     // reinitialize dependent widgets
     quick_settings_grid_reinitialize(self->qs_grid);
     quick_settings_header_reinitialize(self->header);
+    quick_settings_scales_reinitialize(self->scales);
 
     // reinit our layout
     quick_settings_init_layout(self);

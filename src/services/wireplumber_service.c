@@ -601,7 +601,9 @@ GPtrArray *wire_plumber_service_get_sources(WirePlumberService *self) {
 void wire_plumber_service_set_volume(WirePlumberService *self,
                                      const WirePlumberServiceNode *node,
                                      float volume) {
-    g_debug("wireplumber_service.c:wire_plumber_service_set_volume() called");
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_set_volume() called: %f",
+        volume);
 
     g_auto(GVariantBuilder) b = G_VARIANT_BUILDER_INIT(G_VARIANT_TYPE_VARDICT);
     GVariant *variant = NULL;
@@ -688,4 +690,30 @@ void wire_plumber_service_volume_unmute(WirePlumberService *self,
         "wireplumber_service.c:wire_plumber_service_volume_mute() id: %d, res: "
         "%d",
         node->id, res);
+}
+
+char *wire_plumber_service_map_source_vol_icon(float vol, gboolean mute) {
+    if (mute) {
+        return "microphone-sensitivity-muted-symbolic";
+    }
+    if (vol < 0.25) {
+        return "microphone-sensitivity-low-symbolic";
+    }
+    if (vol >= 0.25 && vol < 0.5) {
+        return "microphone-sensitivity-medium-symbolic";
+    }
+    return "microphone-sensitivity-high-symbolic";
+}
+
+char *wire_plumber_service_map_sink_vol_icon(float vol, gboolean mute) {
+    if (mute) {
+        return "audio-volume-muted-symbolic";
+    }
+    if (vol < 0.25) {
+        return "audio-volume-low-symbolic";
+    }
+    if (vol >= 0.25 && vol < 0.5) {
+        return "audio-volume-medium-symbolic";
+    }
+    return "audio-volume-high-symbolic";
 }

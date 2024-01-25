@@ -116,6 +116,7 @@ static void on_default_sink_changed(WirePlumberService *wp,
     if (sink->mute) {
         gtk_image_set_from_icon_name(self->speaker_icon,
                                      "audio-volume-muted-symbolic");
+        return;
     }
     if (sink->volume < 0.25) {
         gtk_image_set_from_icon_name(self->speaker_icon,

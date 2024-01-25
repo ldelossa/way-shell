@@ -123,3 +123,7 @@ GPtrArray *wire_plumber_service_get_sinks(WirePlumberService *self);
 GPtrArray *wire_plumber_service_get_sources(WirePlumberService *self);
 
 gboolean wire_plumber_service_microphone_active(WirePlumberService *self);
+
+char * wire_plumber_service_map_source_vol_icon(float vol, gboolean mute);
+
+char * wire_plumber_service_map_sink_vol_icon(float vol, gboolean mute);
