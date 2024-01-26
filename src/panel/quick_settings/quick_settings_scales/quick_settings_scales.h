@@ -12,3 +12,6 @@ G_END_DECLS
 void quick_settings_scales_reinitialize(QuickSettingsScales *self);
 
 GtkWidget *quick_settings_scales_get_widget(QuickSettingsScales *self);
+
+void quick_settings_scales_disable_audio_scales(
+    QuickSettingsScales *self, gboolean disable);

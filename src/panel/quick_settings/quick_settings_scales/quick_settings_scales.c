@@ -131,8 +131,7 @@ static void on_source_scale_value_changed(GtkRange *range,
     WirePlumberServiceNode *default_source =
         wire_plumber_service_get_default_source(wp);
     if (!default_source) return;
-    wire_plumber_service_set_volume(wp, default_source,
-                                    r);
+    wire_plumber_service_set_volume(wp, default_source, r);
     // manually map icon since we turn off wire plumber events in here
     gchar *icon = wire_plumber_service_map_source_vol_icon(r, false);
     gtk_image_set_from_icon_name(self->default_source_icon, icon);
@@ -147,8 +146,7 @@ static void on_sink_scale_value_changed(GtkRange *range,
     WirePlumberServiceNode *default_sink =
         wire_plumber_service_get_default_sink(wp);
     if (!default_sink) return;
-    wire_plumber_service_set_volume(wp, default_sink,
-                                    r);
+    wire_plumber_service_set_volume(wp, default_sink, r);
     // manually map icon since we turn off wire plumber events in here
     gchar *icon = wire_plumber_service_map_sink_vol_icon(r, false);
     gtk_image_set_from_icon_name(self->default_sink_icon, icon);
@@ -346,4 +344,32 @@ GtkWidget *quick_settings_scales_get_widget(QuickSettingsScales *self) {
         "quick_settings_scales.c:quick_settings_scales_get_widget() called.");
 
     return GTK_WIDGET(self->container);
+}
+
+void quick_settings_scales_disable_audio_scales(
+    QuickSettingsScales *self, gboolean disable) {
+    WirePlumberService *wp = wire_plumber_service_get_global();
+    if (!wp) return;
+
+    // hide audio scales
+    gtk_widget_set_visible(GTK_WIDGET(self->default_sink_container), !disable);
+    gtk_widget_set_visible(GTK_WIDGET(self->default_source_container),
+                           !disable);
+
+    if (disable) {
+        // block signals
+        g_signal_handlers_block_by_func(
+            wp, G_CALLBACK(on_default_source_change), self);
+        g_signal_handlers_block_by_func(wp, G_CALLBACK(on_default_sink_change),
+                                        self);
+    } else {
+        // unblock signals
+        g_signal_handlers_unblock_by_func(
+            wp, G_CALLBACK(on_default_source_change), self);
+        g_signal_handlers_unblock_by_func(
+            wp, G_CALLBACK(on_default_sink_change), self);
+        // perform our events manually, since we may not have a signal coming.
+        on_default_sink_change(wp, self->default_sink_node, self);
+        on_default_source_change(wp, self->active_source_node, self);
+    }
 }

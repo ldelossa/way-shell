@@ -510,8 +510,7 @@ static void on_object_manager_change_get_audio_streams(
 
     it = wp_object_manager_new_filtered_iterator(
         self->om, WP_TYPE_NODE, WP_CONSTRAINT_TYPE_PW_PROPERTY,
-        PW_KEY_MEDIA_CLASS, "#s", "Stream/*",
-        NULL);
+        PW_KEY_MEDIA_CLASS, "#s", "Stream/*", NULL);
 
     for (; wp_iterator_next(it, &value); g_value_unset(&value)) {
         GObject *obj = g_value_get_object(&value);

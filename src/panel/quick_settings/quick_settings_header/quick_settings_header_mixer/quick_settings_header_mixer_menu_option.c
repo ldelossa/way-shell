@@ -430,7 +430,7 @@ static void set_stream(QuickSettingsHeaderMixerMenuOption *self,
     if (icon)
         gtk_image_set_from_gicon(self->icon, icon);
     else
-        gtk_image_set_from_icon_name(self->icon, "audio-speakers-symbolic");
+        gtk_image_set_from_icon_name(self->icon, "applications-multimedia-symbolic");
 
     // set name and tooltip based on stream direction
     if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM) {

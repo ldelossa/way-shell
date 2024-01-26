@@ -9,7 +9,7 @@
 #include "quick_settings_header_mixer/quick_settings_header_mixer.h"
 #include "quick_settings_power_menu.h"
 
-enum signals { signals_n };
+enum signals { mixer_revealed, signals_n };
 
 typedef struct _QuickSettingsHeader {
     GObject parent_instance;
@@ -22,6 +22,7 @@ typedef struct _QuickSettingsHeader {
     QuickSettingsHeaderMixer *mixer;
     GtkRevealer *mixer_revealer;
 } QuickSettingsHeader;
+guint signals[signals_n] = {0};
 G_DEFINE_TYPE(QuickSettingsHeader, quick_settings_header, G_TYPE_OBJECT);
 
 static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
@@ -32,6 +33,7 @@ static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
         "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
     gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
+    g_signal_emit(self, signals[mixer_revealed], 0, FALSE);
 }
 
 static void on_power_button_click(GtkButton *button,
@@ -54,6 +56,9 @@ static void on_mixer_button_click(GtkButton *button,
 
     // close power menu revealer
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+
+    // emit revealed signal
+    g_signal_emit(self, signals[mixer_revealed], 0, !revealed);
 }
 
 // stub out empty dispose, finalize, class_init, and init methods for this
@@ -83,6 +88,10 @@ static void quick_settings_header_class_init(QuickSettingsHeaderClass *klass) {
     GObjectClass *object_class = G_OBJECT_CLASS(klass);
     object_class->dispose = quick_settings_header_dispose;
     object_class->finalize = quick_settings_header_finalize;
+
+    signals[mixer_revealed] = g_signal_new(
+        "mixer-revealed", G_TYPE_FROM_CLASS(object_class), G_SIGNAL_RUN_FIRST,
+        0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 };
 
 static void on_reveal_finish(GtkRevealer *revealer, GParamSpec *spec,
@@ -143,8 +152,8 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     gtk_box_append(
         buttons_box,
         GTK_WIDGET(quick_settings_header_mixer_get_mixer_button(self->mixer)));
-    g_signal_connect(quick_settings_header_mixer_get_mixer_button(self->mixer), "clicked",
-                     G_CALLBACK(on_mixer_button_click), self);
+    g_signal_connect(quick_settings_header_mixer_get_mixer_button(self->mixer),
+                     "clicked", G_CALLBACK(on_mixer_button_click), self);
 
     // create power button and append it to buttons box
     self->power_button =

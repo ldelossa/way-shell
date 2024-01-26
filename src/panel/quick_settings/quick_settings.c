@@ -200,23 +200,17 @@ static void on_window_destroy(GtkWindow *win, QuickSettings *self) {
     quick_settings_reinitialize(self);
 };
 
-void quick_settings_reinitialize(QuickSettings *self) {
-    g_debug("quick_settings.c:quick_settings_reinitialize() called.");
-
-    // kill our signals
-    g_signal_handlers_disconnect_by_func(self->win, on_window_destroy, self);
-
-    // reset mediator's pointer to us
-    quick_settings_mediator_set_qs(mediator, self);
-
-    // reinitialize dependent widgets
-    quick_settings_grid_reinitialize(self->qs_grid);
-    quick_settings_header_reinitialize(self->header);
-    quick_settings_scales_reinitialize(self->scales);
-
-    // reinit our layout
-    quick_settings_init_layout(self);
-}
+// When the mixer is revealed we want to disable our audio scales, since this
+// would show redundant audio sliders.
+static void on_mixer_revealed(QuickSettingsHeader *header, gboolean revealed,
+                              QuickSettings *self) {
+    g_debug("quick_settings.c:on_mixer_revealed() called.");
+    if (revealed) {
+        quick_settings_scales_disable_audio_scales(self->scales, true);
+    } else {
+        quick_settings_scales_disable_audio_scales(self->scales, false);
+    }
+};
 
 static void quick_settings_init(QuickSettings *self) {
     // initialize depedent widgets
@@ -224,6 +218,10 @@ static void quick_settings_init(QuickSettings *self) {
     self->qs_grid = g_object_new(QUICK_SETTINGS_GRID_TYPE, NULL);
 
     quick_settings_init_layout(self);
+
+    // connect to header's mixer-revealed signal
+    g_signal_connect(self->header, "mixer-revealed",
+                     G_CALLBACK(on_mixer_revealed), self);
 };
 
 static void animation_open_done(AdwAnimation *animation, QuickSettings *qs) {
@@ -288,6 +286,25 @@ void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
 QuickSettingsMediator *quick_settings_get_global_mediator() {
     return mediator;
 };
+
+void quick_settings_reinitialize(QuickSettings *self) {
+    g_debug("quick_settings.c:quick_settings_reinitialize() called.");
+
+    // kill our signals
+    g_signal_handlers_disconnect_by_func(self->win, on_window_destroy, self);
+    g_signal_handlers_disconnect_by_func(self->header, on_mixer_revealed, self);
+
+    // reset mediator's pointer to us
+    quick_settings_mediator_set_qs(mediator, self);
+
+    // reinitialize dependent widgets
+    quick_settings_grid_reinitialize(self->qs_grid);
+    quick_settings_header_reinitialize(self->header);
+    quick_settings_scales_reinitialize(self->scales);
+
+    // reinit our layout
+    quick_settings_init_layout(self);
+}
 
 void quick_settings_activate(AdwApplication *app, gpointer user_data) {
     mediator = g_object_new(QUICK_SETTINGS_MEDIATOR_TYPE, NULL);
