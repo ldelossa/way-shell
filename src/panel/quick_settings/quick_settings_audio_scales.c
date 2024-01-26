@@ -11,7 +11,8 @@ static void on_default_nodes_changed(WirePlumberService *self, guint32 id,
 
     return
 
-    g_debug("quick_settings_audio_scales.c:on_default_nodes_changed() called.");
+        g_debug(
+            "quick_settings_audio_scales.c:on_default_nodes_changed() called.");
 
     if (id == nodes.sink.id || id == 0) {
         if (nodes.sink.mute) {
@@ -132,9 +133,6 @@ void quick_settings_audio_scales_init(AudioScales *scales) {
     // wire to default-nodes-changed event
     g_signal_connect(wp, "default-nodes-changed",
                      G_CALLBACK(on_default_nodes_changed), scales);
-
-    // request an event from wp
-    wire_plumber_service_default_nodes_req(wp);
 }
 
 void quick_settings_audio_scales_free(AudioScales *scales) {

@@ -6,6 +6,7 @@
 #include "../quick_settings_mediator.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_battery_button.h"
+#include "quick_settings_header_mixer/quick_settings_header_mixer.h"
 #include "quick_settings_power_menu.h"
 
 enum signals { signals_n };
@@ -17,7 +18,9 @@ typedef struct _QuickSettingsHeader {
     QuickSettingsBatteryButton *battery_button;
     QuickSettingsPowerMenu *power_menu;
     GtkButton *power_button;
-    GtkRevealer *revealer;
+    GtkRevealer *power_menu_revealer;
+    QuickSettingsHeaderMixer *mixer;
+    GtkRevealer *mixer_revealer;
 } QuickSettingsHeader;
 G_DEFINE_TYPE(QuickSettingsHeader, quick_settings_header, G_TYPE_OBJECT);
 
@@ -27,16 +30,24 @@ static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
                                                QuickSettingsHeader *self) {
     g_debug(
         "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
-    gtk_revealer_set_reveal_child(self->revealer, FALSE);
+    gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
 }
 
 static void on_power_button_click(GtkButton *button,
                                   QuickSettingsHeader *self) {
     g_debug("quick_settings.c:on_power_button_click() called.");
     gboolean revealed =
-        gtk_revealer_get_reveal_child(GTK_REVEALER(self->revealer));
-    gtk_revealer_set_reveal_child(self->revealer, !revealed);
+        gtk_revealer_get_reveal_child(GTK_REVEALER(self->power_menu_revealer));
+    gtk_revealer_set_reveal_child(self->power_menu_revealer, !revealed);
 };
+
+static void on_mixer_button_click(GtkButton *button,
+                                  QuickSettingsHeader *self) {
+    g_debug("quick_settings.c:on_mixer_button_click() called.");
+    gboolean revealed =
+        gtk_revealer_get_reveal_child(GTK_REVEALER(self->mixer_revealer));
+    gtk_revealer_set_reveal_child(self->mixer_revealer, !revealed);
+}
 
 // stub out empty dispose, finalize, class_init, and init methods for this
 // GObject.
@@ -70,7 +81,7 @@ static void quick_settings_header_class_init(QuickSettingsHeaderClass *klass) {
 static void on_reveal_finish(GtkRevealer *revealer, GParamSpec *spec,
                              QuickSettingsHeader *self) {
     gboolean revealed =
-        gtk_revealer_get_reveal_child(GTK_REVEALER(self->revealer));
+        gtk_revealer_get_reveal_child(GTK_REVEALER(self->power_menu_revealer));
     if (!revealed) {
         QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
         quick_settings_mediator_req_shrink(mediator);
@@ -87,34 +98,62 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     gtk_widget_set_name(GTK_WIDGET(self->center_box), "quick-settings-header");
 
     // create GtkRevealer to reveal power menu
-    self->revealer = GTK_REVEALER(gtk_revealer_new());
-    gtk_revealer_set_transition_type(self->revealer,
+    self->power_menu_revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->power_menu_revealer,
                                      GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
-    gtk_revealer_set_transition_duration(self->revealer, 250);
-    gtk_revealer_set_reveal_child(self->revealer, FALSE);
-    gtk_box_append(self->container, GTK_WIDGET(self->revealer));
-    // wire into child-revealed GObject notify signal to shrink QuickSettings
-    // when unrevealed.
-    g_signal_connect(self->revealer, "notify::child-revealed",
+    gtk_revealer_set_transition_duration(self->power_menu_revealer, 250);
+    gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+
+    gtk_box_append(self->container, GTK_WIDGET(self->power_menu_revealer));
+
+    g_signal_connect(self->power_menu_revealer, "notify::child-revealed",
                      G_CALLBACK(on_reveal_finish), self);
 
-    // attach power menu to GtkRevealer
     gtk_revealer_set_child(
-        self->revealer, quick_settings_power_menu_get_widget(self->power_menu));
+        self->power_menu_revealer,
+        quick_settings_power_menu_get_widget(self->power_menu));
 
-    // create power button
+    // create GtkRevealer for mixer
+    self->mixer_revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->mixer_revealer,
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+    gtk_revealer_set_transition_duration(self->mixer_revealer, 250);
+    gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
+
+    gtk_box_append(self->container, GTK_WIDGET(self->mixer_revealer));
+
+    g_signal_connect(self->mixer_revealer, "notify::child-revealed",
+                     G_CALLBACK(on_reveal_finish), self);
+
+    gtk_revealer_set_child(
+        self->mixer_revealer,
+        quick_settings_header_mixer_get_menu_widget(self->mixer));
+
+    // create right side buttons box
+    GtkBox *buttons_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8));
+
+    // append mixer's button to button box
+    gtk_box_append(
+        buttons_box,
+        GTK_WIDGET(quick_settings_header_mixer_get_mixer_button(self->mixer)));
+    g_signal_connect(quick_settings_header_mixer_get_mixer_button(self->mixer), "clicked",
+                     G_CALLBACK(on_mixer_button_click), self);
+
+    // create power button and append it to buttons box
     self->power_button =
         GTK_BUTTON(gtk_button_new_from_icon_name("system-shutdown-symbolic"));
     gtk_widget_add_css_class(GTK_WIDGET(self->power_button), "circular");
     g_signal_connect(self->power_button, "clicked",
                      G_CALLBACK(on_power_button_click), self);
 
+    gtk_box_append(buttons_box, GTK_WIDGET(self->power_button));
+
+    gtk_center_box_set_end_widget(self->center_box, GTK_WIDGET(buttons_box));
+
+    // add battery button to left side of header.
     gtk_center_box_set_start_widget(
         self->center_box,
         quick_settings_battery_button_get_widget(self->battery_button));
-
-    gtk_center_box_set_end_widget(self->center_box,
-                                  GTK_WIDGET(self->power_button));
 
     // wire into quick settings mediator hidden event
     QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
@@ -126,7 +165,10 @@ static void quick_settings_header_init(QuickSettingsHeader *self) {
     // load up children depedencies.
     self->battery_button =
         g_object_new(QUICK_SETTINGS_BATTERY_BUTTON_TYPE, NULL);
+
     self->power_menu = g_object_new(QUICK_SETTINGS_POWER_MENU_TYPE, NULL);
+
+    self->mixer = g_object_new(QUICK_SETTINGS_HEADER_MIXER_TYPE, NULL);
 
     // initialize layout
     quick_settings_header_init_layout(self);

@@ -183,9 +183,6 @@ static void panel_status_bar_sound_button_init_layout(
     on_default_sink_changed(wps, wire_plumber_service_get_default_sink(wps),
                             self);
 
-    // self->signal_id =
-    //     g_signal_connect(wps, "default_nodes_changed",
-    //                      G_CALLBACK(on_default_nodes_changed), self);
     self->active_mic_signal_id = g_signal_connect(
         wps, "microphone-active", G_CALLBACK(on_microphone_active), self);
     self->default_sink_signal_id = g_signal_connect(

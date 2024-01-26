@@ -7,6 +7,21 @@ enum {
     SCALE_CUBIC,
 };
 
+enum WirePlumberServiceType {
+    WIRE_PLUMBER_SERVICE_TYPE_UNKNOWN,
+    WIRE_PLUMBER_SERVICE_TYPE_SINK,
+    WIRE_PLUMBER_SERVICE_TYPE_SOURCE,
+    WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM,
+    WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM,
+    WIRE_PLUMBER_SERVICE_TYPE_LINK,
+};
+
+// This is a header type which any pointer to a WirePlumberServiceNode type can
+// be casted to to discover the type.
+typedef struct _WirePlumberServiceNodeHeader {
+    enum WirePlumberServiceType type;
+} WirePlumberServiceNodeHeader;
+
 static inline gdouble volume_from_linear(float vol, gint scale) {
     if (vol <= 0.0f)
         return 0.0;
@@ -27,8 +42,10 @@ static inline float volume_to_linear(gdouble vol, gint scale) {
 
 // A Pipewire Node inventoried by the WirePlumberService.
 typedef struct WirePlumberServiceNode {
+    enum WirePlumberServiceType type;
     const gchar *name;
     const gchar *media_class;
+    const gchar *nick_name;
     guint32 id;
     gdouble volume;
     gboolean mute;
@@ -40,6 +57,7 @@ typedef struct WirePlumberServiceNode {
 
 // A Pipewire Node inventoried by the WirePlumberService.
 typedef struct WirePlumberServiceAudioStream {
+    enum WirePlumberServiceType type;
     const gchar *name;
     const gchar *app_name;
     const gchar *media_class;
@@ -50,9 +68,10 @@ typedef struct WirePlumberServiceAudioStream {
     gdouble step;
     gdouble base;
     WpNodeState state;
-} WirePlumberAudioStream;
+} WirePlumberServiceAudioStream;
 
 typedef struct WirePlumberServiceLink {
+    enum WirePlumberServiceType type;
     guint32 id;
     guint32 input_node_id;
     guint32 output_node_id;
@@ -81,10 +100,6 @@ int wire_plumber_service_global_init(void);
 
 // Returns the global WirePlumberService instance.
 WirePlumberService *wire_plumber_service_get_global(void);
-
-// Requests the provided WirePlumberService to emit a new default_nodes_changed
-// signal.
-void wire_plumber_service_default_nodes_req(WirePlumberService *self);
 
 // Returns the latest default nodes from a WirePlumberService instance.
 // Typically called with the WirePlumberService argument in a handler of the
@@ -122,8 +137,14 @@ GPtrArray *wire_plumber_service_get_sinks(WirePlumberService *self);
 
 GPtrArray *wire_plumber_service_get_sources(WirePlumberService *self);
 
+GPtrArray *wire_plumber_service_get_streams(WirePlumberService *self);
+
+GPtrArray *wire_plumber_service_get_links(WirePlumberService *self);
+
 gboolean wire_plumber_service_microphone_active(WirePlumberService *self);
 
-char * wire_plumber_service_map_source_vol_icon(float vol, gboolean mute);
+char *wire_plumber_service_map_source_vol_icon(float vol, gboolean mute);
 
-char * wire_plumber_service_map_sink_vol_icon(float vol, gboolean mute);
+char *wire_plumber_service_map_sink_vol_icon(float vol, gboolean mute);
+
+GHashTable *wire_plumber_service_get_db(WirePlumberService *self);

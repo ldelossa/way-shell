@@ -5,10 +5,12 @@ void quick_settings_menu_widget_init(QuickSettingsMenuWidget *self,
     // create container for entire widget
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->container), "quick-settings-menu");
+    gtk_widget_set_vexpand(GTK_WIDGET(self->container), true);
 
     // create container for options area
     self->options_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->options_container), "container");
+    gtk_widget_set_vexpand(GTK_WIDGET(self->options_container), true);
 
     // create title box [icon label]
     self->title_container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
@@ -46,7 +48,7 @@ void quick_settings_menu_widget_init(QuickSettingsMenuWidget *self,
     gtk_box_append(self->options_container, GTK_WIDGET(self->banner));
     if (scrolling) {
         self->scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
-        gtk_widget_set_size_request(GTK_WIDGET(self->scroll), -1, 240);
+        gtk_widget_set_vexpand(GTK_WIDGET(self->scroll), true);
         gtk_scrolled_window_set_child(self->scroll, GTK_WIDGET(self->options));
         gtk_box_append(self->options_container, GTK_WIDGET(self->scroll));
     } else

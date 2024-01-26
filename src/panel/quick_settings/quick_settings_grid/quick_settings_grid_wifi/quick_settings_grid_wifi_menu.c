@@ -160,6 +160,8 @@ static void quick_settings_grid_wifi_menu_init_layout(
     quick_settings_menu_widget_set_icon(
         &self->menu, "network-wireless-signal-excellent-symbolic");
     quick_settings_menu_widget_set_title(&self->menu, "Wi-Fi");
+    gtk_widget_set_size_request(GTK_WIDGET(self->menu.container), -1, 420);
+
 
     // create failure banner
     self->failure_banner_container =

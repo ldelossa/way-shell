@@ -1,3 +1,7 @@
+.active-icon-activated {
+  color: #26a269;
+}
+
 /*
 / Underlay
 */
@@ -306,6 +310,10 @@ label.day-number.today:focus {
   color: #f2f2f2;
 }
 
+/*
+/ Quick Settings Header (note: right side button box spacing set in GtkBox settings to 8)
+*/
+
 #quick-settings-header {
   padding: 4px;
 }
@@ -390,6 +398,7 @@ label.day-number.today:focus {
 #quick-settings .quick-settings-grid-button button:hover {
   background-color: #62a0ea;
 }
+
 #quick-settings .quick-settings-grid-button button:active {
   background-color: #3584e4;
 }
@@ -523,12 +532,20 @@ label.day-number.today:focus {
   padding-bottom: 0px;
 }
 
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi entry {
+  margin: 6px;
+}
+
 .failure-banner {
   background-color: #ed333b;
   font-size: 20px;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;
 }
+
+/*
+ * Quick Settings Menu Power Profiles Options
+ */
 
 #quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles image,
 #quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles label {
@@ -538,6 +555,18 @@ label.day-number.today:focus {
   padding-bottom: 0px;
 }
 
-#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi entry {
-	margin: 6px;
+/*
+ * Quick Settings Menu Mixer Options
+ */
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-mixer image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-mixer label {
+  padding-left: 7px;
+  padding-right: 4px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+#quick-settings-menu #container #options-container .mixer-link {
+  margin-left: 14px;
 }
