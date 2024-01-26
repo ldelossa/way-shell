@@ -270,6 +270,9 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     gtk_widget_set_name(GTK_WIDGET(self->default_source_container),
                         "default-source-container");
 
+    // sart source as hidden
+    gtk_widget_set_visible(GTK_WIDGET(self->default_source_container), false);
+
     gtk_widget_add_controller(GTK_WIDGET(self->default_source_container),
                               GTK_EVENT_CONTROLLER(self->default_source_ctlr));
 
@@ -327,6 +330,10 @@ void quick_settings_scales_reinitialize(QuickSettingsScales *self) {
 
     // re-init layout
     quick_settings_scales_init_layout(self);
+
+    // run callbacks manually to set values
+    on_default_sink_change(wp, self->default_sink_node, self);
+    on_default_source_change(wp, self->active_source_node, self);
 }
 
 static void quick_settings_scales_init(QuickSettingsScales *self) {

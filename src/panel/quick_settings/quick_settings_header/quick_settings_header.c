@@ -31,6 +31,7 @@ static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
     g_debug(
         "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+    gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
 }
 
 static void on_power_button_click(GtkButton *button,
@@ -39,6 +40,9 @@ static void on_power_button_click(GtkButton *button,
     gboolean revealed =
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->power_menu_revealer));
     gtk_revealer_set_reveal_child(self->power_menu_revealer, !revealed);
+
+    // close mixer revealer
+    gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
 };
 
 static void on_mixer_button_click(GtkButton *button,
@@ -47,6 +51,9 @@ static void on_mixer_button_click(GtkButton *button,
     gboolean revealed =
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->mixer_revealer));
     gtk_revealer_set_reveal_child(self->mixer_revealer, !revealed);
+
+    // close power menu revealer
+    gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
 }
 
 // stub out empty dispose, finalize, class_init, and init methods for this
@@ -185,6 +192,7 @@ void quick_settings_header_reinitialize(QuickSettingsHeader *self) {
     // call reinitialize on children widget
     quick_settings_battery_button_reinitialize(self->battery_button);
     quick_settings_power_menu_reinitialize(self->power_menu);
+    quick_settings_header_mixer_reinitialize(self->mixer);
 
     // call layout reinit for ourselves
     quick_settings_header_init_layout(self);

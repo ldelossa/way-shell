@@ -28,15 +28,13 @@ enum signals { signals_n };
 typedef struct _QuickSettingsHeaderMixerMenuOption {
     GObject parent_instance;
     WirePlumberServiceNodeHeader *node;
-    WirePlumberServiceNode *sink;
-    WirePlumberServiceNode *source;
-    WirePlumberServiceAudioStream *stream;
     GtkBox *container;
     GtkButton *button;
     GtkBox *button_contents;
     GtkLabel *node_name;
     GtkImage *icon;
     GtkImage *active_icon;
+    GtkEventControllerMotion *ctlr;
     GtkScale *volume_scale;
     GtkLabel *link;
     GtkRevealer *revealer;
@@ -45,12 +43,21 @@ typedef struct _QuickSettingsHeaderMixerMenuOption {
 G_DEFINE_TYPE(QuickSettingsHeaderMixerMenuOption,
               quick_settings_header_mixer_menu_option, G_TYPE_OBJECT);
 
+// event handler forward declare
+static void on_wire_plumber_service_node_changed(
+    WirePlumberService *wps, WirePlumberServiceNodeHeader *header,
+    QuickSettingsHeaderMixerMenuOption *self);
+
 // stub out empty dispose, finalize, class_init, and init methods for this
 // GObject.
 static void quick_settings_header_mixer_menu_option_dispose(GObject *gobject) {
     QuickSettingsHeaderMixerMenuOption *self =
         QUICK_SETTINGS_HEADER_MIXER_MENU_OPTION(gobject);
 
+    // kill signals to wire_plumber_service
+    g_signal_handlers_disconnect_by_func(wire_plumber_service_get_global(),
+                                         on_wire_plumber_service_node_changed,
+                                         self);
     g_debug(
         "quick_settings_header_mixer_menu_option.c:"
         "quick_settings_header_mixer_menu_option_dispose() called.");
@@ -81,13 +88,65 @@ static void on_option_click(GtkButton *button,
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->revealer));
     gtk_revealer_set_reveal_child(self->revealer, !revealed);
     if (!revealed) {
-        // grab focus of revealer_content
         gtk_widget_grab_focus(GTK_WIDGET(self->revealer_content));
     }
 }
 
+static void on_scale_value_changed(GtkRange *range,
+                                   QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_scale_value_changed() "
+        "called.");
+
+    // get value of scale and set volume of node
+    double value = gtk_range_get_value(range);
+    wire_plumber_service_set_volume(wire_plumber_service_get_global(),
+                                    (WirePlumberServiceNode *)self->node,
+                                    value);
+}
+
+static void on_volume_scale_enter(GtkEventControllerMotion *ctlr, double x,
+                                  double y,
+                                  QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_volume_scale_enter() "
+        "called.");
+
+    // pause node-changed events
+    WirePlumberService *wp = wire_plumber_service_get_global();
+
+    g_signal_handlers_block_by_func(
+        wp, G_CALLBACK(on_wire_plumber_service_node_changed), self);
+
+    // unblock gtk scale handler
+    g_signal_handlers_unblock_by_func(GTK_RANGE(self->volume_scale),
+                                      G_CALLBACK(on_scale_value_changed), self);
+}
+
+static void on_volume_scale_leave(GtkEventControllerMotion *ctlr, double x,
+                                  double y,
+                                  QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_volume_scale_leave() "
+        "called.");
+
+    // pause node-changed events
+    WirePlumberService *wp = wire_plumber_service_get_global();
+
+    // unblock gtk scale handler
+    g_signal_handlers_block_by_func(GTK_RANGE(self->volume_scale),
+                                    G_CALLBACK(on_scale_value_changed), self);
+
+    g_signal_handlers_unblock_by_func(
+        wp, G_CALLBACK(on_wire_plumber_service_node_changed), self);
+}
+
 static void quick_settings_header_mixer_menu_option_init_layout(
     QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:"
+        "quick_settings_header_mixer_menu_option_init_layout() called.");
+
     // create main container
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_add_css_class(GTK_WIDGET(self->container),
@@ -120,6 +179,22 @@ static void quick_settings_header_mixer_menu_option_init_layout(
         gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1.0, .5));
     gtk_widget_set_hexpand(GTK_WIDGET(self->volume_scale), true);
 
+    // wire scale into handler
+    g_signal_connect(self->volume_scale, "value-changed",
+                     G_CALLBACK(on_scale_value_changed), self);
+
+    // create motion controller for handling mouse in/out events on scale
+    self->ctlr = GTK_EVENT_CONTROLLER_MOTION(gtk_event_controller_motion_new());
+    gtk_widget_add_controller(GTK_WIDGET(self->volume_scale),
+                              GTK_EVENT_CONTROLLER(self->ctlr));
+
+    // wire into motion controller's enter event
+    g_signal_connect(self->ctlr, "enter", G_CALLBACK(on_volume_scale_enter),
+                     self);
+
+    g_signal_connect(self->ctlr, "leave", G_CALLBACK(on_volume_scale_leave),
+                     self);
+
     // add button_contents as button child
     gtk_button_set_child(self->button, GTK_WIDGET(self->button_contents));
 
@@ -139,32 +214,61 @@ static void quick_settings_header_mixer_menu_option_init_layout(
                      self);
 };
 
+static void on_widget_destroy(GtkWidget *widget,
+                              QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_widget_destroy() "
+        "called.");
+    g_object_unref(self);
+}
+
 static void quick_settings_header_mixer_menu_option_init(
     QuickSettingsHeaderMixerMenuOption *self) {
     quick_settings_header_mixer_menu_option_init_layout(self);
+    // attach pointer to self to container's data
+    g_object_set_data(G_OBJECT(self->container), "option", self);
+
+    // tie our lifespan to the lifespan of our container
+    g_signal_connect(self->container, "destroy", G_CALLBACK(on_widget_destroy),
+                     self);
 };
 
 static void set_sink(QuickSettingsHeaderMixerMenuOption *self,
                      WirePlumberServiceNode *node) {
-    self->sink = node;
+    g_debug("quick_settings_header_mixer_menu_option.c:set_sink() called.");
+
+    gboolean is_default = false;
+    WirePlumberService *wps = wire_plumber_service_get_global();
+    WirePlumberServiceNode *default_sink =
+        wire_plumber_service_get_default_sink(wps);
+    if (default_sink) is_default = default_sink->id == node->id;
+
     gchar *icon =
         wire_plumber_service_map_sink_vol_icon(node->volume, node->mute);
     // set icon
     gtk_image_set_from_icon_name(self->icon, icon);
+
     // set name
     if (node->nick_name) {
         gtk_label_set_text(self->node_name, node->nick_name);
     } else {
         gtk_label_set_text(self->node_name, node->name);
     }
+
+    if (is_default) {
+        const gchar *name_label_text = gtk_label_get_text(self->node_name);
+        gtk_label_set_text(self->node_name,
+                           g_strdup_printf("*%s", name_label_text));
+    }
+
     // set tooltip to node_name
     gtk_widget_set_tooltip_text(GTK_WIDGET(self->button), node->name);
 
     // set scale to node's volume
     gtk_range_set_value(GTK_RANGE(self->volume_scale), node->volume);
 
-    // set scale as revealer's content
-    gtk_box_append(self->revealer_content, GTK_WIDGET(self->volume_scale));
+    if (!gtk_widget_get_first_child(gtk_revealer_get_child(self->revealer)))
+        gtk_box_append(self->revealer_content, GTK_WIDGET(self->volume_scale));
 
     if (node->state == WP_NODE_STATE_RUNNING) {
         gtk_widget_add_css_class(GTK_WIDGET(self->active_icon),
@@ -177,25 +281,41 @@ static void set_sink(QuickSettingsHeaderMixerMenuOption *self,
 
 static void set_source(QuickSettingsHeaderMixerMenuOption *self,
                        WirePlumberServiceNode *node) {
-    self->source = node;
+    g_debug("quick_settings_header_mixer_menu_option.c:set_source() called.");
+
+    gboolean is_default = false;
+    WirePlumberService *wps = wire_plumber_service_get_global();
+    WirePlumberServiceNode *default_source =
+        wire_plumber_service_get_default_source(wps);
+    if (default_source) is_default = default_source->id == node->id;
+
     gchar *icon =
         wire_plumber_service_map_source_vol_icon(node->volume, node->mute);
     // set icon
     gtk_image_set_from_icon_name(self->icon, icon);
+
     // set name
     if (node->nick_name) {
         gtk_label_set_text(self->node_name, node->nick_name);
     } else {
         gtk_label_set_text(self->node_name, node->name);
     }
+
+    if (is_default) {
+        const gchar *name_label_text = gtk_label_get_text(self->node_name);
+        gtk_label_set_text(self->node_name,
+                           g_strdup_printf("*%s", name_label_text));
+    }
+
     // set tooltip to node_name
     gtk_widget_set_tooltip_text(GTK_WIDGET(self->button), node->name);
 
     // set scale to node's volume
     gtk_range_set_value(GTK_RANGE(self->volume_scale), node->volume);
 
-    // set scale as revealer's content
-    gtk_box_append(self->revealer_content, GTK_WIDGET(self->volume_scale));
+    // set scale as revealer's content if revealer does not have a child
+    if (!gtk_widget_get_first_child(gtk_revealer_get_child(self->revealer)))
+        gtk_box_append(self->revealer_content, GTK_WIDGET(self->volume_scale));
 
     // check state and if running set active css on active_icon
     if (node->state == WP_NODE_STATE_RUNNING) {
@@ -209,6 +329,10 @@ static void set_source(QuickSettingsHeaderMixerMenuOption *self,
 
 GtkButton *link_button_new(WirePlumberServiceNodeHeader *header) {
     WirePlumberServiceNode *node = (WirePlumberServiceNode *)header;
+
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:link_button_new() "
+        "called.");
 
     // create button which reveals the link
     GtkButton *link_button = GTK_BUTTON(gtk_button_new());
@@ -248,10 +372,11 @@ GtkButton *link_button_new(WirePlumberServiceNodeHeader *header) {
 
 static void set_stream(QuickSettingsHeaderMixerMenuOption *self,
                        WirePlumberServiceAudioStream *node) {
-    self->stream = node;
-
     // we want to find where the audio stream is linked to and display this.
     WirePlumberServiceNodeHeader *header = NULL;
+
+    g_debug("quick_settings_header_mixer_menu_option.c:set_stream() called.");
+
     GHashTable *db =
         wire_plumber_service_get_db(wire_plumber_service_get_global());
     GPtrArray *links =
@@ -307,18 +432,21 @@ static void set_stream(QuickSettingsHeaderMixerMenuOption *self,
     else
         gtk_image_set_from_icon_name(self->icon, "audio-speakers-symbolic");
 
-    // set name based on stream direction
+    // set name and tooltip based on stream direction
     if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM) {
-        gtk_label_set_text(
-            self->node_name,
+        gtk_label_set_text(self->node_name,
+                           g_strdup_printf("%s (%s)", node->app_name, "Input"));
+        gtk_widget_set_tooltip_text(
+            GTK_WIDGET(self->button),
             g_strdup_printf("%s (%s)", node->app_name, "Input"));
     } else {
         gtk_label_set_text(
             self->node_name,
             g_strdup_printf("%s (%s)", node->app_name, "Output"));
+        gtk_widget_set_tooltip_text(
+            GTK_WIDGET(self->button),
+            g_strdup_printf("%s (%s)", node->app_name, "Output"));
     }
-    // set tooltip to node_name
-    gtk_widget_set_tooltip_text(GTK_WIDGET(self->button), node->app_name);
 
     if (node->state == WP_NODE_STATE_RUNNING) {
         gtk_widget_add_css_class(GTK_WIDGET(self->active_icon),
@@ -329,26 +457,63 @@ static void set_stream(QuickSettingsHeaderMixerMenuOption *self,
     }
 }
 
+static void on_wire_plumber_service_node_changed(
+    WirePlumberService *wps, WirePlumberServiceNodeHeader *header,
+    QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_wire_plumber_node_"
+        "changed_event() called.");
+
+    if (self->node->id != header->id) return;
+
+    self->node = header;
+
+    switch (self->node->type) {
+        case WIRE_PLUMBER_SERVICE_TYPE_SINK:
+            set_sink(self, (WirePlumberServiceNode *)header);
+            break;
+        case WIRE_PLUMBER_SERVICE_TYPE_SOURCE:
+            set_source(self, (WirePlumberServiceNode *)header);
+            break;
+        case WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM:
+        case WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM:
+            set_stream(self, (WirePlumberServiceAudioStream *)header);
+            break;
+        default:
+            break;
+    }
+}
+
 void quick_settings_header_mixer_menu_option_set_node(
     QuickSettingsHeaderMixerMenuOption *self,
-    WirePlumberServiceNodeHeader *node) {
+    WirePlumberServiceNodeHeader *header) {
     g_debug(
         "quick_settings_header_mixer_menu_option.c:"
         "quick_settings_header_mixer_menu_option_set_node() called.");
 
-    if (node->type == WIRE_PLUMBER_SERVICE_TYPE_SINK) {
-        set_sink(self, (WirePlumberServiceNode *)node);
+    self->node = header;
+
+    if (header->type == WIRE_PLUMBER_SERVICE_TYPE_SINK) {
+        set_sink(self, (WirePlumberServiceNode *)header);
     }
-    if (node->type == WIRE_PLUMBER_SERVICE_TYPE_SOURCE) {
-        set_source(self, (WirePlumberServiceNode *)node);
+    if (header->type == WIRE_PLUMBER_SERVICE_TYPE_SOURCE) {
+        set_source(self, (WirePlumberServiceNode *)header);
     }
-    if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM ||
-        node->type == WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM) {
-        set_stream(self, (WirePlumberServiceAudioStream *)node);
+    if (header->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM ||
+        header->type == WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM) {
+        set_stream(self, (WirePlumberServiceAudioStream *)header);
     }
+    // listen for node-changed event on wire plumber service
+    g_signal_connect(wire_plumber_service_get_global(), "node-changed",
+                     G_CALLBACK(on_wire_plumber_service_node_changed), self);
 }
 
 GtkWidget *quick_settings_header_mixer_menu_option_get_widget(
     QuickSettingsHeaderMixerMenuOption *self) {
     return GTK_WIDGET(self->container);
+}
+
+WirePlumberServiceNodeHeader *quick_settings_header_mixer_menu_option_get_node(
+    QuickSettingsHeaderMixerMenuOption *self) {
+    return self->node;
 }

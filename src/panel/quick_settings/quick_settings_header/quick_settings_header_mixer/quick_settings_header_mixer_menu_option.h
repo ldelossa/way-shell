@@ -17,4 +17,8 @@ GtkWidget *quick_settings_header_mixer_menu_option_get_widget(
     QuickSettingsHeaderMixerMenuOption *self);
 
 void quick_settings_header_mixer_menu_option_set_node(
-    QuickSettingsHeaderMixerMenuOption *self, WirePlumberServiceNodeHeader *node);
+    QuickSettingsHeaderMixerMenuOption *self,
+    WirePlumberServiceNodeHeader *node);
+
+WirePlumberServiceNodeHeader *quick_settings_header_mixer_menu_option_get_node(
+    QuickSettingsHeaderMixerMenuOption *self);

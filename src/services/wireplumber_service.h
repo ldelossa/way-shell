@@ -18,8 +18,13 @@ enum WirePlumberServiceType {
 
 // This is a header type which any pointer to a WirePlumberServiceNode type can
 // be casted to to discover the type.
+//
+// Any struct which is derived from this must always include these two values
+// as their first members. We don't embed this struct just to avoid typing
+// .header.* everywhere.
 typedef struct _WirePlumberServiceNodeHeader {
     enum WirePlumberServiceType type;
+    guint32 id;
 } WirePlumberServiceNodeHeader;
 
 static inline gdouble volume_from_linear(float vol, gint scale) {
@@ -43,10 +48,10 @@ static inline float volume_to_linear(gdouble vol, gint scale) {
 // A Pipewire Node inventoried by the WirePlumberService.
 typedef struct WirePlumberServiceNode {
     enum WirePlumberServiceType type;
+    guint32 id;
     const gchar *name;
     const gchar *media_class;
     const gchar *nick_name;
-    guint32 id;
     gdouble volume;
     gboolean mute;
     gboolean active;
@@ -58,10 +63,10 @@ typedef struct WirePlumberServiceNode {
 // A Pipewire Node inventoried by the WirePlumberService.
 typedef struct WirePlumberServiceAudioStream {
     enum WirePlumberServiceType type;
+    guint32 id;
     const gchar *name;
     const gchar *app_name;
     const gchar *media_class;
-    guint32 id;
     gdouble volume;
     gboolean mute;
     gboolean active;
