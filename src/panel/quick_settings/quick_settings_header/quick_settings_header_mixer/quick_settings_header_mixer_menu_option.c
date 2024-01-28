@@ -448,6 +448,10 @@ static void set_input_stream(QuickSettingsHeaderMixerMenuOption *self,
     guint32 linked_output = 0;
     gint32 linked_output_index = -1;
 
+    // unparent revealer's content making this function idempotent.
+    gtk_widget_unparent(
+        gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)));
+
     // find links which reference this node
     GPtrArray *links =
         wire_plumber_service_get_links(wire_plumber_service_get_global());
@@ -537,6 +541,10 @@ static void set_output_stream(QuickSettingsHeaderMixerMenuOption *self,
 
     guint32 linked_input = 0;
     gint32 linked_input_index = -1;
+
+    // unparent revealer's content making this function idempotent.
+    gtk_widget_unparent(
+        gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)));
 
     // find links which reference this node
     GPtrArray *links =
@@ -633,23 +641,8 @@ void quick_settings_header_mixer_menu_option_set_node(
 
     on_wire_plumber_service_node_changed(wps, header, self);
 
-    // listen for node-changed event on wire plumber service unless we are a
-    // stream, those events come from the database being monitored in the mixer
-    // widget proper.
-    switch (header->type) {
-        case WIRE_PLUMBER_SERVICE_TYPE_SINK:
-        case WIRE_PLUMBER_SERVICE_TYPE_SOURCE:
-            g_signal_connect(wps, "node-changed",
-                             G_CALLBACK(on_wire_plumber_service_node_changed),
-                             self);
-            break;
-        case WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM:
-            break;
-        case WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM:
-            break;
-        default:
-            break;
-    }
+    g_signal_connect(wps, "node-changed",
+                     G_CALLBACK(on_wire_plumber_service_node_changed), self);
 }
 
 GtkWidget *quick_settings_header_mixer_menu_option_get_widget(

@@ -140,6 +140,18 @@ static void quick_settings_init_underlay(QuickSettings *self) {
 // fwd declare
 static void on_window_destroy(GtkWindow *win, QuickSettings *self);
 
+// When the mixer is revealed we want to disable our audio scales, since this
+// would show redundant audio sliders.
+static void on_mixer_revealed(QuickSettingsHeader *header, gboolean revealed,
+                              QuickSettings *self) {
+    g_debug("quick_settings.c:on_mixer_revealed() called.");
+    if (revealed) {
+        quick_settings_scales_disable_audio_scales(self->scales, true);
+    } else {
+        quick_settings_scales_disable_audio_scales(self->scales, false);
+    }
+};
+
 static void quick_settings_init_layout(QuickSettings *self) {
     self->monitor = NULL;
 
@@ -191,23 +203,15 @@ static void quick_settings_init_layout(QuickSettings *self) {
         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 1, 250, target);
 
     adw_window_set_content(self->win, GTK_WIDGET(self->container));
+
+    // connect to header's mixer-revealed signal
+    g_signal_connect(self->header, "mixer-revealed",
+                     G_CALLBACK(on_mixer_revealed), self);
 }
 
 static void on_window_destroy(GtkWindow *win, QuickSettings *self) {
     g_debug("quick_settings.c:on_window_destroy() called.");
     quick_settings_reinitialize(self);
-};
-
-// When the mixer is revealed we want to disable our audio scales, since this
-// would show redundant audio sliders.
-static void on_mixer_revealed(QuickSettingsHeader *header, gboolean revealed,
-                              QuickSettings *self) {
-    g_debug("quick_settings.c:on_mixer_revealed() called.");
-    if (revealed) {
-        quick_settings_scales_disable_audio_scales(self->scales, true);
-    } else {
-        quick_settings_scales_disable_audio_scales(self->scales, false);
-    }
 };
 
 static void quick_settings_init(QuickSettings *self) {
@@ -216,10 +220,6 @@ static void quick_settings_init(QuickSettings *self) {
     self->qs_grid = g_object_new(QUICK_SETTINGS_GRID_TYPE, NULL);
 
     quick_settings_init_layout(self);
-
-    // connect to header's mixer-revealed signal
-    g_signal_connect(self->header, "mixer-revealed",
-                     G_CALLBACK(on_mixer_revealed), self);
 };
 
 static void animation_open_done(AdwAnimation *animation, QuickSettings *qs) {

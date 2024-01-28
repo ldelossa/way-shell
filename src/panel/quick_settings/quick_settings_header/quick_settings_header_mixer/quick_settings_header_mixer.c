@@ -75,6 +75,23 @@ static void on_wire_plumber_service_database_changed(
     // set to_remove size to zero
     g_ptr_array_set_size(to_remove, 0);
 
+    // create streams, we always want to recreate these since link info is
+    // refreshed in this event.
+    GPtrArray *streams = wire_plumber_service_get_streams(wps);
+    for (guint i = 0; i < streams->len; i++) {
+        WirePlumberServiceNodeHeader *header = g_ptr_array_index(streams, i);
+
+        QuickSettingsHeaderMixerMenuOption *option =
+            g_object_new(QUICK_SETTINGS_HEADER_MIXER_MENU_OPTION_TYPE, NULL);
+
+        quick_settings_header_mixer_menu_option_set_node(option, header);
+
+        // add to menu.options container
+        gtk_box_append(
+            self->menu.options,
+            quick_settings_header_mixer_menu_option_get_widget(option));
+    }
+
     // create sources
     GPtrArray *sources = wire_plumber_service_get_sources(wps);
     for (guint i = 0; i < sources->len; i++) {
@@ -117,23 +134,6 @@ static void on_wire_plumber_service_database_changed(
             quick_settings_header_mixer_menu_option_get_widget(option));
 
         g_hash_table_add(self->nodes, GUINT_TO_POINTER(header->id));
-    }
-
-    // create streams, we always want to recreate these since link info is
-    // refreshed in this event.
-    GPtrArray *streams = wire_plumber_service_get_streams(wps);
-    for (guint i = 0; i < streams->len; i++) {
-        WirePlumberServiceNodeHeader *header = g_ptr_array_index(streams, i);
-
-        QuickSettingsHeaderMixerMenuOption *option =
-            g_object_new(QUICK_SETTINGS_HEADER_MIXER_MENU_OPTION_TYPE, NULL);
-
-        quick_settings_header_mixer_menu_option_set_node(option, header);
-
-        // add to menu.options container
-        gtk_box_append(
-            self->menu.options,
-            quick_settings_header_mixer_menu_option_get_widget(option));
     }
 
     // prune menu's options if they are not present in db

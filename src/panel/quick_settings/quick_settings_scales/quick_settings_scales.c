@@ -330,8 +330,9 @@ void quick_settings_scales_reinitialize(QuickSettingsScales *self) {
     quick_settings_scales_init_layout(self);
 
     // run callbacks manually to set values
-    on_default_sink_change(wp, self->default_sink_node, self);
-    on_default_source_change(wp, self->active_source_node, self);
+    on_default_sink_change(wp, wire_plumber_service_get_default_sink(wp), self);
+    on_default_source_change(wp, wire_plumber_service_get_default_source(wp),
+                             self);
 }
 
 static void quick_settings_scales_init(QuickSettingsScales *self) {
@@ -346,8 +347,8 @@ GtkWidget *quick_settings_scales_get_widget(QuickSettingsScales *self) {
     return GTK_WIDGET(self->container);
 }
 
-void quick_settings_scales_disable_audio_scales(
-    QuickSettingsScales *self, gboolean disable) {
+void quick_settings_scales_disable_audio_scales(QuickSettingsScales *self,
+                                                gboolean disable) {
     WirePlumberService *wp = wire_plumber_service_get_global();
     if (!wp) return;
 
@@ -368,8 +369,11 @@ void quick_settings_scales_disable_audio_scales(
             wp, G_CALLBACK(on_default_source_change), self);
         g_signal_handlers_unblock_by_func(
             wp, G_CALLBACK(on_default_sink_change), self);
+
         // perform our events manually, since we may not have a signal coming.
-        on_default_sink_change(wp, self->default_sink_node, self);
-        on_default_source_change(wp, self->active_source_node, self);
+        on_default_sink_change(wp, wire_plumber_service_get_default_sink(wp),
+                               self);
+        on_default_source_change(
+            wp, wire_plumber_service_get_default_source(wp), self);
     }
 }

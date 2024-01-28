@@ -510,6 +510,11 @@ label.day-number.today:focus {
   margin: 2px;
 }
 
+#quick-settings-menu #container #options-container dropdown popover.background contents {
+   background-color: #555555;
+   color: #ffffff;
+}
+
 /*
  * Quick Settings Menu Wifi Options
  */
@@ -570,3 +575,5 @@ label.day-number.today:focus {
 #quick-settings-menu #container #options-container .mixer-link {
   margin-left: 38px;
 }
+
+
