@@ -3,7 +3,6 @@
 #include <adwaita.h>
 
 #include "../../services/wireplumber_service.h"
-#include "wp/node.h"
 
 struct _PanelStatusBarSoundButton {
     GObject parent_instance;

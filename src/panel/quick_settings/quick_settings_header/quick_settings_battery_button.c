@@ -64,7 +64,7 @@ static void quick_settings_battery_button_class_init(
     object_class->finalize = quick_settings_battery_button_finalize;
 };
 
-static void quick_settings_battery_init_layout(
+static void quick_settings_battery_button_init_layout(
     QuickSettingsBatteryButton *self) {
     UPowerService *upower = upower_service_get_global();
     char *icon = NULL;
@@ -111,7 +111,7 @@ static void quick_settings_battery_init_layout(
 
 static void quick_settings_battery_button_init(
     QuickSettingsBatteryButton *self) {
-    quick_settings_battery_init_layout(self);
+    quick_settings_battery_button_init_layout(self);
 }
 
 GtkWidget *quick_settings_battery_button_get_widget(
@@ -128,5 +128,5 @@ void quick_settings_battery_button_reinitialize(
     g_object_unref(self->device);
 
     // init our layout
-    quick_settings_battery_button_init(self);
+    quick_settings_battery_button_init_layout(self);
 }

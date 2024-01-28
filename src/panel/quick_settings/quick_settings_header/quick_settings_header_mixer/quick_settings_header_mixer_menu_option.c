@@ -449,8 +449,9 @@ static void set_input_stream(QuickSettingsHeaderMixerMenuOption *self,
     gint32 linked_output_index = -1;
 
     // unparent revealer's content making this function idempotent.
-    gtk_widget_unparent(
-        gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)));
+    if (gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)))
+        gtk_widget_unparent(
+            gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)));
 
     // find links which reference this node
     GPtrArray *links =
@@ -542,9 +543,9 @@ static void set_output_stream(QuickSettingsHeaderMixerMenuOption *self,
     guint32 linked_input = 0;
     gint32 linked_input_index = -1;
 
-    // unparent revealer's content making this function idempotent.
-    gtk_widget_unparent(
-        gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)));
+    if (gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)))
+        gtk_widget_unparent(
+            gtk_widget_get_first_child(GTK_WIDGET(self->revealer_content)));
 
     // find links which reference this node
     GPtrArray *links =

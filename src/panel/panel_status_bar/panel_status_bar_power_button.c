@@ -18,7 +18,7 @@ static void on_battery_icon_change(GObject *object, GParamSpec *pspec,
                                    PanelStatusBarPowerButton *self) {
     char *icon_name = NULL;
 
-    g_debug("quick_settings_button.c:on_battery_icon_change() called.");
+    g_debug("panel_status_bar_power_button.c:on_battery_icon_change() called.");
 
     icon_name = upower_device_map_icon_name(UP_DEVICE(object));
 
@@ -72,10 +72,8 @@ static void panel_status_bar_power_button_init_layout(
     // create icon
     self->icon = GTK_IMAGE(gtk_image_new_from_icon_name(name));
 
-    // connect to "notify::icon-name" on UpDevice to update icon on battery
-    // status changes.
     self->signal_id =
-        g_signal_connect(self->power_dev, "notify::icon-name",
+        g_signal_connect(self->power_dev, "notify::percentage",
                          G_CALLBACK(on_battery_icon_change), self);
 };
 

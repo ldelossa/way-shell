@@ -3,7 +3,6 @@
 #include <adwaita.h>
 
 #include "../../../../services/wireplumber_service.h"
-#include "../../quick_settings.h"
 #include "../../quick_settings_menu_widget.h"
 #include "quick_settings_header_mixer_menu_option.h"
 
@@ -87,15 +86,15 @@ static void on_wire_plumber_service_database_changed(
         quick_settings_header_mixer_menu_option_set_node(option, header);
 
         // add to menu.options container
-        gtk_box_append(
+        gtk_box_prepend(
             self->menu.options,
             quick_settings_header_mixer_menu_option_get_widget(option));
     }
 
-    // create sources
-    GPtrArray *sources = wire_plumber_service_get_sources(wps);
-    for (guint i = 0; i < sources->len; i++) {
-        WirePlumberServiceNodeHeader *header = g_ptr_array_index(sources, i);
+    // create sinks
+    GPtrArray *sinks = wire_plumber_service_get_sinks(wps);
+    for (guint i = 0; i < sinks->len; i++) {
+        WirePlumberServiceNodeHeader *header = g_ptr_array_index(sinks, i);
 
         if (g_hash_table_contains(self->nodes, GUINT_TO_POINTER(header->id))) {
             continue;
@@ -114,10 +113,10 @@ static void on_wire_plumber_service_database_changed(
         g_hash_table_add(self->nodes, GUINT_TO_POINTER(header->id));
     }
 
-    // create sinks
-    GPtrArray *sinks = wire_plumber_service_get_sinks(wps);
-    for (guint i = 0; i < sinks->len; i++) {
-        WirePlumberServiceNodeHeader *header = g_ptr_array_index(sinks, i);
+    // create sources
+    GPtrArray *sources = wire_plumber_service_get_sources(wps);
+    for (guint i = 0; i < sources->len; i++) {
+        WirePlumberServiceNodeHeader *header = g_ptr_array_index(sources, i);
 
         if (g_hash_table_contains(self->nodes, GUINT_TO_POINTER(header->id))) {
             continue;

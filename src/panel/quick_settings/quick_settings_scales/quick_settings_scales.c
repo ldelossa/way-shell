@@ -226,7 +226,7 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     self->audio_scales_revealer = GTK_REVEALER(gtk_revealer_new());
     gtk_revealer_set_transition_type(self->audio_scales_revealer,
                                      GTK_REVEALER_TRANSITION_TYPE_SLIDE_UP);
-    gtk_revealer_set_transition_duration(self->audio_scales_revealer, 350);
+    gtk_revealer_set_transition_duration(self->audio_scales_revealer, 250);
     gtk_revealer_set_reveal_child(self->audio_scales_revealer, TRUE);
 
     self->audio_scales_revealer_contents =

@@ -258,9 +258,6 @@ static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
     g_variant_lookup(mixer_values, "step", "b", &node->step);
     g_variant_lookup(mixer_values, "base", "d", &node->base);
 
-    // convert volume to cubic
-    node->volume = volume_from_linear(node->volume, SCALE_CUBIC);
-
     node->media_class = g_strdup(wp_pipewire_object_get_property(
         WP_PIPEWIRE_OBJECT(proxy), PW_KEY_MEDIA_CLASS));
     node->name = g_strdup(wp_pipewire_object_get_property(
