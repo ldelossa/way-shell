@@ -50,6 +50,8 @@ void quick_settings_menu_widget_init(QuickSettingsMenuWidget *self,
         self->scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
         gtk_widget_set_vexpand(GTK_WIDGET(self->scroll), true);
         gtk_scrolled_window_set_child(self->scroll, GTK_WIDGET(self->options));
+        gtk_scrolled_window_set_policy(self->scroll, GTK_POLICY_NEVER,
+                                       GTK_POLICY_AUTOMATIC);
         gtk_box_append(self->options_container, GTK_WIDGET(self->scroll));
     } else
         gtk_box_append(self->options_container, GTK_WIDGET(self->options));

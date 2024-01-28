@@ -17,74 +17,6 @@ struct _PanelStatusBarSoundButton {
 G_DEFINE_TYPE(PanelStatusBarSoundButton, panel_status_bar_sound_button,
               G_TYPE_OBJECT);
 
-static void on_default_nodes_changed(WirePlumberService *wp, guint32 id,
-                                     PanelStatusBarSoundButton *self) {
-    WirePlumberServiceDefaultNodes nodes;
-    wire_plumber_service_get_default_nodes(wp, &nodes);
-
-    g_debug(
-        "panel_status_bar_sound_button.c:on_default_nodes_changed() called.");
-
-    return;
-
-    if (id == nodes.sink.id || id == 0) {
-        if (nodes.sink.mute) {
-            gtk_image_set_from_icon_name(self->speaker_icon,
-                                         "audio-volume-muted-symbolic");
-            goto source;
-        }
-        if (nodes.sink.volume < 0.25) {
-            gtk_image_set_from_icon_name(self->speaker_icon,
-                                         "audio-volume-low-symbolic");
-        }
-        if (nodes.sink.volume >= 0.25 && nodes.sink.volume < 0.5) {
-            gtk_image_set_from_icon_name(self->speaker_icon,
-                                         "audio-volume-medium-symbolic");
-        }
-        if (nodes.sink.volume >= 0.50) {
-            gtk_image_set_from_icon_name(self->speaker_icon,
-                                         "audio-volume-high-symbolic");
-        }
-    }
-source:
-    if (id == nodes.source.id || id == 0) {
-        // debug active state
-        g_debug(
-            "panel_status_bar_sound_button.c:on_default_nodes_changed() source "
-            "active: %d",
-            nodes.source.active);
-        if (nodes.source.active) {
-            // set icon visible if source is active
-            gtk_widget_set_visible(GTK_WIDGET(self->microphone_icon), true);
-        } else {
-            // set icon invisible if source is inactive
-            gtk_widget_set_visible(GTK_WIDGET(self->microphone_icon), false);
-            return;
-        }
-
-        if (nodes.source.mute) {
-            gtk_image_set_from_icon_name(
-                self->microphone_icon, "microphone-sensitivity-muted-symbolic");
-            return;
-        }
-        if (nodes.source.volume < 0.25) {
-            gtk_image_set_from_icon_name(self->microphone_icon,
-                                         "microphone-sensitivity-low-symbolic");
-        }
-        if (nodes.source.volume >= 0.25 && nodes.source.volume < 0.5) {
-            gtk_image_set_from_icon_name(
-                self->microphone_icon,
-                "microphone-sensitivity-medium-symbolic");
-        }
-        if (nodes.source.volume >= 0.50) {
-            gtk_image_set_from_icon_name(
-                self->microphone_icon, "microphone-sensitivity-high-symbolic");
-        }
-    }
-
-    return;
-}
-
 static void on_microphone_active(WirePlumberService *wp, gboolean active,
                                  PanelStatusBarSoundButton *self) {
     g_debug(
@@ -175,8 +107,6 @@ static void panel_status_bar_sound_button_init_layout(
     // attach both icons to container
     gtk_box_append(self->container, GTK_WIDGET(self->microphone_icon));
     gtk_box_append(self->container, GTK_WIDGET(self->speaker_icon));
-
-    on_default_nodes_changed(wps, 0, self);
 
     on_microphone_active(wps, wire_plumber_service_microphone_active(wps),
                          self);

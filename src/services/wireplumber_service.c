@@ -5,9 +5,13 @@
 #include <wireplumber-0.4/wp/wp.h>
 
 #include "wp/core.h"
+#include "wp/global-proxy.h"
+#include "wp/iterator.h"
+#include "wp/link.h"
 #include "wp/node.h"
 #include "wp/object-interest.h"
 #include "wp/object-manager.h"
+#include "wp/proxy-interfaces.h"
 #include "wp/proxy.h"
 
 enum signals {
@@ -36,7 +40,6 @@ struct _WirePlumberService {
     WpObjectManager *om;
     WpPlugin *default_nodes_api;
     WpPlugin *mixer_api;
-    WirePlumberServiceDefaultNodes default_nodes;
     WirePlumberServiceNode *default_sink;
     WirePlumberServiceNode *default_source;
     guint32 default_sink_id;
@@ -46,6 +49,9 @@ struct _WirePlumberService {
     GPtrArray *streams;
     GPtrArray *links;
     GHashTable *db;
+    gint32 pending_link_removal;
+    WirePlumberServiceNodeHeader *pending_link_output;
+    WirePlumberServiceNodeHeader *pending_link_input;
     int pending_plugins;
 };
 
@@ -112,6 +118,60 @@ gboolean wire_plumber_service_microphone_active(WirePlumberService *self) {
     return active;
 }
 
+static void wire_plumber_service_fill_ports(
+    WpNode *node, WirePlumberServiceNodeHeader *header,
+    WirePlumberService *self) {
+    g_debug("wireplumber_service.c:wire_plumber_service_fill_ports() called");
+
+    GValue value = G_VALUE_INIT;
+
+    WpIterator *i = wp_node_new_ports_iterator(node);
+    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
+        WpPort *port = g_value_get_object(&value);
+
+        const char *direction = wp_pipewire_object_get_property(
+            WP_PIPEWIRE_OBJECT(port), PW_KEY_PORT_DIRECTION);
+        const char *monitor = wp_pipewire_object_get_property(
+            WP_PIPEWIRE_OBJECT(port), PW_KEY_PORT_MONITOR);
+        const char *channel = wp_pipewire_object_get_property(
+            WP_PIPEWIRE_OBJECT(port), PW_KEY_AUDIO_CHANNEL);
+
+        // if its a monitor port, just ignore it
+        if (monitor) continue;
+
+        // eliminate ports in directions we don't care about
+        switch (header->type) {
+            case WIRE_PLUMBER_SERVICE_TYPE_SINK:
+                if (g_strcmp0(direction, "in") != 0) continue;
+                break;
+            case WIRE_PLUMBER_SERVICE_TYPE_SOURCE:
+                if (g_strcmp0(direction, "out") != 0) continue;
+                break;
+            case WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM:
+                if (g_strcmp0(direction, "in") != 0) continue;
+                break;
+            case WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM:
+                if (g_strcmp0(direction, "out") != 0) continue;
+                break;
+            default:
+                break;
+        }
+
+        guint32 id = wp_proxy_get_bound_id(WP_PROXY(port));
+
+        // map to wireplumber service port
+        enum WirePlumberServicePortChannel port_channel =
+            wire_plumber_service_map_port(channel);
+
+        g_debug(
+            "wireplumber_service.c:wire_plumber_service_fill_ports() id: %d, "
+            "direction: %s, channel: %s, port_channel: %d",
+            id, direction, channel, port_channel);
+
+        header->ports[port_channel] = id;
+    }
+}
+
 static void wire_plumber_service_fill_audio_stream(
     WirePlumberServiceAudioStream *node, WpGlobalProxy *proxy,
     WirePlumberService *self) {
@@ -152,6 +212,18 @@ static void wire_plumber_service_fill_audio_stream(
             node->media_class = g_strdup(val);
         }
     }
+
+    // check media type and set actual type
+    if (g_strcmp0(node->media_class, "Stream/Output/Audio") == 0) {
+        node->type = WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM;
+    }
+    if (g_strcmp0(node->media_class, "Stream/Input/Audio") == 0) {
+        node->type = WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM;
+    }
+
+    // fill ports
+    wire_plumber_service_fill_ports(WP_NODE(proxy),
+                                    (WirePlumberServiceNodeHeader *)node, self);
 }
 
 static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
@@ -194,6 +266,18 @@ static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
             node->nick_name = g_strdup(val);
         }
     }
+
+    // check media type and set actual type
+    if (g_strcmp0(node->media_class, "Audio/Sink") == 0) {
+        node->type = WIRE_PLUMBER_SERVICE_TYPE_SINK;
+    }
+    if (g_strcmp0(node->media_class, "Audio/Source") == 0) {
+        node->type = WIRE_PLUMBER_SERVICE_TYPE_SOURCE;
+    }
+
+    // fill ports
+    wire_plumber_service_fill_ports(WP_NODE(proxy),
+                                    (WirePlumberServiceNodeHeader *)node, self);
 }
 
 static void wire_plumber_service_fill_link(WirePlumberServiceLink *link,
@@ -213,10 +297,10 @@ static void wire_plumber_service_fill_link(WirePlumberServiceLink *link,
         const gchar *val = wp_properties_item_get_value(item);
 
         if (g_strcmp0(key, PW_KEY_LINK_INPUT_NODE) == 0) {
-            link->input_node_id = g_ascii_strtoull(val, NULL, 10);
+            link->input_node = g_ascii_strtoull(val, NULL, 10);
         }
         if (g_strcmp0(key, PW_KEY_LINK_OUTPUT_NODE) == 0) {
-            link->output_node_id = g_ascii_strtoull(val, NULL, 10);
+            link->output_node = g_ascii_strtoull(val, NULL, 10);
         }
     }
 };
@@ -391,13 +475,6 @@ WirePlumberServiceNode *wire_plumber_service_node_new(
 
     wire_plumber_service_fill_node(node, proxy, self);
 
-    // check media type and set actual type
-    if (g_strcmp0(node->media_class, "Audio/Sink") == 0) {
-        node->type = WIRE_PLUMBER_SERVICE_TYPE_SINK;
-    }
-    if (g_strcmp0(node->media_class, "Audio/Source") == 0) {
-        node->type = WIRE_PLUMBER_SERVICE_TYPE_SOURCE;
-    }
     return node;
 }
 
@@ -409,14 +486,6 @@ WirePlumberServiceAudioStream *wire_plumber_service_audio_stream_new(
         g_malloc0(sizeof(WirePlumberServiceAudioStream));
 
     wire_plumber_service_fill_audio_stream(node, proxy, self);
-
-    // check media type and set actual type
-    if (g_strcmp0(node->media_class, "Stream/Output/Audio") == 0) {
-        node->type = WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM;
-    }
-    if (g_strcmp0(node->media_class, "Stream/Input/Audio") == 0) {
-        node->type = WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM;
-    }
 
     return node;
 }
@@ -643,13 +712,22 @@ static void wire_plumber_service_init(WirePlumberService *self) {
         self->om, WP_TYPE_NODE,
         WP_PROXY_FEATURE_BOUND | WP_PIPEWIRE_OBJECT_FEATURE_PARAM_PROPS |
             WP_PIPEWIRE_OBJECT_FEATURE_INFO |
-            WP_PIPEWIRE_OBJECT_FEATURE_PARAM_ROUTE);
+            WP_PIPEWIRE_OBJECT_FEATURE_PARAM_ROUTE | WP_NODE_FEATURE_PORTS);
 
-    WpObjectInterest *all_links = wp_object_interest_new_type(WP_TYPE_LINK);
-    wp_object_manager_request_object_features(self->om, WP_TYPE_LINK,
+    WpObjectInterest *all_ports = wp_object_interest_new_type(WP_TYPE_PORT);
+    wp_object_manager_request_object_features(self->om, WP_TYPE_PORT,
                                               WP_PROXY_FEATURE_BOUND);
 
+    WpObjectInterest *all_links = wp_object_interest_new_type(WP_TYPE_LINK);
+    wp_object_manager_request_object_features(
+        self->om, WP_TYPE_LINK,
+        WP_PROXY_FEATURE_BOUND | WP_PIPEWIRE_OBJECT_FEATURE_PARAM_PROPS |
+            WP_PIPEWIRE_OBJECT_FEATURE_INFO |
+            WP_PIPEWIRE_OBJECT_FEATURE_PARAM_ROUTE |
+            WP_LINK_FEATURE_ESTABLISHED);
+
     wp_object_manager_add_interest_full(self->om, all_nodes);
+    wp_object_manager_add_interest_full(self->om, all_ports);
     wp_object_manager_add_interest_full(self->om, all_links);
 
     // load the mixer and default nodes apis.
@@ -705,15 +783,6 @@ static void wire_plumber_service_init(WirePlumberService *self) {
                        NULL, (GAsyncReadyCallback)on_plugin_activate, self);
 };
 
-void wire_plumber_service_get_default_nodes(
-    WirePlumberService *self, WirePlumberServiceDefaultNodes *out) {
-    g_debug(
-        "wireplumber_service.c:wire_plumber_service_get_default_nodes() "
-        "called");
-    *out = self->default_nodes;
-    return;
-};
-
 int wire_plumber_service_global_init() {
     g_debug("wireplumber_service.c:wire_plumber_service_global_init() called");
     if (global == NULL) {
@@ -758,6 +827,159 @@ GPtrArray *wire_plumber_service_get_streams(WirePlumberService *self) {
 GPtrArray *wire_plumber_service_get_links(WirePlumberService *self) {
     g_debug("wireplumber_service.c:wire_plumber_service_get_streams() called");
     return self->links;
+}
+
+static void activate_error_cb(WpObject *object, GAsyncResult *res,
+                              WirePlumberService *self) {
+    GError *error = NULL;
+    g_debug("wireplumber_service.c:activate_error_cb() called");
+    wp_object_activate_finish(object, res, &error);
+    if (error) {
+        g_warning("wireplumber_service.c:activate_error_cb() error: %s",
+                  error->message);
+        g_error_free(error);
+        return;
+    }
+}
+
+static void on_link_removed(WpGlobalProxy *proxy, WirePlumberService *self) {
+    g_debug("wireplumber_service.c:on_link_removed() called");
+
+    self->pending_link_removal--;
+    if (self->pending_link_removal > 0) {
+        g_debug(
+            "wireplumber_service.c:on_link_removed() pending_link_removal: %d",
+            self->pending_link_removal);
+        return;
+    }
+    g_debug("wireplumber_service.c:on_link_removed() pending_link_removal: %d",
+            self->pending_link_removal);
+
+    // if either of our pending inputs or outputs were nil, this indicates we
+    // just wanted to unlink the non-null side, no need to create any links.
+    if (!self->pending_link_input || !self->pending_link_output) return;
+
+    GPtrArray *links_to_create = g_ptr_array_new();
+
+    g_debug(
+        "wireplumber_service.c:on_link_removed() pending_link_input: %d, "
+        "pending_link_output: %d",
+        self->pending_link_input->id, self->pending_link_output->id);
+
+    // for every valid port on the output attach it to a cooresponding port
+    // on the input.
+    for (int i = WIRE_PLUMBER_SERVICE_PORT_RL;
+         i <= WIRE_PLUMBER_SERVICE_PORT_TFR; i++) {
+        if (self->pending_link_output->ports[i] == 0) continue;
+
+        // input doesn't have this port.
+        if (self->pending_link_input->ports[i] == 0) continue;
+
+        const char *output_port =
+            g_strdup_printf("%d", self->pending_link_output->ports[i]);
+        const char *output_node =
+            g_strdup_printf("%d", self->pending_link_output->id);
+        const char *input_node =
+            g_strdup_printf("%d", self->pending_link_input->id);
+        const char *input_port =
+            g_strdup_printf("%d", self->pending_link_input->ports[i]);
+
+        g_debug(
+            "wireplumber_service.c:on_link_removed() creating link "
+            "channel: %d "
+            "output_port: %s, "
+            "output_node: %s, input_node: %s, input_port: %s",
+            i, output_port, output_node, input_node, input_port);
+
+        WpLink *link_new = wp_link_new_from_factory(
+            self->core, "link-factory",
+            wp_properties_new("link.output.node", output_node,
+                              "link.output.port", output_port,
+                              "link.input.node", input_node, "link.input.port",
+                              input_port, NULL));
+
+        g_ptr_array_add(links_to_create, link_new);
+    }
+
+    for (int i = 0; i < links_to_create->len; i++) {
+        WpLink *wp_link = g_ptr_array_index(links_to_create, i);
+        wp_object_activate(WP_OBJECT(wp_link), WP_PROXY_FEATURE_BOUND, NULL,
+                           (GAsyncReadyCallback)activate_error_cb, self);
+    }
+
+    g_ptr_array_unref(links_to_create);
+}
+
+void wire_plumber_service_set_link(WirePlumberService *self,
+                                   WirePlumberServiceNodeHeader *output,
+                                   WirePlumberServiceNodeHeader *input) {
+    g_debug("wireplumber_service.c:wire_plumber_service_set_link() called");
+
+    self->pending_link_removal = 0;
+    self->pending_link_input = input;
+    self->pending_link_output = output;
+
+    GPtrArray *links_to_remove = g_ptr_array_new();
+
+    // print links length
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_set_link() links length: "
+        "%d",
+        self->links->len);
+
+    // find all links which match our inputs and outputs and mark them for
+    // removal
+    for (int i = 0; i < self->links->len; i++) {
+        WirePlumberServiceLink *link = g_ptr_array_index(self->links, i);
+
+        g_debug(
+            "wireplumber_service.c:wire_plumber_service_set_link() link: %d, "
+            "input_node: %d, output_node: %d",
+            link->id, link->input_node, link->output_node);
+
+        WpLink *wp_link = wp_object_manager_lookup(
+            self->om, WP_TYPE_LINK, WP_CONSTRAINT_TYPE_G_PROPERTY, "bound-id",
+            "=u", link->id, NULL);
+        if (!wp_link) {
+            g_debug(
+                "wireplumber_service.c:wire_plumber_service_set_link() link "
+                "not found in object manager, aborting.");
+            return;
+        }
+
+        if (link->output_node == output->id) {
+            g_ptr_array_add(links_to_remove, wp_link);
+            g_debug(
+                "wireplumber_service.c:wire_plumber_service_set_link() "
+                "pending removal of link: %d",
+                link->id);
+            self->pending_link_removal++;
+        }
+
+        if (link->input_node == input->id) {
+            g_ptr_array_add(links_to_remove, wp_link);
+            g_debug(
+                "wireplumber_service.c:wire_plumber_service_set_link() "
+                "pending removal of link: %d",
+                link->id);
+            self->pending_link_removal++;
+        }
+    }
+
+    if (links_to_remove->len == 0) on_link_removed(NULL, self);
+
+    for (int i = 0; i < links_to_remove->len; i++) {
+        WpLink *wp_link = g_ptr_array_index(links_to_remove, i);
+        g_signal_connect(WP_GLOBAL_PROXY(wp_link), "pw-proxy-destroyed",
+                         G_CALLBACK(on_link_removed), self);
+    }
+
+    for (int i = 0; i < links_to_remove->len; i++) {
+        WpLink *wp_link = g_ptr_array_index(links_to_remove, i);
+        wp_global_proxy_request_destroy(WP_GLOBAL_PROXY(wp_link));
+    }
+
+    g_ptr_array_unref(links_to_remove);
 }
 
 GHashTable *wire_plumber_service_get_db(WirePlumberService *self) {

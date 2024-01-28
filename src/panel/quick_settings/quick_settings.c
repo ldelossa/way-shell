@@ -4,7 +4,6 @@
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 #include <upower.h>
 
-#include "quick_settings_audio_scales.h"
 #include "quick_settings_grid/quick_settings_grid.h"
 #include "quick_settings_header/quick_settings_header.h"
 #include "quick_settings_mediator.h"
@@ -23,7 +22,6 @@ struct _QuickSettings {
     GtkBox *container;
     QuickSettingsHeader *header;
     QuickSettingsGrid *qs_grid;
-    AudioScales audio_scales;
     QuickSettingsScales *scales;
     AdwWindow *underlay;
     GdkMonitor *monitor;
@@ -162,9 +160,9 @@ static void quick_settings_init_layout(QuickSettings *self) {
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT,
                          true);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
-    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT, 30);
-    gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
-                                GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT, 20);
+    // gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
+    //                             GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
     // create vertical container box
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));

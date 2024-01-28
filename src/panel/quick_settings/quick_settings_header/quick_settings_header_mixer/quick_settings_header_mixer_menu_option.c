@@ -6,6 +6,8 @@
 #include "../../../../services/wireplumber_service.h"
 #include "../../quick_settings_menu_widget.h"
 #include "glibconfig.h"
+#include "gtk/gtkdropdown.h"
+#include "gtk/gtkrevealer.h"
 
 GIcon *get_app_icon(const char *app_name) {
     GList *apps = g_app_info_get_all();
@@ -39,6 +41,7 @@ typedef struct _QuickSettingsHeaderMixerMenuOption {
     GtkLabel *link;
     GtkRevealer *revealer;
     GtkBox *revealer_content;
+    GtkDropDown *streams_dropdown;
 } QuickSettingsHeaderMixerMenuOption;
 G_DEFINE_TYPE(QuickSettingsHeaderMixerMenuOption,
               quick_settings_header_mixer_menu_option, G_TYPE_OBJECT);
@@ -203,6 +206,10 @@ static void quick_settings_header_mixer_menu_option_init_layout(
 
     // add revealer
     self->revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->revealer,
+                                     GTK_REVEALER_TRANSITION_TYPE_SWING_DOWN);
+    gtk_revealer_set_transition_duration(self->revealer, 350);
+
     self->revealer_content = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_can_focus(GTK_WIDGET(self->revealer_content), true);
     gtk_revealer_set_child(self->revealer, GTK_WIDGET(self->revealer_content));
@@ -370,67 +377,16 @@ GtkButton *link_button_new(WirePlumberServiceNodeHeader *header) {
     return link_button;
 }
 
-static void set_stream(QuickSettingsHeaderMixerMenuOption *self,
-                       WirePlumberServiceAudioStream *node) {
-    // we want to find where the audio stream is linked to and display this.
-    WirePlumberServiceNodeHeader *header = NULL;
-
-    g_debug("quick_settings_header_mixer_menu_option.c:set_stream() called.");
-
-    GHashTable *db =
-        wire_plumber_service_get_db(wire_plumber_service_get_global());
-    GPtrArray *links =
-        wire_plumber_service_get_links(wire_plumber_service_get_global());
-
-    GHashTable *link_nodes = g_hash_table_new(g_direct_hash, g_direct_equal);
-
-    // search through links and record which input and output nodes are linked
-    // to this stream.
-    // we will "roll up" multiple links to the same input/output ids for sake
-    // if displaying to the user.
-    for (int i = 0; i < links->len; i++) {
-        WirePlumberServiceLink *link = g_ptr_array_index(links, i);
-
-        // if we have an output stream, search for links which use us as their
-        // input.
-        if (node->type == WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM)
-            if (link->output_node_id == node->id) {
-                if (g_hash_table_contains(
-                        link_nodes, GUINT_TO_POINTER(link->output_node_id)))
-                    continue;
-                g_hash_table_add(link_nodes,
-                                 GUINT_TO_POINTER(link->input_node_id));
-            }
-
-        // if we have an input stream search for links which use us as their
-        // input.
-        if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM)
-            if (link->input_node_id == node->id) {
-                if (g_hash_table_contains(
-                        link_nodes, GUINT_TO_POINTER(link->output_node_id)))
-                    continue;
-                g_hash_table_add(link_nodes,
-                                 GUINT_TO_POINTER(link->output_node_id));
-            }
-    }
-
-    // iterate over link nodes and create a button for each
-    GHashTableIter iter;
-    gpointer key, value;
-    g_hash_table_iter_init(&iter, link_nodes);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        header = g_hash_table_lookup(db, key);
-        gtk_box_append(self->revealer_content,
-                       GTK_WIDGET(link_button_new(header)));
-    }
-
+static void set_stream_common(QuickSettingsHeaderMixerMenuOption *self,
+                              WirePlumberServiceAudioStream *node) {
     // lets see if we can find a desktop icon for the app with the stream
     // name.
     GIcon *icon = get_app_icon(node->app_name);
     if (icon)
         gtk_image_set_from_gicon(self->icon, icon);
     else
-        gtk_image_set_from_icon_name(self->icon, "applications-multimedia-symbolic");
+        gtk_image_set_from_icon_name(self->icon,
+                                     "applications-multimedia-symbolic");
 
     // set name and tooltip based on stream direction
     if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM) {
@@ -457,6 +413,184 @@ static void set_stream(QuickSettingsHeaderMixerMenuOption *self,
     }
 }
 
+static void on_input_stream_dropdown_activate(
+    GtkDropDown *dropdown, GParamSpec *pspec,
+    QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_input_stream_dropdown_"
+        "activate() called.");
+
+    gint32 index = gtk_drop_down_get_selected(dropdown);
+
+    // get list of all sources
+    GPtrArray *sources =
+        wire_plumber_service_get_sources(wire_plumber_service_get_global());
+
+    // get the source at the index of the dropdown
+    WirePlumberServiceNode *source = g_ptr_array_index(sources, index);
+
+    // get the stream
+    WirePlumberServiceAudioStream *stream =
+        (WirePlumberServiceAudioStream *)self->node;
+
+    // set the link
+    wire_plumber_service_set_link(wire_plumber_service_get_global(),
+                                  (WirePlumberServiceNodeHeader *)source,
+                                  (WirePlumberServiceNodeHeader *)stream);
+}
+
+static void set_input_stream(QuickSettingsHeaderMixerMenuOption *self,
+                             WirePlumberServiceAudioStream *node) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:set_output_stream() "
+        "called.");
+
+    guint32 linked_output = 0;
+    gint32 linked_output_index = -1;
+
+    // find links which reference this node
+    GPtrArray *links =
+        wire_plumber_service_get_links(wire_plumber_service_get_global());
+    for (int i = 0; i < links->len; i++) {
+        WirePlumberServiceLink *link = g_ptr_array_index(links, i);
+        if (link->input_node == node->id) {
+            linked_output = link->output_node;
+        }
+    }
+
+    // get list of all sources
+    GPtrArray *sources =
+        wire_plumber_service_get_sources(wire_plumber_service_get_global());
+    const char *source_names[sources->len + 1];  // +1 for null terminator.
+    source_names[sources->len] = NULL;
+
+    // iterate sources and add their names to list fed into drop down.
+    for (int i = 0; i < sources->len; i++) {
+        WirePlumberServiceNode *sink = g_ptr_array_index(sources, i);
+        if (sink->nick_name)
+            source_names[i] = sink->nick_name;
+        else
+            source_names[i] = sink->name;
+        if (sink->id == linked_output) linked_output_index = i;
+    }
+
+    GtkBox *dropdown_contents =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_add_css_class(GTK_WIDGET(dropdown_contents), "mixer-link");
+
+    // append icon
+    GtkImage *link_icon = GTK_IMAGE(
+        gtk_image_new_from_icon_name("network-wireless-hotspot-symbolic"));
+    gtk_box_append(dropdown_contents, GTK_WIDGET(link_icon));
+
+    // create dropdown button
+    self->streams_dropdown =
+        GTK_DROP_DOWN(gtk_drop_down_new_from_strings(source_names));
+    if (linked_output_index != -1)
+        gtk_drop_down_set_selected(self->streams_dropdown, linked_output_index);
+
+    // wire up drop down's activate
+    g_signal_connect(self->streams_dropdown, "notify::selected",
+                     G_CALLBACK(on_input_stream_dropdown_activate), self);
+
+    // append dropdown to revealer content
+    gtk_box_append(dropdown_contents, GTK_WIDGET(self->streams_dropdown));
+
+    // add dropdow to revealer's content
+    gtk_box_append(self->revealer_content, GTK_WIDGET(dropdown_contents));
+
+    set_stream_common(self, node);
+}
+
+static void on_output_stream_dropdown_activate(
+    GtkDropDown *dropdown, GParamSpec *pspec,
+    QuickSettingsHeaderMixerMenuOption *self) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:on_output_stream_"
+        "dropdown_"
+        "activate() called.");
+
+    gint32 index = gtk_drop_down_get_selected(dropdown);
+
+    // get list of all sinks
+    GPtrArray *sinks =
+        wire_plumber_service_get_sinks(wire_plumber_service_get_global());
+
+    // get the sink at the index of the dropdown
+    WirePlumberServiceNode *sink = g_ptr_array_index(sinks, index);
+
+    // get the stream
+    WirePlumberServiceAudioStream *stream =
+        (WirePlumberServiceAudioStream *)self->node;
+
+    // set the link
+    wire_plumber_service_set_link(wire_plumber_service_get_global(),
+                                  (WirePlumberServiceNodeHeader *)stream,
+                                  (WirePlumberServiceNodeHeader *)sink);
+}
+
+static void set_output_stream(QuickSettingsHeaderMixerMenuOption *self,
+                              WirePlumberServiceAudioStream *node) {
+    g_debug(
+        "quick_settings_header_mixer_menu_option.c:set_output_stream() "
+        "called.");
+
+    guint32 linked_input = 0;
+    gint32 linked_input_index = -1;
+
+    // find links which reference this node
+    GPtrArray *links =
+        wire_plumber_service_get_links(wire_plumber_service_get_global());
+    for (int i = 0; i < links->len; i++) {
+        WirePlumberServiceLink *link = g_ptr_array_index(links, i);
+        if (link->output_node == node->id) {
+            linked_input = link->input_node;
+        }
+    }
+
+    // get list of all sinks that we may link to this output.
+    GPtrArray *sinks =
+        wire_plumber_service_get_sinks(wire_plumber_service_get_global());
+    const char *sink_names[sinks->len + 1];  // +1 for null terminator.
+    sink_names[sinks->len] = NULL;
+
+    for (int i = 0; i < sinks->len; i++) {
+        WirePlumberServiceNode *sink = g_ptr_array_index(sinks, i);
+        if (sink->nick_name)
+            sink_names[i] = sink->nick_name;
+        else
+            sink_names[i] = sink->name;
+        if (sink->id == linked_input) linked_input_index = i;
+    }
+
+    GtkBox *dropdown_contents =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_add_css_class(GTK_WIDGET(dropdown_contents), "mixer-link");
+
+    // append icon
+    GtkImage *link_icon = GTK_IMAGE(
+        gtk_image_new_from_icon_name("network-wireless-hotspot-symbolic"));
+    gtk_box_append(dropdown_contents, GTK_WIDGET(link_icon));
+
+    // create dropdown button
+    self->streams_dropdown =
+        GTK_DROP_DOWN(gtk_drop_down_new_from_strings(sink_names));
+    if (linked_input_index != -1)
+        gtk_drop_down_set_selected(self->streams_dropdown, linked_input_index);
+
+    // wire into dropdown activate
+    g_signal_connect(self->streams_dropdown, "notify::selected",
+                     G_CALLBACK(on_output_stream_dropdown_activate), self);
+
+    // append dropdown to revealer content
+    gtk_box_append(dropdown_contents, GTK_WIDGET(self->streams_dropdown));
+
+    // add dropdow to revealer's content
+    gtk_box_append(self->revealer_content, GTK_WIDGET(dropdown_contents));
+
+    set_stream_common(self, node);
+}
+
 static void on_wire_plumber_service_node_changed(
     WirePlumberService *wps, WirePlumberServiceNodeHeader *header,
     QuickSettingsHeaderMixerMenuOption *self) {
@@ -476,8 +610,10 @@ static void on_wire_plumber_service_node_changed(
             set_source(self, (WirePlumberServiceNode *)header);
             break;
         case WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM:
+            set_input_stream(self, (WirePlumberServiceAudioStream *)header);
+            break;
         case WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM:
-            set_stream(self, (WirePlumberServiceAudioStream *)header);
+            set_output_stream(self, (WirePlumberServiceAudioStream *)header);
             break;
         default:
             break;
@@ -493,19 +629,27 @@ void quick_settings_header_mixer_menu_option_set_node(
 
     self->node = header;
 
-    if (header->type == WIRE_PLUMBER_SERVICE_TYPE_SINK) {
-        set_sink(self, (WirePlumberServiceNode *)header);
+    WirePlumberService *wps = wire_plumber_service_get_global();
+
+    on_wire_plumber_service_node_changed(wps, header, self);
+
+    // listen for node-changed event on wire plumber service unless we are a
+    // stream, those events come from the database being monitored in the mixer
+    // widget proper.
+    switch (header->type) {
+        case WIRE_PLUMBER_SERVICE_TYPE_SINK:
+        case WIRE_PLUMBER_SERVICE_TYPE_SOURCE:
+            g_signal_connect(wps, "node-changed",
+                             G_CALLBACK(on_wire_plumber_service_node_changed),
+                             self);
+            break;
+        case WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM:
+            break;
+        case WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM:
+            break;
+        default:
+            break;
     }
-    if (header->type == WIRE_PLUMBER_SERVICE_TYPE_SOURCE) {
-        set_source(self, (WirePlumberServiceNode *)header);
-    }
-    if (header->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM ||
-        header->type == WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM) {
-        set_stream(self, (WirePlumberServiceAudioStream *)header);
-    }
-    // listen for node-changed event on wire plumber service
-    g_signal_connect(wire_plumber_service_get_global(), "node-changed",
-                     G_CALLBACK(on_wire_plumber_service_node_changed), self);
 }
 
 GtkWidget *quick_settings_header_mixer_menu_option_get_widget(
