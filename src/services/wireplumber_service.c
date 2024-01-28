@@ -179,12 +179,23 @@ static void wire_plumber_service_fill_ports(
     }
 }
 
+static void wire_plumber_service_clean_audio_node(
+    WirePlumberServiceAudioStream *node) {
+    g_free((void *)node->media_class);
+    node->media_class = NULL;
+    g_free((void *)node->name);
+    node->name = NULL;
+    g_free((void *)node->app_name);
+    node->app_name = NULL;
+}
+
 static void wire_plumber_service_fill_audio_stream(
     WirePlumberServiceAudioStream *node, WpGlobalProxy *proxy,
     WirePlumberService *self) {
-    WpProperties *props = wp_global_proxy_get_global_properties(proxy);
     GVariant *mixer_values = NULL;
-    GValue value = G_VALUE_INIT;
+
+    // clean the node of any alloc'd data before we reset the fields.
+    wire_plumber_service_clean_audio_node(node);
 
     // fill in id and state fields
     node->id = wp_proxy_get_bound_id(WP_PROXY(proxy));
@@ -201,24 +212,12 @@ static void wire_plumber_service_fill_audio_stream(
     // convert volume to cubic
     node->volume = volume_from_linear(node->volume, SCALE_CUBIC);
 
-    // fill in WpNode info.
-    WpIterator *i = wp_properties_new_iterator(props);
-    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
-        WpPropertiesItem *item = g_value_get_boxed(&value);
-
-        const gchar *key = wp_properties_item_get_key(item);
-        const gchar *val = wp_properties_item_get_value(item);
-
-        if (g_strcmp0(key, PW_KEY_NODE_NAME) == 0) {
-            node->name = g_strdup(val);
-        }
-        if (g_strcmp0(key, PW_KEY_APP_NAME) == 0) {
-            node->app_name = g_strdup(val);
-        }
-        if (g_strcmp0(key, PW_KEY_MEDIA_CLASS) == 0) {
-            node->media_class = g_strdup(val);
-        }
-    }
+    node->media_class = g_strdup(wp_pipewire_object_get_property(
+        WP_PIPEWIRE_OBJECT(proxy), PW_KEY_MEDIA_CLASS));
+    node->name = g_strdup(wp_pipewire_object_get_property(
+        WP_PIPEWIRE_OBJECT(proxy), PW_KEY_NODE_DESCRIPTION));
+    node->app_name = g_strdup(wp_pipewire_object_get_property(
+        WP_PIPEWIRE_OBJECT(proxy), PW_KEY_APP_NAME));
 
     // check media type and set actual type
     if (g_strcmp0(node->media_class, "Stream/Output/Audio") == 0) {
@@ -229,12 +228,23 @@ static void wire_plumber_service_fill_audio_stream(
     }
 }
 
+static void wire_plumber_service_clean_source_sink_node(
+    WirePlumberServiceNode *node) {
+    g_free((void *)node->media_class);
+    node->media_class = NULL;
+    g_free((void *)node->name);
+    node->name = NULL;
+    g_free((void *)node->nick_name);
+    node->nick_name = NULL;
+}
+
 static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
                                            WpGlobalProxy *proxy,
                                            WirePlumberService *self) {
-    WpProperties *props = wp_global_proxy_get_global_properties(proxy);
     GVariant *mixer_values = NULL;
-    GValue value = G_VALUE_INIT;
+
+    // clean the node of any alloc'd data before we reset the fields.
+    wire_plumber_service_clean_source_sink_node(node);
 
     // fill in id and state fields
     node->id = wp_proxy_get_bound_id(WP_PROXY(proxy));
@@ -251,24 +261,12 @@ static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
     // convert volume to cubic
     node->volume = volume_from_linear(node->volume, SCALE_CUBIC);
 
-    // fill in WpNode info.
-    WpIterator *i = wp_properties_new_iterator(props);
-    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
-        WpPropertiesItem *item = g_value_get_boxed(&value);
-
-        const gchar *key = wp_properties_item_get_key(item);
-        const gchar *val = wp_properties_item_get_value(item);
-
-        if (g_strcmp0(key, PW_KEY_MEDIA_CLASS) == 0) {
-            node->media_class = g_strdup(val);
-        }
-        if (g_strcmp0(key, PW_KEY_NODE_DESCRIPTION) == 0) {
-            node->name = g_strdup(val);
-        }
-        if (g_strcmp0(key, PW_KEY_NODE_NICK) == 0) {
-            node->nick_name = g_strdup(val);
-        }
-    }
+    node->media_class = g_strdup(wp_pipewire_object_get_property(
+        WP_PIPEWIRE_OBJECT(proxy), PW_KEY_MEDIA_CLASS));
+    node->name = g_strdup(wp_pipewire_object_get_property(
+        WP_PIPEWIRE_OBJECT(proxy), PW_KEY_NODE_DESCRIPTION));
+    node->nick_name = g_strdup(wp_pipewire_object_get_property(
+        WP_PIPEWIRE_OBJECT(proxy), PW_KEY_NODE_NICK));
 
     // check media type and set actual type
     if (g_strcmp0(node->media_class, "Audio/Sink") == 0) {
@@ -282,26 +280,31 @@ static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
 static void wire_plumber_service_fill_link(WirePlumberServiceLink *link,
                                            WpGlobalProxy *proxy,
                                            WirePlumberService *self) {
-    GValue value = G_VALUE_INIT;
-    WpProperties *props = wp_global_proxy_get_global_properties(proxy);
-
     link->id = wp_proxy_get_bound_id(WP_PROXY(proxy));
 
-    // fill in Link info
-    WpIterator *i = wp_properties_new_iterator(props);
-    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
-        WpPropertiesItem *item = g_value_get_boxed(&value);
+    const char *input_node = NULL;
+    const char *input_port = NULL;
+    const char *output_node = NULL;
+    const char *output_port = NULL;
 
-        const gchar *key = wp_properties_item_get_key(item);
-        const gchar *val = wp_properties_item_get_value(item);
+    input_node = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(proxy),
+                                                 PW_KEY_LINK_INPUT_NODE);
+    input_port = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(proxy),
+                                                 PW_KEY_LINK_INPUT_PORT);
 
-        if (g_strcmp0(key, PW_KEY_LINK_INPUT_NODE) == 0) {
-            link->input_node = g_ascii_strtoull(val, NULL, 10);
-        }
-        if (g_strcmp0(key, PW_KEY_LINK_OUTPUT_NODE) == 0) {
-            link->output_node = g_ascii_strtoull(val, NULL, 10);
-        }
-    }
+    output_node = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(proxy),
+                                                  PW_KEY_LINK_OUTPUT_NODE);
+    output_port = wp_pipewire_object_get_property(WP_PIPEWIRE_OBJECT(proxy),
+                                                  PW_KEY_LINK_OUTPUT_PORT);
+
+    if (input_node) link->input_node = g_ascii_strtoull(input_node, NULL, 10);
+    if (input_port) link->input_port = g_ascii_strtoull(input_port, NULL, 10);
+    if (output_node)
+        link->output_node = g_ascii_strtoull(output_node, NULL, 10);
+    if (output_port)
+        link->output_port = g_ascii_strtoull(output_port, NULL, 10);
+
+    link->type = WIRE_PLUMBER_SERVICE_TYPE_LINK;
 };
 
 WirePlumberServiceLink *wire_plumber_service_link_new(
@@ -429,6 +432,7 @@ static void wire_plumber_service_prune_db(WirePlumberService *self) {
             WirePlumberServiceNode *node = g_ptr_array_index(self->sinks, i);
             if (!g_hash_table_contains(set, GUINT_TO_POINTER(node->id))) {
                 g_ptr_array_remove_index(self->sinks, i);
+                wire_plumber_service_clean_source_sink_node(node);
                 g_free(node);
             }
         }
@@ -439,6 +443,7 @@ static void wire_plumber_service_prune_db(WirePlumberService *self) {
             WirePlumberServiceNode *node = g_ptr_array_index(self->sources, i);
             if (!g_hash_table_contains(set, GUINT_TO_POINTER(node->id))) {
                 g_ptr_array_remove_index(self->sources, i);
+                wire_plumber_service_clean_source_sink_node(node);
                 g_free(node);
             }
         }
@@ -450,6 +455,7 @@ static void wire_plumber_service_prune_db(WirePlumberService *self) {
                 g_ptr_array_index(self->streams, i);
             if (!g_hash_table_contains(set, GUINT_TO_POINTER(stream->id))) {
                 g_ptr_array_remove_index(self->streams, i);
+                wire_plumber_service_clean_audio_node(stream);
                 g_free(stream);
             }
         }
@@ -622,7 +628,7 @@ static void on_object_manager_change(WpObjectManager *om,
     // find sources
     on_object_manager_change_get_source_sinks(om, self, "Audio/Source");
 
-    // find output audio streams
+    // find audio streams
     on_object_manager_change_get_audio_streams(om, self);
 
     // find links
@@ -1137,4 +1143,21 @@ char *wire_plumber_service_map_sink_vol_icon(float vol, gboolean mute) {
         return "audio-volume-medium-symbolic";
     }
     return "audio-volume-high-symbolic";
+}
+
+enum WirePlumberServiceType wire_plumber_service_media_class_to_type(
+    const char *media_class) {
+    if (g_strcmp0(media_class, "Audio/Sink") == 0) {
+        return WIRE_PLUMBER_SERVICE_TYPE_SINK;
+    }
+    if (g_strcmp0(media_class, "Audio/Source") == 0) {
+        return WIRE_PLUMBER_SERVICE_TYPE_SOURCE;
+    }
+    if (g_strcmp0(media_class, "Stream/Input/Audio") == 0) {
+        return WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM;
+    }
+    if (g_strcmp0(media_class, "Stream/Output/Audio") == 0) {
+        return WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM;
+    }
+    return WIRE_PLUMBER_SERVICE_TYPE_UNKNOWN;
 }

@@ -171,10 +171,10 @@ static void quick_settings_init_layout(QuickSettings *self) {
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT,
                          true);
-    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
+    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 8);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT, 20);
-    // gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
-    //                             GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+    gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
+                                GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
     // create vertical container box
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -182,11 +182,6 @@ static void quick_settings_init_layout(QuickSettings *self) {
     // attach header
     gtk_box_append(self->container,
                    quick_settings_header_get_widget(self->header));
-
-    // attach audio scales
-    // quick_settings_audio_scales_init(&self->audio_scales);
-    // gtk_box_append(self->container,
-    // GTK_WIDGET(self->audio_scales.container));
 
     self->scales = g_object_new(QUICK_SETTINGS_SCALES_TYPE, NULL);
     gtk_box_append(self->container,
@@ -267,7 +262,7 @@ void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
     quick_settings_mediator_emit_will_show(mediator, self, monitor);
 
     // show underlay
-    // gtk_window_present(GTK_WINDOW(self->underlay));
+    gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));

@@ -213,3 +213,6 @@ char *wire_plumber_service_map_source_vol_icon(float vol, gboolean mute);
 char *wire_plumber_service_map_sink_vol_icon(float vol, gboolean mute);
 
 GHashTable *wire_plumber_service_get_db(WirePlumberService *self);
+
+enum WirePlumberServiceType wire_plumber_service_media_class_to_type(
+    const char *media_class);

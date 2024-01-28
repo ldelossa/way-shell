@@ -33,7 +33,6 @@ static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
         "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
     gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
-    g_signal_emit(self, signals[mixer_revealed], 0, FALSE);
 }
 
 static void on_power_button_click(GtkButton *button,
@@ -56,9 +55,6 @@ static void on_mixer_button_click(GtkButton *button,
 
     // close power menu revealer
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
-
-    // emit revealed signal
-    g_signal_emit(self, signals[mixer_revealed], 0, !revealed);
 }
 
 // stub out empty dispose, finalize, class_init, and init methods for this
@@ -104,6 +100,17 @@ static void on_reveal_finish(GtkRevealer *revealer, GParamSpec *spec,
     }
 }
 
+static void on_mixer_reveal_child(GtkRevealer *revealer, GParamSpec *spec,
+                                  QuickSettingsHeader *self) {
+    gboolean revealed =
+        gtk_revealer_get_reveal_child(GTK_REVEALER(self->mixer_revealer));
+    if (!revealed) {
+        QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
+        quick_settings_mediator_req_shrink(mediator);
+    }
+    g_signal_emit(self, signals[mixer_revealed], 0, revealed);
+}
+
 static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     // create main layouts
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -137,9 +144,6 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
 
     gtk_box_append(self->container, GTK_WIDGET(self->mixer_revealer));
-
-    g_signal_connect(self->mixer_revealer, "notify::child-revealed",
-                     G_CALLBACK(on_reveal_finish), self);
 
     gtk_revealer_set_child(
         self->mixer_revealer,
@@ -175,6 +179,10 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
     QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
     g_signal_connect(mediator, "quick-settings-hidden",
                      G_CALLBACK(quick_settings_header_on_qs_hidden), self);
+
+    // wire into mixer reavler's reveal child
+    g_signal_connect(self->mixer_revealer, "notify::child-revealed",
+                     G_CALLBACK(on_mixer_reveal_child), self);
 }
 
 static void quick_settings_header_init(QuickSettingsHeader *self) {

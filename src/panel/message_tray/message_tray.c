@@ -144,7 +144,7 @@ static void message_tray_init_layout(MessageTray *self) {
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
     gtk_widget_set_name(GTK_WIDGET(self->win), "message-tray");
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
-    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
+    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 8);
 
     // wire into window's GtkWidget destroy signal
     g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);

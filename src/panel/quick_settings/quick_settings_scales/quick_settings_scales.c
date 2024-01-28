@@ -3,6 +3,7 @@
 #include <adwaita.h>
 
 #include "../../../services/wireplumber_service.h"
+#include "gtk/gtkrevealer.h"
 
 enum signals { signals_n };
 
@@ -13,6 +14,8 @@ typedef struct _QuickSettingsScales {
     GtkBox *default_sink_container;
     GtkEventControllerMotion *default_source_ctlr;
     GtkBox *default_source_container;
+    GtkRevealer *audio_scales_revealer;
+    GtkBox *audio_scales_revealer_contents;
     GtkImage *default_sink_icon;
     GtkScale *default_sink_scale;
     GtkImage *default_source_icon;
@@ -219,6 +222,18 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->container), "quick-settings-scales");
 
+    // create audio scales revealer
+    self->audio_scales_revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->audio_scales_revealer,
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_UP);
+    gtk_revealer_set_transition_duration(self->audio_scales_revealer, 350);
+    gtk_revealer_set_reveal_child(self->audio_scales_revealer, TRUE);
+
+    self->audio_scales_revealer_contents =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
+    gtk_revealer_set_child(self->audio_scales_revealer,
+                           GTK_WIDGET(self->audio_scales_revealer_contents));
+
     // default sinks setup
     self->default_sink_ctlr =
         GTK_EVENT_CONTROLLER_MOTION(gtk_event_controller_motion_new());
@@ -309,8 +324,12 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
                      G_CALLBACK(on_source_scale_value_changed), self);
 
     // wire up to container
-    gtk_box_append(self->container, GTK_WIDGET(self->default_sink_container));
-    gtk_box_append(self->container, GTK_WIDGET(self->default_source_container));
+    gtk_box_append(self->audio_scales_revealer_contents,
+                   GTK_WIDGET(self->default_sink_container));
+    gtk_box_append(self->audio_scales_revealer_contents,
+                   GTK_WIDGET(self->default_source_container));
+
+    gtk_box_append(self->container, GTK_WIDGET(self->audio_scales_revealer));
 }
 
 void quick_settings_scales_reinitialize(QuickSettingsScales *self) {
@@ -353,9 +372,12 @@ void quick_settings_scales_disable_audio_scales(QuickSettingsScales *self,
     if (!wp) return;
 
     // hide audio scales
-    gtk_widget_set_visible(GTK_WIDGET(self->default_sink_container), !disable);
-    gtk_widget_set_visible(GTK_WIDGET(self->default_source_container),
-                           !disable);
+    // gtk_widget_set_visible(GTK_WIDGET(self->default_sink_container), !disable);
+    // gtk_widget_set_visible(GTK_WIDGET(self->default_source_container),
+    //                        !disable);
+
+    // close revealer
+    gtk_revealer_set_reveal_child(self->audio_scales_revealer, !disable);
 
     if (disable) {
         // block signals
