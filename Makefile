@@ -3,7 +3,10 @@ DEPS := libadwaita-1 \
 		upower-glib \
 		wireplumber-0.4 \
 		json-glib-1.0 \
-		libnm
+		libnm \
+		libpulse \
+		libpulse-simple \
+		libpulse-mainloop-glib
 CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
 LIBS := $(shell pkg-config --libs $(DEPS))
 LIBS += "-lgtk4-layer-shell" "-lm"

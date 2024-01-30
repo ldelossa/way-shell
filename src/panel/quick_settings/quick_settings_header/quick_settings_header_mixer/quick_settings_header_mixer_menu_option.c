@@ -391,17 +391,17 @@ static void set_stream_common(QuickSettingsHeaderMixerMenuOption *self,
     // set name and tooltip based on stream direction
     if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM) {
         gtk_label_set_text(self->node_name,
-                           g_strdup_printf("%s (%s)", node->app_name, "Input"));
+                           g_strdup_printf("%s (%s)", node->media_name, "Input"));
         gtk_widget_set_tooltip_text(
             GTK_WIDGET(self->button),
-            g_strdup_printf("%s (%s)", node->app_name, "Input"));
+            g_strdup_printf("%s: %s (%s)", node->app_name, node->media_name, "Input"));
     } else {
         gtk_label_set_text(
             self->node_name,
-            g_strdup_printf("%s (%s)", node->app_name, "Output"));
+            g_strdup_printf("%s (%s)", node->media_name, "Output"));
         gtk_widget_set_tooltip_text(
             GTK_WIDGET(self->button),
-            g_strdup_printf("%s (%s)", node->app_name, "Output"));
+            g_strdup_printf("%s: %s (%s)", node->app_name, node->media_name, "Output"));
     }
 
     if (node->state == WP_NODE_STATE_RUNNING) {

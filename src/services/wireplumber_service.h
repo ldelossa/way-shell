@@ -116,6 +116,7 @@ typedef struct WirePlumberServiceNode {
     guint32 id;
     WirePlumberServicePorts ports;
     const gchar *name;
+    const gchar *proper_name;
     const gchar *media_class;
     const gchar *nick_name;
     gdouble volume;
@@ -134,6 +135,7 @@ typedef struct WirePlumberServiceAudioStream {
     const gchar *name;
     const gchar *app_name;
     const gchar *media_class;
+    const gchar *media_name;
     gdouble volume;
     gboolean mute;
     gboolean active;

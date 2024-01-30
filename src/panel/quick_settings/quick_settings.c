@@ -173,8 +173,8 @@ static void quick_settings_init_layout(QuickSettings *self) {
                          true);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 8);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_RIGHT, 20);
-    gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
-                                GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+    // gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
+    //                             GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
     // create vertical container box
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -262,7 +262,7 @@ void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
     quick_settings_mediator_emit_will_show(mediator, self, monitor);
 
     // show underlay
-    gtk_window_present(GTK_WINDOW(self->underlay));
+    // gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));

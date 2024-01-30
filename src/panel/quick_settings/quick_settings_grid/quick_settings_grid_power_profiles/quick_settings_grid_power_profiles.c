@@ -61,6 +61,10 @@ void quick_settings_grid_power_profiles_button_free(
         "quick_settings_grid_power_profiles.c:qs_grid_power_profiles_button_"
         "free() called");
 
+    // kill signals
+    g_signal_handlers_disconnect_by_func(power_profiles_service_get_global(),
+                                         on_active_profile_change, self);
+
     // unref our menu
     g_object_unref(self->menu);
     // unref button's container
