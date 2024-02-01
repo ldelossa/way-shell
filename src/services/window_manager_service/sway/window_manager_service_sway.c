@@ -19,6 +19,7 @@ struct _WMServiceSway {
     guint poll_id;
     gboolean polling;
     gboolean subscribed;
+    GSettings *settings;
 };
 static guint service_signals[signals_n] = {0};
 G_DEFINE_TYPE(WMServiceSway, wm_service_sway, G_TYPE_OBJECT);
@@ -72,8 +73,9 @@ static void handle_ipc_get_workspaces(WMServiceSway *self,
     }
     self->workspaces = tmp;
 
-    // sort array alphabetically.
-    g_ptr_array_sort(self->workspaces, (GCompareFunc)compare_workspace_name);
+    // check 'sort-alphabetical' setting and if true sort
+    if (g_settings_get_boolean(self->settings, "sort-workspaces-alphabetical"))
+        g_ptr_array_sort(self->workspaces, (GCompareFunc)compare_workspace_name);
 
     // emit signal
     g_signal_emit(self, service_signals[workspaces_changed], 0,
@@ -151,6 +153,17 @@ static gboolean on_ipc_recv(gint fd, GIOCondition condition,
     return true;
 }
 
+static void on_sort_alphabetical_changed(GSettings *settings, gchar *key,
+                                         WMServiceSway *self) {
+    g_debug(
+        "window_manager_service_sway.c:on_sort_alphabetical_changed() "
+        "sort-alphabetical setting changed, updating workspaces.");
+
+    // perform workspaces request
+    sway_client_ipc_get_workspaces_req(self->socket_fd);
+}
+
+
 static void wm_service_sway_init(WMServiceSway *self) {
     self->socket_path = sway_client_find_socket_path();
     if (!self->socket_path)
@@ -177,6 +190,13 @@ static void wm_service_sway_init(WMServiceSway *self) {
     self->poll_id =
         g_unix_fd_add(self->socket_fd, G_IO_IN | G_IO_HUP | G_IO_ERR,
                       (GUnixFDSourceFunc)on_ipc_recv, self);
+
+    // connect to 'org.ldelossa.wlr-shell.window-manager.workspaces' setting
+    self->settings = g_settings_new("org.ldelossa.wlr-shell.window-manager");
+
+    // wire into sort-alphabetical value
+    g_signal_connect(self->settings, "changed::sort-workspaces-alphabetical",
+                     G_CALLBACK(on_sort_alphabetical_changed), self);
 };
 
 // Initializes the sway wm service.

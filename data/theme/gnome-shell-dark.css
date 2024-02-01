@@ -68,6 +68,14 @@
   border-radius: 0px;
 }
 
+#panel scrolledwindow undershoot.left {
+  background: linear-gradient(to right, rgba(35,35,35,.35), transparent);
+}
+
+#panel scrolledwindow undershoot.right {
+  background: linear-gradient(to left, rgba(35,35,35,.35), transparent);
+}
+
 #panel #workspaces-bar-list {
   font-weight: normal;
   font-size: 12px;

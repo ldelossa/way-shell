@@ -9,7 +9,7 @@ struct _PanelStatusBarPowerButton {
     GObject parent_instance;
     UpDevice *power_dev;
     GtkImage *icon;
-    guint32 signal_id;
+    int signals[2];
 };
 G_DEFINE_TYPE(PanelStatusBarPowerButton, panel_status_bar_power_button,
               G_TYPE_OBJECT);
@@ -34,7 +34,8 @@ static void panel_status_bar_power_button_dispose(GObject *gobject) {
     PanelStatusBarPowerButton *self = PANEL_STATUS_BAR_POWER_BUTTON(gobject);
 
     // disconnect from signals
-    g_signal_handler_disconnect(self->power_dev, self->signal_id);
+    g_signal_handler_disconnect(self->power_dev, self->signals[0]);
+    g_signal_handler_disconnect(self->power_dev, self->signals[1]);
 
     // unref power device
     g_object_unref(self->power_dev);
@@ -72,9 +73,13 @@ static void panel_status_bar_power_button_init_layout(
     // create icon
     self->icon = GTK_IMAGE(gtk_image_new_from_icon_name(name));
 
-    self->signal_id =
+    self->signals[0] =
         g_signal_connect(self->power_dev, "notify::percentage",
                          G_CALLBACK(on_battery_icon_change), self);
+    self->signals[1] =
+        g_signal_connect(self->power_dev, "notify::state",
+                         G_CALLBACK(on_battery_icon_change), self);
+
 };
 
 static void panel_status_bar_power_button_init(

@@ -25,8 +25,7 @@ G_DEFINE_TYPE(PanelClock, panel_clock, G_TYPE_OBJECT)
 static void panel_clock_on_notification_changed(NotificationsService *ns,
                                                 GPtrArray *notifications,
                                                 PanelClock *self) {
-    if (self->dnd)
-        return;
+    if (self->dnd) return;
 
     if (notifications->len > 0) {
         gtk_widget_set_visible(GTK_WIDGET(self->notif), true);
@@ -41,6 +40,9 @@ static void on_tick(ClockService *cs, GDateTime *now, PanelClock *self) {
     g_free(date);
 }
 
+static void panel_clock_on_dnd_changed(GSettings *settings, gchar *key,
+                                       PanelClock *self);
+
 // stub out dispose, finalize, class_init, and init methods
 static void panel_clock_dispose(GObject *gobject) {
     PanelClock *self = PANEL_CLOCK(gobject);
@@ -53,6 +55,10 @@ static void panel_clock_dispose(GObject *gobject) {
     g_signal_handlers_disconnect_by_func(
         notifications_service_get_global(),
         G_CALLBACK(panel_clock_on_notification_changed), self);
+
+    g_signal_handlers_disconnect_by_func(self->notifications_settings,
+                                         G_CALLBACK(panel_clock_on_dnd_changed),
+                                         self);
 
     // Chain-up
     G_OBJECT_CLASS(panel_clock_parent_class)->dispose(gobject);
@@ -90,7 +96,8 @@ static void panel_clock_on_dnd_changed(GSettings *settings, gchar *key,
         gtk_widget_set_visible(GTK_WIDGET(self->notif), true);
     } else {
         // set icon back to notifications-symbolic
-        gtk_image_set_from_icon_name(self->notif, "preferences-system-notifications-symbolic");
+        gtk_image_set_from_icon_name(
+            self->notif, "preferences-system-notifications-symbolic");
         // evaluate latest notifications state
         panel_clock_on_notification_changed(
             notifications_service_get_global(),
@@ -137,11 +144,11 @@ static void panel_clock_init_layout(PanelClock *self) {
     g_signal_connect(ns, "notification-changed",
                      G_CALLBACK(panel_clock_on_notification_changed), self);
 
-    self->notifications_settings = g_settings_new("org.ldelossa.wlr-shell.notifications");
+    self->notifications_settings =
+        g_settings_new("org.ldelossa.wlr-shell.notifications");
     // wire into dnd changed
     g_signal_connect(self->notifications_settings, "changed::do-not-disturb",
                      G_CALLBACK(panel_clock_on_dnd_changed), self);
-
 }
 
 void panel_clock_reinitialize(PanelClock *self) {
@@ -151,6 +158,10 @@ void panel_clock_reinitialize(PanelClock *self) {
     g_signal_handlers_disconnect_by_func(
         notifications_service_get_global(),
         G_CALLBACK(panel_clock_on_notification_changed), self);
+    g_signal_handlers_disconnect_by_func(self->notifications_settings,
+                                         G_CALLBACK(panel_clock_on_dnd_changed),
+                                         self);
+
     // reset our layout
     panel_clock_init_layout(self);
 }

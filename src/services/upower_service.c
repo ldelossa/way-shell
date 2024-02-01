@@ -151,6 +151,7 @@ char *upower_device_map_icon_name(UpDevice *device) {
     }
 
     charging = (state == UP_DEVICE_STATE_CHARGING ||
+                state == UP_DEVICE_STATE_FULLY_CHARGED ||
                 state == UP_DEVICE_STATE_PENDING_CHARGE);
 
     if (percent <= 10) {
@@ -189,15 +190,14 @@ char *upower_device_map_icon_name(UpDevice *device) {
         if (charging) return "battery-level-80-charging-symbolic";
         return "battery-level-80-symbolic";
     }
-    if (percent >= 90 && percent < 99) {
-        if (charging) return "battery-level-90-charging-symbolic";
+    if (percent > 90) {
+        if (charging) {
+            if (state == UP_DEVICE_STATE_FULLY_CHARGED)
+                return "battery-full-charging-symbolic";
+            else
+                return "battery-level-90-charging-symbolic";
+        }
         return "battery-level-90-symbolic";
-    }
-    if (percent >= 99) {
-        if (state == UP_DEVICE_STATE_CHARGING ||
-            state == UP_DEVICE_STATE_FULLY_CHARGED)
-            return "battery-full-charging-symbolic";
-        return "battery-full-symbolic";
     }
     return "battery-missing-symbolic";
 }
