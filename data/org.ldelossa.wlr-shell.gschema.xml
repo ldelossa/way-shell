@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<schemalist>
+
+    <!--top level keys-->
+    <schema path="/org/ldelossa/wlr-shell/" id="org.ldelossa.wlr-shell">
+    </schema>
+
+    <!--workspaces settings-->
+    <schema path="/org/ldelossa/wlr-shell/workspaces/" id="org.ldelossa.wlr-shell.workspaces">
+        <key name="sort-alphabetical" type="b">
+            <default>true</default>
+            <summary>Sort workpaces alphabetically</summary>
+            <description>
+            Enabling this option will sort workspaces alphabetically.
+            If its disabled workspaces are not sorted and are displayed in creation order.
+            </description>
+        </key>
+    </schema>
+
+    <!--notification settings-->
+    <schema path="/org/ldelossa/wlr-shell/notifications/" id="org.ldelossa.wlr-shell.notifications">
+        <key name="do-not-disturb" type="b">
+            <default>false</default>
+            <summary>DoNotDisturb</summary>
+            <description>Enable or disable on-screen notifications.</description>
+        </key>
+    </schema>
+
+
+</schemalist>

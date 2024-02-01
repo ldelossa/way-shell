@@ -130,67 +130,6 @@ gboolean wire_plumber_service_microphone_active(WirePlumberService *self) {
     return active;
 }
 
-static void wire_plumber_service_fill_ports(
-    WpNode *node, WirePlumberServiceNodeHeader *header,
-    WirePlumberService *self) {
-    g_debug("wireplumber_service.c:wire_plumber_service_fill_ports() called");
-
-    GValue value = G_VALUE_INIT;
-
-    if (!node) {
-        node = wp_object_manager_lookup(self->om, WP_TYPE_NODE,
-                                        WP_CONSTRAINT_TYPE_G_PROPERTY,
-                                        "bound-id", "=u", header->id, NULL);
-    }
-    if (!node) return;
-
-    WpIterator *i = wp_node_new_ports_iterator(node);
-    for (; wp_iterator_next(i, &value); g_value_unset(&value)) {
-        WpPort *port = g_value_get_object(&value);
-
-        const char *direction = wp_pipewire_object_get_property(
-            WP_PIPEWIRE_OBJECT(port), PW_KEY_PORT_DIRECTION);
-        const char *monitor = wp_pipewire_object_get_property(
-            WP_PIPEWIRE_OBJECT(port), PW_KEY_PORT_MONITOR);
-        const char *channel = wp_pipewire_object_get_property(
-            WP_PIPEWIRE_OBJECT(port), PW_KEY_AUDIO_CHANNEL);
-
-        // if its a monitor port, just ignore it
-        if (monitor) continue;
-
-        // eliminate ports in directions we don't care about
-        switch (header->type) {
-            case WIRE_PLUMBER_SERVICE_TYPE_SINK:
-                if (g_strcmp0(direction, "in") != 0) continue;
-                break;
-            case WIRE_PLUMBER_SERVICE_TYPE_SOURCE:
-                if (g_strcmp0(direction, "out") != 0) continue;
-                break;
-            case WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM:
-                if (g_strcmp0(direction, "in") != 0) continue;
-                break;
-            case WIRE_PLUMBER_SERVICE_TYPE_OUTPUT_AUDIO_STREAM:
-                if (g_strcmp0(direction, "out") != 0) continue;
-                break;
-            default:
-                break;
-        }
-
-        guint32 id = wp_proxy_get_bound_id(WP_PROXY(port));
-
-        // map to wireplumber service port
-        enum WirePlumberServicePortChannel port_channel =
-            wire_plumber_service_map_port(channel);
-
-        g_debug(
-            "wireplumber_service.c:wire_plumber_service_fill_ports() id: %d, "
-            "direction: %s, channel: %s, port_channel: %d",
-            id, direction, channel, port_channel);
-
-        header->ports[port_channel] = id;
-    }
-}
-
 static void wire_plumber_service_clean_audio_node(
     WirePlumberServiceAudioStream *node) {
     g_free((void *)node->media_class);
@@ -748,10 +687,10 @@ static void wire_plumber_service_init(WirePlumberService *self) {
 
     g_debug("wireplumber_service.c:wire_plumber_service_init() called");
 
-    wp_init(WP_INIT_PIPEWIRE);
-
     // init pulseaudio
     wire_plumber_service_init_pulseaudio(self);
+
+    wp_init(WP_INIT_PIPEWIRE);
 
     self->db = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->sources = g_ptr_array_new();
@@ -773,20 +712,11 @@ static void wire_plumber_service_init(WirePlumberService *self) {
             WP_PIPEWIRE_OBJECT_FEATURE_INFO |
             WP_PIPEWIRE_OBJECT_FEATURE_PARAM_ROUTE | WP_NODE_FEATURE_PORTS);
 
-    WpObjectInterest *all_ports = wp_object_interest_new_type(WP_TYPE_PORT);
-    wp_object_manager_request_object_features(self->om, WP_TYPE_PORT,
+    WpObjectInterest *all_links = wp_object_interest_new_type(WP_TYPE_LINK);
+    wp_object_manager_request_object_features(self->om, WP_TYPE_LINK,
                                               WP_PROXY_FEATURE_BOUND);
 
-    WpObjectInterest *all_links = wp_object_interest_new_type(WP_TYPE_LINK);
-    wp_object_manager_request_object_features(
-        self->om, WP_TYPE_LINK,
-        WP_PROXY_FEATURE_BOUND | WP_PIPEWIRE_OBJECT_FEATURE_PARAM_PROPS |
-            WP_PIPEWIRE_OBJECT_FEATURE_INFO |
-            WP_PIPEWIRE_OBJECT_FEATURE_PARAM_ROUTE |
-            WP_LINK_FEATURE_ESTABLISHED);
-
     wp_object_manager_add_interest_full(self->om, all_nodes);
-    wp_object_manager_add_interest_full(self->om, all_ports);
     wp_object_manager_add_interest_full(self->om, all_links);
 
     // load the mixer and default nodes apis.

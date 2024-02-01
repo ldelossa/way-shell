@@ -22,6 +22,7 @@ struct _NotificationsList {
     AdwStatusPage *status;
     GtkButton *clear;
     NotificationsOSD *osd;
+    GSettings *settings;
 };
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(NotificationsList, notifications_list, G_TYPE_OBJECT);
@@ -145,6 +146,17 @@ static void on_clear_all_clicked(GtkButton *button, NotificationsList *self) {
     }
 }
 
+static void on_dnd_setting_change(GSettings *settings, gchar *key,
+                                  NotificationsList *self) {
+    g_debug("notifications_list.c:on_dnd_switch_changed() called");
+
+    // set switch row to new setting
+    gboolean dnd = g_settings_get_boolean(settings, "do-not-disturb");
+
+    // set dnd_switch based on setting
+    adw_switch_row_set_active(ADW_SWITCH_ROW(self->dnd_switch), dnd);
+}
+
 static void notifications_list_init_layout(NotificationsList *self) {
     // container
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -224,6 +236,13 @@ static void notifications_list_init_layout(NotificationsList *self) {
     }
     self->notifications = notifications;
     g_ptr_array_ref(notifications);
+
+    // getting gsettings
+    self->settings = g_settings_new("org.ldelossa.wlr-shell.notifications");
+
+    // bind do-not-distrub gsetting to switch's active's property
+    g_settings_bind(self->settings, "do-not-disturb", self->dnd_switch,
+                    "active", G_SETTINGS_BIND_DEFAULT);
 
     // connect to signals
     g_signal_connect(service, "notification-added",

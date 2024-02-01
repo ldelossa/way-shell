@@ -16,12 +16,18 @@ struct _PanelClock {
     GtkImage *notif;
     GtkLabel *label;
     gboolean toggled;
+    gboolean dnd;
+    // do-not-disturb setting is bound to dnd switch.
+    GSettings *notifications_settings;
 };
 G_DEFINE_TYPE(PanelClock, panel_clock, G_TYPE_OBJECT)
 
 static void panel_clock_on_notification_changed(NotificationsService *ns,
                                                 GPtrArray *notifications,
                                                 PanelClock *self) {
+    if (self->dnd)
+        return;
+
     if (notifications->len > 0) {
         gtk_widget_set_visible(GTK_WIDGET(self->notif), true);
     } else {
@@ -73,6 +79,27 @@ static void on_click(GtkWidget *w, PanelClock *clock) {
     message_tray_mediator_req_open(m, panel_get_monitor(clock->panel));
 }
 
+static void panel_clock_on_dnd_changed(GSettings *settings, gchar *key,
+                                       PanelClock *self) {
+    self->dnd = g_settings_get_boolean(settings, "do-not-disturb");
+    if (self->dnd) {
+        // set icon to notifications-disabled-symbolic
+        gtk_image_set_from_icon_name(self->notif,
+                                     "notifications-disabled-symbolic");
+        // set visible
+        gtk_widget_set_visible(GTK_WIDGET(self->notif), true);
+    } else {
+        // set icon back to notifications-symbolic
+        gtk_image_set_from_icon_name(self->notif, "preferences-system-notifications-symbolic");
+        // evaluate latest notifications state
+        panel_clock_on_notification_changed(
+            notifications_service_get_global(),
+            notifications_service_get_notifications(
+                notifications_service_get_global()),
+            self);
+    }
+}
+
 static void panel_clock_init_layout(PanelClock *self) {
     self->toggled = false;
 
@@ -109,6 +136,12 @@ static void panel_clock_init_layout(PanelClock *self) {
 
     g_signal_connect(ns, "notification-changed",
                      G_CALLBACK(panel_clock_on_notification_changed), self);
+
+    self->notifications_settings = g_settings_new("org.ldelossa.wlr-shell.notifications");
+    // wire into dnd changed
+    g_signal_connect(self->notifications_settings, "changed::do-not-disturb",
+                     G_CALLBACK(panel_clock_on_dnd_changed), self);
+
 }
 
 void panel_clock_reinitialize(PanelClock *self) {
