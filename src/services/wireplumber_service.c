@@ -155,6 +155,9 @@ static void wire_plumber_service_fill_audio_stream(
     // fill in audio details from mixer api
     g_signal_emit_by_name(self->mixer_api, "get-volume", node->id,
                           &mixer_values);
+    if (!mixer_values)
+        return;
+
     g_variant_lookup(mixer_values, "volume", "d", &node->volume);
     g_variant_lookup(mixer_values, "mute", "b", &node->mute);
     g_variant_lookup(mixer_values, "step", "b", &node->step);

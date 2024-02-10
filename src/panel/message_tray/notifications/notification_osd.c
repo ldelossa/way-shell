@@ -227,6 +227,8 @@ void notification_osd_reinitialize(NotificationsOSD *self) {
     g_signal_handlers_disconnect_by_func(mtm, on_tray_hidden, self);
     g_signal_handlers_disconnect_by_func(mtm, on_tray_will_show, self);
 
+    g_signal_handlers_disconnect_by_func(self->revealer, cleanup_osd, self);
+
     notifications_osd_init_layout(self);
 }
 
