@@ -48,28 +48,30 @@ static void notifications_osd_class_init(NotificationsOSDClass *klass) {
 static void do_cleanup(NotificationsOSD *self, gboolean b) {
     if (!b) return;
     if (self->notification) {
-        gtk_box_remove(GTK_BOX(self->container),
-                       gtk_widget_get_first_child(GTK_WIDGET(self->container)));
         if (self->timeout_id) {
             g_source_remove(self->timeout_id);
             self->timeout_id = 0;
         }
         g_free(self->notification);
-        gtk_widget_set_visible(GTK_WIDGET(self->win), false);
         self->notification = NULL;
     }
 }
 
 // cleanup a notification once the revealer finishes the animation.
-static void cleanup_osd(GtkRevealer *revealer, GParamSpec *pspec,
-                        NotificationsOSD *self) {
-    gboolean child_revealed = gtk_revealer_get_child_revealed(revealer);
-    do_cleanup(self, !child_revealed);
+// this is split into two functions, where 'cleanup_osd' expects all the Gtk
+// components to be alive and 'do_cleanup' can be ran if the Gtk components have
+// been destroyed.
+static void cleanup_osd(NotificationsOSD *self) {
+    do_cleanup(self, true);
+    gtk_box_remove(GTK_BOX(self->container),
+                   gtk_widget_get_first_child(GTK_WIDGET(self->container)));
+    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
 }
 
 static void on_window_destroy(GtkWindow *win, NotificationsOSD *self) {
     g_debug("notification_osd.c:on_window_destroy() called");
-    self->win = NULL;
+    do_cleanup(self, true);
+    notification_osd_reinitialize(self);
 }
 
 static void on_tray_will_show(MessageTrayMediator *mtm, MessageTray *tray,
@@ -117,6 +119,12 @@ gboolean timed_dismiss(NotificationsOSD *self) {
     return false;
 }
 
+static void on_child_revealed(GObject *object, GParamSpec *pspec,
+                              NotificationsOSD *self) {
+    if (!gtk_revealer_get_child_revealed(self->revealer))
+        gtk_widget_set_visible(GTK_WIDGET(self->win), false);
+}
+
 void notification_osd_reinitialize(NotificationsOSD *self);
 
 static void on_notification_added(NotificationsService *ns,
@@ -128,20 +136,13 @@ static void on_notification_added(NotificationsService *ns,
         return;
     }
 
-    // its possible the window has been destroyed if it was open when a
-    // invalidation event occured. If so re-init the layout.
-    if (!self->win) {
-        notification_osd_reinitialize(self);
-    }
+    cleanup_osd(self);
+    gtk_revealer_set_reveal_child(self->revealer, false);
 
     Notification *n = g_ptr_array_index(notifications, index);
     if (!n) {
         return;
     }
-
-    // a bit of manual cleanup has to happen sync here, not async.
-    do_cleanup(self, true);
-    gtk_revealer_set_reveal_child(self->revealer, false);
 
     NotificationWidget *new = notification_widget_from_notification(n);
     // for some reason, we need to reset this before presenting, despite
@@ -191,7 +192,7 @@ static void notifications_osd_init_layout(NotificationsOSD *self) {
 
     // wire into "notify::child-revealed"
     g_signal_connect(self->revealer, "notify::child-revealed",
-                     G_CALLBACK(cleanup_osd), self);
+                     G_CALLBACK(on_child_revealed), self);
 
     self->ctlr = GTK_EVENT_CONTROLLER_MOTION(gtk_event_controller_motion_new());
     gtk_widget_add_controller(GTK_WIDGET(self->container),
@@ -226,8 +227,6 @@ void notification_osd_reinitialize(NotificationsOSD *self) {
     g_signal_handlers_disconnect_by_func(mtm, on_tray_visible, self);
     g_signal_handlers_disconnect_by_func(mtm, on_tray_hidden, self);
     g_signal_handlers_disconnect_by_func(mtm, on_tray_will_show, self);
-
-    g_signal_handlers_disconnect_by_func(self->revealer, cleanup_osd, self);
 
     notifications_osd_init_layout(self);
 }
