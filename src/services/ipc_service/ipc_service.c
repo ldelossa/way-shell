@@ -108,7 +108,16 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
 
     g_debug("ipc_service.c:on_ipc_readable() received IPC message");
 
-    recvfrom(fd, buff, sizeof(buff), 0, (struct sockaddr *)&saddr, &size);
+    if (recvfrom(fd, buff, sizeof(buff), 0, (struct sockaddr *)&saddr, &size) ==
+        -1) {
+        g_critical("ipc_service.c:on_ipc_readable() failed to recvfrom()");
+        return true;
+    }
+
+    // client is an abstract unix socket, debug the client socket's path
+    g_debug("ipc_service.c:on_ipc_readable() received IPC message from %s",
+            &saddr.sun_path[1]);
+    ret = false;
 
     IPCHeader *hdr = (IPCHeader *)&buff;
 
@@ -138,8 +147,14 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
             ret = ipc_cmd_volume_set((IPCVolumeSet *)hdr);
             break;
         default:
+            goto skip_resp;
             break;
     }
+
+    // set ret as a response back to client, its a simple one byte boolean.
+    sendto(fd, &ret, sizeof(ret), 0, (struct sockaddr *)&saddr, size);
+
+skip_resp:
     return true;
 }
 

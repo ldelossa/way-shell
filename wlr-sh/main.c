@@ -97,5 +97,10 @@ int main(int argc, char **argv) {
 
     close(ctx.client_sock);
 
-    return ret;
+    // flip boolean values for exit codes
+    if (ret) {
+        return 0;
+    }
+
+    return 1;
 }

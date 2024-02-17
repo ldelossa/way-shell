@@ -1,3 +1,4 @@
+#include <stdbool.h>
 #include <stdio.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -37,7 +38,10 @@ static int message_tray_open_exec(void *ctx, uint8_t argc, char **argv) {
         return -1;
     }
 
-    return 0;
+    bool response = false;
+    IPC_RECV_MSG(wlr_ctx, addr, &response);
+
+    return response;
 };
 
 cmd_tree_node_t message_tray_open_cmd = {.name = "open",
