@@ -1,0 +1,3 @@
+[submodule "lib/cmd_tree"]
+	path = lib/cmd_tree
+	url = git@github.com:ldelossa/cmd_tree

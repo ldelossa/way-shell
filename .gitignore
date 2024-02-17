@@ -2,3 +2,4 @@
 compile_commands.json
 gnomeland
 .gdb_history
+src/wlr-sh/wlr-sh

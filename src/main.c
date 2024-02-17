@@ -3,6 +3,7 @@
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/message_tray/message_tray_mediator.h"
 #include "./panel/panel.h"
+#include "./services/ipc_service/ipc_service.h"
 #include "./services/clock_service.h"
 #include "./services/network_manager_service.h"
 #include "./services/notifications_service/notifications_service.h"
@@ -44,6 +45,7 @@ static void activate(AdwApplication *app, gpointer user_data) {
     // Service activation //
 
     g_debug("main.c: activate(): activating services");
+
     if (clock_service_global_init() != 0) {
         g_error("main.c: activate(): failed to initialize clock service.");
     }
@@ -78,6 +80,10 @@ static void activate(AdwApplication *app, gpointer user_data) {
         g_error(
             "main.c: activate(): failed to initialize power profiles "
             "service.");
+    }
+
+    if (ipc_service_global_init() != 0) {
+        g_error("main.c: activate(): failed to initialize ipc service.");
     }
 
     // Subsystem activation //

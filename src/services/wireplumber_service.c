@@ -999,7 +999,7 @@ void wire_plumber_service_volume_up(WirePlumberService *self,
             "already at max");
         return;
     }
-    float volume = node->volume + .5;
+    float volume = node->volume + .05;
     wire_plumber_service_set_volume(self, node, volume);
 }
 
@@ -1013,7 +1013,7 @@ void wire_plumber_service_volume_down(WirePlumberService *self,
             "is already at min");
         return;
     }
-    float volume = node->volume - .5;
+    float volume = node->volume - .05;
     wire_plumber_service_set_volume(self, node, volume);
 }
 
