@@ -171,6 +171,9 @@ void osd_reinitialize(OSD *self) {
     WirePlumberService *wp = wire_plumber_service_get_global();
     g_signal_handlers_disconnect_by_func(wp, on_default_sink_changed, self);
 
+    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    g_signal_handlers_disconnect_by_func(qs, on_quick_settings_will_show, self);
+
     osd_init_layout(self);
 }
 
