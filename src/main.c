@@ -11,6 +11,7 @@
 #include "./services/upower_service.h"
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
+#include "./osd/osd.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
@@ -23,6 +24,9 @@ AdwApplication *gtk_app = NULL;
 // This ensures our app does not exit if all monitors are removed from the
 // system along with the other responsibilities of a ApplicationWindow.
 AdwApplicationWindow *global = NULL;
+
+// OSD manager
+VolumeOSD *osd = NULL;
 
 // activates all the components of our shell.
 static void activate(AdwApplication *app, gpointer user_data) {
@@ -98,6 +102,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
     quick_settings_activate(app, user_data);
     g_debug("main.c: activate(): quick_settings subsystems activated");
+
+    osd_activate(app, user_data);
+    g_debug("main.c: activate(): osd subsystems activated");
 
     // Subsystem mediator connections //
 

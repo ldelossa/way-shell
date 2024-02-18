@@ -38,3 +38,5 @@ void quick_settings_mediator_req_open(QuickSettingsMediator *mediator,
 void quick_settings_mediator_req_close(QuickSettingsMediator *mediator);
 
 void quick_settings_mediator_req_shrink(QuickSettingsMediator *mediator);
+
+gboolean quick_settings_mediator_qs_is_visible(QuickSettingsMediator *mediator);

@@ -74,7 +74,7 @@ static void animation_close_done(AdwAnimation *animation, QuickSettings *self) {
     // emit hidden signal
     quick_settings_mediator_emit_hidden(mediator, self, self->monitor);
 
-    // clear panel
+    // clear monitor
     self->monitor = NULL;
 };
 

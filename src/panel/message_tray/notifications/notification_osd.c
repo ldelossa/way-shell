@@ -45,8 +45,7 @@ static void notifications_osd_class_init(NotificationsOSDClass *klass) {
     object_class->finalize = notifications_osd_finalize;
 };
 
-static void do_cleanup(NotificationsOSD *self, gboolean b) {
-    if (!b) return;
+static void do_cleanup(NotificationsOSD *self) {
     if (self->notification) {
         if (self->timeout_id) {
             g_source_remove(self->timeout_id);
@@ -62,7 +61,7 @@ static void do_cleanup(NotificationsOSD *self, gboolean b) {
 // components to be alive and 'do_cleanup' can be ran if the Gtk components have
 // been destroyed.
 static void cleanup_osd(NotificationsOSD *self) {
-    do_cleanup(self, true);
+    do_cleanup(self);
     gtk_box_remove(GTK_BOX(self->container),
                    gtk_widget_get_first_child(GTK_WIDGET(self->container)));
     gtk_widget_set_visible(GTK_WIDGET(self->win), false);
@@ -70,7 +69,7 @@ static void cleanup_osd(NotificationsOSD *self) {
 
 static void on_window_destroy(GtkWindow *win, NotificationsOSD *self) {
     g_debug("notification_osd.c:on_window_destroy() called");
-    do_cleanup(self, true);
+    do_cleanup(self);
     notification_osd_reinitialize(self);
 }
 
@@ -109,7 +108,7 @@ static void on_notifications_removed(NotificationsService *ns,
     gtk_revealer_set_reveal_child(self->revealer, false);
 }
 
-gboolean timed_dismiss(NotificationsOSD *self) {
+static gboolean timed_dismiss(NotificationsOSD *self) {
     if (!self->win) return false;
     if (gtk_event_controller_motion_contains_pointer(self->ctlr)) {
         g_timeout_add_seconds(8, (GSourceFunc)timed_dismiss, self);

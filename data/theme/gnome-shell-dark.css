@@ -3,8 +3,37 @@
 }
 
 /*
-/ Underlay
-*/
+ * OSD
+ */
+#osd {
+  background-color: rgba(0, 0, 0, 0.0);
+}
+
+#osd #osd-container {
+  background-color: #353535;
+  border-radius: 99px;
+  padding: 15px;
+}
+
+#osd #osd-container scale trough slider {
+  background-color: rgba(0, 0, 0, 0.0);
+}
+
+#osd #osd-container scale trough {
+  background-color: #deddda;
+}
+
+#osd #osd-container scale trough highlight {
+  background-color: #3584e4;
+}
+
+#osd #osd-container image {
+  color: #FFFFFF;
+}
+
+/*
+ * Underlay
+ */
 .underlay {
   background-color: rgba(0, 0, 0, 0.1);
 }
@@ -15,8 +44,8 @@
 }
 
 /*
-/ Panel
-*/
+ * Panel
+ */
 #panel {
   background-color: #000000;
   font-weight: normal;
@@ -69,11 +98,11 @@
 }
 
 #panel scrolledwindow undershoot.left {
-  background: linear-gradient(to right, rgba(35,35,35,.35), transparent);
+  background: linear-gradient(to right, rgba(35, 35, 35, .35), transparent);
 }
 
 #panel scrolledwindow undershoot.right {
-  background: linear-gradient(to left, rgba(35,35,35,.35), transparent);
+  background: linear-gradient(to left, rgba(35, 35, 35, .35), transparent);
 }
 
 #panel #workspaces-bar-list {
@@ -519,8 +548,8 @@ label.day-number.today:focus {
 }
 
 #quick-settings-menu #container #options-container dropdown popover.background contents {
-   background-color: #555555;
-   color: #ffffff;
+  background-color: #555555;
+  color: #ffffff;
 }
 
 /*
@@ -583,5 +612,3 @@ label.day-number.today:focus {
 #quick-settings-menu #container #options-container .mixer-link {
   margin-left: 38px;
 }
-
-

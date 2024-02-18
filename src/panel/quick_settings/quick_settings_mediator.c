@@ -166,6 +166,11 @@ static void on_message_tray_will_show(MessageTrayMediator *msg_tray_mediator,
     quick_settings_set_hidden(mediator->qs, mon);
 }
 
+gboolean quick_settings_mediator_qs_is_visible(
+    QuickSettingsMediator *mediator) {
+    return (quick_settings_get_monitor(mediator->qs) != NULL);
+}
+
 void quick_settings_mediator_connect(QuickSettingsMediator *mediator) {
     MessageTrayMediator *message_tray_mediator =
         message_tray_get_global_mediator();
