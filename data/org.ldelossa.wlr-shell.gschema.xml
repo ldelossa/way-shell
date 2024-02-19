@@ -6,6 +6,20 @@
     <schema path="/org/ldelossa/wlr-shell/" id="org.ldelossa.wlr-shell">
     </schema>
 
+    <!--system related settings-->
+    <schema path="/org/ldelossa/wlr-shell/system/" id="org.ldelossa.wlr-shell.system">
+        <key name="suspend-method" type="s">
+            <default>'suspend'</default>
+            <summary>The suspend method used when suspend is invoked from Quick Settings</summary>
+            <description>
+            The method used to suspend the system. Options are:
+            suspend, hybrid_sleep, suspend_then_hibernate, hibernate,
+            If the provided suspend method is not available wlr-shell will walk
+            the list above and pick the first supported suspention method.
+            </description>
+        </key>
+    </schema>
+
     <!--window manager related settings-->
     <schema path="/org/ldelossa/wlr-shell/window-manager/" id="org.ldelossa.wlr-shell.window-manager">
         <key name="sort-workspaces-alphabetical" type="b">

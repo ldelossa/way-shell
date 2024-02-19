@@ -33,6 +33,20 @@ gschema:
 wlr-shell:
 	make -C wlr-sh/
 
+.PHONY:
+dbus-codegen:
+	gdbus-codegen --generate-c-code logind_manager_dbus \
+	--c-namespace Dbus \
+	--interface-prefix org.freedesktop. \
+	--output-directory ./src/services/logind_service \
+	./data/dbus-interfaces/org.freedesktop.login1.Manager.xml
+
+	gdbus-codegen --generate-c-code logind_session_dbus \
+	--c-namespace Dbus \
+	--interface-prefix org.freedesktop. \
+	--output-directory ./src/services/logind_service \
+	./data/dbus-interfaces/org.freedesktop.login1.Session.xml
+
 clean:
 	find . -name "*.o" -type f -exec rm -f {} \;
 	rm -rf gnomeland

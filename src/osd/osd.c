@@ -153,9 +153,8 @@ void osd_init_layout(OSD *self) {
 
     gtk_revealer_set_child(self->volume_revealer, GTK_WIDGET(volume_osd));
 
-    // wire into default_sink_changed event
     WirePlumberService *wp = wire_plumber_service_get_global();
-    g_signal_connect(wp, "default_sink_changed",
+    g_signal_connect(wp, "default-sink-volume-changed",
                      G_CALLBACK(on_default_sink_changed), self);
 
     // wire into quick settings mediator will show

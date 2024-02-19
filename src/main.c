@@ -1,17 +1,18 @@
 #include <adwaita.h>
 
+#include "./osd/osd.h"
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/message_tray/message_tray_mediator.h"
 #include "./panel/panel.h"
-#include "./services/ipc_service/ipc_service.h"
 #include "./services/clock_service.h"
+#include "./services/ipc_service/ipc_service.h"
+#include "./services/logind_service/logind_service.h"
 #include "./services/network_manager_service.h"
 #include "./services/notifications_service/notifications_service.h"
 #include "./services/power_profiles_service/power_profiles_service.h"
 #include "./services/upower_service.h"
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
-#include "./osd/osd.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
@@ -25,12 +26,8 @@ AdwApplication *gtk_app = NULL;
 // system along with the other responsibilities of a ApplicationWindow.
 AdwApplicationWindow *global = NULL;
 
-// OSD manager
-VolumeOSD *osd = NULL;
-
 // activates all the components of our shell.
 static void activate(AdwApplication *app, gpointer user_data) {
-    // set CSS style sheet for application
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(
         provider,
@@ -90,6 +87,10 @@ static void activate(AdwApplication *app, gpointer user_data) {
         g_error("main.c: activate(): failed to initialize ipc service.");
     }
 
+    if (logind_service_global_init() != 0) {
+        g_error("main.c: activate(): failed to initialize logind service.");
+    }
+
     // Subsystem activation //
 
     g_debug("main.c: activate(): activating subsystems");
@@ -116,11 +117,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
 int main(int argc, char *argv[]) {
     AdwApplication *app;
-    // AdwStyleManager *style_mgr = adw_style_manager_get_default();
-    // adw_style_manager_set_color_scheme(style_mgr,
-    // ADW_COLOR_SCHEME_PREFER_DARK);
 
-    // TODO: make this configurable.
+    // while in beta, just keep this on, once a real versino of this shell is
+    // released remove this.
     g_setenv("G_MESSAGES_DEBUG", "all", TRUE);
 
     int status;

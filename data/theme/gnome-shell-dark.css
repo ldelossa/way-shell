@@ -365,53 +365,6 @@ label.day-number.today:focus {
   padding: 2px;
 }
 
-#power-menu {
-  padding: 20px;
-}
-
-#power-menu separator {
-  margin: 2px;
-}
-
-#power-menu #options-container {
-  padding: 5px;
-  border-radius: 20px;
-  background: #404040;
-
-  transition-duration: 250ms;
-}
-
-#power-menu #options-container button {
-  background-color: inherit;
-  font-weight: normal;
-  font-size: 16px;
-}
-
-#power-menu #options-container button:hover {
-  background-color: #9a9996;
-}
-
-#power-menu #options-container #options-title {
-  padding: 4px;
-}
-
-#power-menu #options-container #options-title label,
-#power-menu #options-container #options-title image {
-  padding: 4px;
-  font-weight: bold;
-  font-size: 20px;
-}
-
-#power-menu #options-container #options-title #icon-container {
-  margin: 4px;
-  background-color: #555555;
-  border-radius: 100px;
-}
-
-#power-menu #options-container #buttons-container {
-  margin: 20px;
-}
-
 #quick-settings #quick-settings-scales {
   padding: 10px;
 }
@@ -545,6 +498,16 @@ label.day-number.today:focus {
 
 #quick-settings-menu #container #options-container {
   margin: 2px;
+}
+
+#quick-settings-menu #container #options-container .confirm-button {
+  color: #ffffff;
+  background-color: #26a269;
+  margin: 8px;
+}
+
+#quick-settings-menu #container #options-container .confirm-button:hover {
+  background-color: #33d17a;
 }
 
 #quick-settings-menu #container #options-container dropdown popover.background contents {

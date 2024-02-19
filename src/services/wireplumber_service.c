@@ -27,9 +27,15 @@ enum signals {
     database_changed,
     // the default sink has changed, a signal with the default sink is emitted.
     default_sink_changed,
+    // the default sink's volume has changed, this is helpful since the above
+    // event fires on more then just volume changes (like link changes).
+    default_sink_volume_changed,
     // the default sink has changed, a signal with the default source is
     // emitted.
     default_source_changed,
+    // the default source's volume has changed, this is helpful since the above
+    // event fires on more then just volume changes (like link changes).
+    default_source_volume_changed,
     // a signal emitted with a boolean informing if any microphone is currently
     // listening.
     microphone_active,
@@ -105,9 +111,19 @@ static void wire_plumber_service_class_init(WirePlumberServiceClass *klass) {
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
                      G_TYPE_POINTER);
 
+    service_signals[default_sink_volume_changed] =
+        g_signal_new("default-sink-volume-changed", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
+                     G_TYPE_POINTER);
+
     // define 'default_source_changed' signal
     service_signals[default_source_changed] =
         g_signal_new("default-source-changed", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
+                     G_TYPE_POINTER);
+
+    service_signals[default_source_volume_changed] =
+        g_signal_new("default-source-volume-changed", G_TYPE_FROM_CLASS(object_class),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
                      G_TYPE_POINTER);
 
@@ -155,8 +171,7 @@ static void wire_plumber_service_fill_audio_stream(
     // fill in audio details from mixer api
     g_signal_emit_by_name(self->mixer_api, "get-volume", node->id,
                           &mixer_values);
-    if (!mixer_values)
-        return;
+    if (!mixer_values) return;
 
     g_variant_lookup(mixer_values, "volume", "d", &node->volume);
     g_variant_lookup(mixer_values, "mute", "b", &node->mute);
@@ -299,6 +314,9 @@ static void on_mixer_changed(void *_, guint id, WirePlumberService *self) {
         header->type == WIRE_PLUMBER_SERVICE_TYPE_SOURCE) {
         WirePlumberServiceNode *node = (WirePlumberServiceNode *)header;
 
+        float old_volume = node->volume;
+        gboolean old_mute = node->mute;
+
         g_debug(
             "wireplumber_service.c:on_node_property_change() id: %d, name: %s, "
             "media_class: %s, volume: %f, mute: %d, step: %f, base: %f, state: "
@@ -312,11 +330,21 @@ static void on_mixer_changed(void *_, guint id, WirePlumberService *self) {
 
         if (node == self->default_sink) {
             g_signal_emit(self, service_signals[default_sink_changed], 0, node);
+            if (node->volume != old_volume || node->mute != old_mute) {
+                g_signal_emit(self,
+                              service_signals[default_sink_volume_changed], 0,
+                              node);
+            }
         }
 
         if (node == self->default_source) {
             g_signal_emit(self, service_signals[default_source_changed], 0,
                           node);
+            if (node->volume != old_volume || node->mute != old_mute) {
+                g_signal_emit(self,
+                              service_signals[default_source_volume_changed], 0,
+                              node);
+            }
         }
     }
 
