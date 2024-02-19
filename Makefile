@@ -14,9 +14,9 @@ SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
 
-all: gnomeland lib/cmd_tree/cmd_tree.o data/gschemas.compiled wlr-shell
+all: way-shell lib/cmd_tree/cmd_tree.o gschema way-sh
 
-gnomeland: $(OBJS)
+way-shell: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 
 lib/cmd_tree/cmd_tree.o: lib/cmd_tree/cmd_tree.c
@@ -26,12 +26,12 @@ lib/cmd_tree/cmd_tree.c:
 
 .PHONY:
 gschema:
-	sudo cp data/org.ldelossa.wlr-shell.gschema.xml /usr/share/glib-2.0/schemas/
+	sudo cp data/org.ldelossa.way-shell.gschema.xml /usr/share/glib-2.0/schemas/
 	sudo glib-compile-schemas /usr/share/glib-2.0/schemas/
 
 .PHONY:
-wlr-shell:
-	make -C wlr-sh/
+way-sh:
+	make -C way-sh/
 
 .PHONY:
 dbus-codegen:
@@ -49,5 +49,5 @@ dbus-codegen:
 
 clean:
 	find . -name "*.o" -type f -exec rm -f {} \;
-	rm -rf gnomeland
-	make -C wlr-sh/ clean
+	rm -rf way-shell
+	make -C way-sh/ clean

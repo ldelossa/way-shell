@@ -1,5 +1,5 @@
 **.*o
 compile_commands.json
-gnomeland
+way-shell
 .gdb_history
-src/wlr-sh/wlr-sh
+src/way-sh/way-sh

@@ -145,7 +145,7 @@ static void panel_clock_init_layout(PanelClock *self) {
                      G_CALLBACK(panel_clock_on_notification_changed), self);
 
     self->notifications_settings =
-        g_settings_new("org.ldelossa.wlr-shell.notifications");
+        g_settings_new("org.ldelossa.way-shell.notifications");
     // wire into dnd changed
     g_signal_connect(self->notifications_settings, "changed::do-not-disturb",
                      G_CALLBACK(panel_clock_on_dnd_changed), self);

@@ -9,7 +9,7 @@
 #include "glib-unix.h"
 #include "ipc_commands.h"
 
-#define IPC_SOCK "wlr-shell.sock"
+#define IPC_SOCK "way-shell.sock"
 
 static IPCService *global = NULL;
 

@@ -1,28 +1,28 @@
 #include "../lib/cmd_tree/include/cmd_tree.h"
 
-#define IPC_SEND_MSG(wlr_ctx, msg)                                 \
+#define IPC_SEND_MSG(way_ctx, msg)                                 \
     struct sockaddr *addr = NULL;                                  \
     struct sockaddr_un addr_un = {                                 \
         .sun_family = AF_UNIX,                                     \
         .sun_path = {0},                                           \
     };                                                             \
-    strcpy(&addr_un.sun_path[0], wlr_ctx->server_socket_path);     \
+    strcpy(&addr_un.sun_path[0], way_ctx->server_socket_path);     \
     addr = (struct sockaddr *)&addr_un;                            \
-    ret = sendto(wlr_ctx->client_sock, &msg, sizeof(msg), 0, addr, \
+    ret = sendto(way_ctx->client_sock, &msg, sizeof(msg), 0, addr, \
                  sizeof(addr_un))
 
-#define IPC_RECV_MSG(wlr_ctx, addr, bool) \
-    recvfrom(wlr_ctx->client_sock, bool, sizeof(bool), 0, addr, 0)
+#define IPC_RECV_MSG(way_ctx, addr, bool) \
+    recvfrom(way_ctx->client_sock, bool, sizeof(bool), 0, addr, 0)
 
 typedef struct _ctx {
     char *server_socket_path;
     int client_sock;
-} wlr_sh_ctx;
+} way_sh_ctx;
 
 // The root command node.
 //
-// It is exec'd when no command is provided to wlr-sh and provides a short
-// description of wlr-sh's usage.
+// It is exec'd when no command is provided to way-sh and provides a short
+// description of way-sh's usage.
 //
 // Defined in ./root.c
 extern cmd_tree_node_t root_cmd;

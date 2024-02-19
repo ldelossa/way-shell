@@ -49,7 +49,7 @@ static void on_suspend_clicked(GtkButton *button,
     g_debug("quick_settings_power_menu.c:on_suspend_clicked():");
 
     gchar *suspend_method = NULL;
-    GSettings *setting = g_settings_new("org.ldelossa.wlr-shell.system");
+    GSettings *setting = g_settings_new("org.ldelossa.way-shell.system");
 
     suspend_method = g_settings_get_string(setting, "suspend-method");
 

@@ -238,7 +238,7 @@ static void notifications_list_init_layout(NotificationsList *self) {
     g_ptr_array_ref(notifications);
 
     // getting gsettings
-    self->settings = g_settings_new("org.ldelossa.wlr-shell.notifications");
+    self->settings = g_settings_new("org.ldelossa.way-shell.notifications");
 
     // bind do-not-distrub gsetting to switch's active's property
     g_settings_bind(self->settings, "do-not-disturb", self->dnd_switch,

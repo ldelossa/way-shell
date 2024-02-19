@@ -191,8 +191,8 @@ static void wm_service_sway_init(WMServiceSway *self) {
         g_unix_fd_add(self->socket_fd, G_IO_IN | G_IO_HUP | G_IO_ERR,
                       (GUnixFDSourceFunc)on_ipc_recv, self);
 
-    // connect to 'org.ldelossa.wlr-shell.window-manager.workspaces' setting
-    self->settings = g_settings_new("org.ldelossa.wlr-shell.window-manager");
+    // connect to 'org.ldelossa.way-shell.window-manager.workspaces' setting
+    self->settings = g_settings_new("org.ldelossa.way-shell.window-manager");
 
     // wire into sort-alphabetical value
     g_signal_connect(self->settings, "changed::sort-workspaces-alphabetical",

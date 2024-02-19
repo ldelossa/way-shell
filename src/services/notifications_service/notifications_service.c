@@ -141,7 +141,7 @@ static gboolean on_handle_get_server_information(
         "notifications_service.c:on_handle_get_server_information() called");
 
     GVariant *ret =
-        g_variant_new("(ssss)", "wlr-shell", "wlr-shell", "0.1", "1.2");
+        g_variant_new("(ssss)", "way-shell", "way-shell", "0.1", "1.2");
 
     g_dbus_method_invocation_return_value(invocation, ret);
     return TRUE;

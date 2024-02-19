@@ -8,7 +8,7 @@
             "name": "Remote Debug",
             "type": "lldb",
             "request": "launch",
-            "program": "${workspaceFolder}/gnomeland", // Local path.
+            "program": "${workspaceFolder}/way-shell", // Local path.
             "initCommands": [
                 "platform select remote-linux", // For example: 'remote-linux', 'remote-macosx', 'remote-android', etc.
                 "platform connect connect://0.0.0.0:7777",

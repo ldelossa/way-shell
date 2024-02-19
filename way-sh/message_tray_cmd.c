@@ -17,7 +17,7 @@ static int message_tray_exec(void *ctx, uint8_t argc, char **argv) {
     return 0;
 };
 
-// The root command for wlr-sh and is displayed when no other arguments are
+// The root command for way-sh and is displayed when no other arguments are
 // provided to the CLI.
 //
 // A short help blurb is presented along with a list of all available root level
@@ -27,11 +27,11 @@ cmd_tree_node_t message_tray_root = {.name = "message-tray",
 
 static int message_tray_open_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
-    wlr_sh_ctx *wlr_ctx = ctx;
+    way_sh_ctx *way_ctx = ctx;
 
     IPCMessageTrayOpen msg = {.header.type = IPC_CMD_MESSAGE_TRAY_OPEN};
 
-    IPC_SEND_MSG(wlr_ctx, msg);
+    IPC_SEND_MSG(way_ctx, msg);
 
     if (ret == -1) {
         perror("[Error] Failed to send IPCMessageTrayOpen");
@@ -39,7 +39,7 @@ static int message_tray_open_exec(void *ctx, uint8_t argc, char **argv) {
     }
 
     bool response = false;
-    IPC_RECV_MSG(wlr_ctx, addr, &response);
+    IPC_RECV_MSG(way_ctx, addr, &response);
 
     return response;
 };

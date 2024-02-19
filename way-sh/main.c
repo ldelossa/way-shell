@@ -9,10 +9,10 @@
 #include "../lib/cmd_tree/include/cmd_tree.h"
 #include "./commands.h"
 
-#define SOCK_NAME "/wlr-shell.sock"
-#define CLIENT_SOCK_PREFIX "wlr-shell-"
+#define SOCK_NAME "/way-shell.sock"
+#define CLIENT_SOCK_PREFIX "way-shell-"
 
-int client_socket_create(wlr_sh_ctx *ctx) {
+int client_socket_create(way_sh_ctx *ctx) {
     struct sockaddr_un addr = {.sun_family = AF_UNIX, .sun_path = {0}};
     char *p = &addr.sun_path[1];
     int r = rand();
@@ -46,7 +46,7 @@ static void build_command_tree() {
 }
 
 int main(int argc, char **argv) {
-    wlr_sh_ctx ctx = {0};
+    way_sh_ctx ctx = {0};
     int ret = 0;
     char socket_path[256] = {0};
     struct stat statsbuf = {0};
@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     if (!xdg_runtime_dir) {
         printf(
             "[Error] XDG_RUNTIME_DIR env variable must be set so we can find "
-            "wlr-shell's IPC socket\n");
+            "way-shell's IPC socket\n");
         return -1;
     }
 

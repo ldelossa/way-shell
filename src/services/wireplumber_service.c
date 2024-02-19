@@ -702,7 +702,7 @@ static void wire_plumber_service_init_pulseaudio(WirePlumberService *self) {
 
     self->pa_loop = pa_glib_mainloop_new(g_main_context_default());
     self->pa_api = pa_glib_mainloop_get_api(self->pa_loop);
-    self->pa_ctx = pa_context_new(self->pa_api, "org.ldelossa.wlr-shell");
+    self->pa_ctx = pa_context_new(self->pa_api, "org.ldelossa.way-shell");
 
     pa_context_set_state_callback(self->pa_ctx, context_state_cb, self);
 

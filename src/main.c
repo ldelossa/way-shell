@@ -31,7 +31,7 @@ static void activate(AdwApplication *app, gpointer user_data) {
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(
         provider,
-        "/home/louis/git/c/gnomeland/data/theme/wlr-shell-dark.css");
+        "/home/louis/git/c/way-shell/data/theme/way-shell-dark.css");
 
     GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
     GdkDisplay *display = gdk_seat_get_display(seat);
@@ -124,7 +124,7 @@ int main(int argc, char *argv[]) {
 
     int status;
 
-    app = adw_application_new("org.ldelossa.wlr-shell",
+    app = adw_application_new("org.ldelossa.way-shell",
                               G_APPLICATION_DEFAULT_FLAGS);
 
     gtk_app = app;

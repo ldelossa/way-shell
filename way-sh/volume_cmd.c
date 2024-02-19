@@ -21,7 +21,7 @@ static int volume_root_exec(void *ctx, uint8_t argc, char **argv) {
     return 0;
 };
 
-// The volume command for wlr-sh and is displayed when no other arguments are
+// The volume command for way-sh and is displayed when no other arguments are
 // provided to the CLI.
 //
 // A short help blurb is presented along with a list of all available volume
@@ -30,13 +30,13 @@ cmd_tree_node_t volume_cmd_root = {.name = "volume", .exec = volume_root_exec};
 
 static int volume_up_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
-    wlr_sh_ctx *wlr_ctx = ctx;
+    way_sh_ctx *way_ctx = ctx;
 
     IPCVolumeUp msg = {
         .header = {.type = IPC_CMD_VOLUME_UP},
     };
 
-    IPC_SEND_MSG(wlr_ctx, msg);
+    IPC_SEND_MSG(way_ctx, msg);
 
     if (ret == -1) {
         perror("[Error] Failed to send IPCVolumeUp");
@@ -44,7 +44,7 @@ static int volume_up_exec(void *ctx, uint8_t argc, char **argv) {
     }
 
     bool response = false;
-    IPC_RECV_MSG(wlr_ctx, addr, &response);
+    IPC_RECV_MSG(way_ctx, addr, &response);
 
     return response;
 };
@@ -52,13 +52,13 @@ cmd_tree_node_t volume_cmd_up = {.name = "up", .exec = volume_up_exec};
 
 static int volume_down_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
-    wlr_sh_ctx *wlr_ctx = ctx;
+    way_sh_ctx *way_ctx = ctx;
 
     IPCVolumeDown msg = {
         .header = {.type = IPC_CMD_VOLUME_DOWN},
     };
 
-    IPC_SEND_MSG(wlr_ctx, msg);
+    IPC_SEND_MSG(way_ctx, msg);
 
     if (ret == -1) {
         perror("[Error] Failed to send IPCVolumeDown");
@@ -66,7 +66,7 @@ static int volume_down_exec(void *ctx, uint8_t argc, char **argv) {
     }
 
     bool response = false;
-    IPC_RECV_MSG(wlr_ctx, addr, &response);
+    IPC_RECV_MSG(way_ctx, addr, &response);
 
     return response;
 };
@@ -75,7 +75,7 @@ cmd_tree_node_t volume_cmd_down = {.name = "down", .exec = volume_down_exec};
 static int volume_set_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
     char *endptr = NULL;
-    wlr_sh_ctx *wlr_ctx = ctx;
+    way_sh_ctx *way_ctx = ctx;
 
     if (argc != 1) {
         printf("Usage: volume set <volume>\n");
@@ -93,7 +93,7 @@ static int volume_set_exec(void *ctx, uint8_t argc, char **argv) {
         return -1;
     }
 
-    IPC_SEND_MSG(wlr_ctx, msg);
+    IPC_SEND_MSG(way_ctx, msg);
 
     if (ret == -1) {
         perror("[Error] Failed to send IPCVolumeSet");
@@ -101,7 +101,7 @@ static int volume_set_exec(void *ctx, uint8_t argc, char **argv) {
     }
 
     bool response = false;
-    IPC_RECV_MSG(wlr_ctx, addr, &response);
+    IPC_RECV_MSG(way_ctx, addr, &response);
 
     return response;
 };

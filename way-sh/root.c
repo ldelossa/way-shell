@@ -5,14 +5,14 @@
 static int root_exec(void *ctx, uint8_t argc, char **argv) {
     printf(
         "Usage: \n"
-        "\twlr-sh COMMAND [SUBCOMMAND...] [ARGUMENTS]\n"
+        "\tway-sh COMMAND [SUBCOMMAND...] [ARGUMENTS]\n"
         "Commands: \n"
         "\tmessage-tray\n"
         "\tvolume\n");
     return 0;
 };
 
-// The root command for wlr-sh and is displayed when no other arguments are
+// The root command for way-sh and is displayed when no other arguments are
 // provided to the CLI.
 //
 // A short help blurb is presented along with a list of all available root level

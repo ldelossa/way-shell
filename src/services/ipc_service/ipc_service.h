@@ -4,10 +4,10 @@
 
 G_BEGIN_DECLS
 
-// A IPC Service which directly interfaces with the `wlr-sh` CLI.
+// A IPC Service which directly interfaces with the `way-sh` CLI.
 //
 // The service talks over a DGRAM Unix socket located at
-// $XDG_RUNTIME_DIR/wlr-shell.sock
+// $XDG_RUNTIME_DIR/way-shell.sock
 struct _IPCService;
 #define IPC_SERVICE_TYPE ipc_service_get_type()
 G_DECLARE_FINAL_TYPE(IPCService, ipc_service, IPC, SERVICE, GObject);

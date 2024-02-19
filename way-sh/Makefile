@@ -4,9 +4,9 @@ SOURCES = $(shell find -type f -regex ".*\.c")
 OBJS = $(subst .c,.o,$(SOURCES))
 OBJS += ../lib/cmd_tree/cmd_tree.o
 
-wlr-sh: $(OBJS)
-	$(CC) $(CFLAGS) -o wlr-sh $(OBJS)
+way-sh: $(OBJS)
+	$(CC) $(CFLAGS) -o way-sh $(OBJS)
 
 clean:
-	rm -rf wlr-sh
+	rm -rf way-sh
 	rm -rf $(OBJS)
