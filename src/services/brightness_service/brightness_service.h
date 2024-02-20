@@ -20,3 +20,9 @@ BrightnessService *brightness_service_get_global();
 void brightness_service_up(BrightnessService *self);
 
 void brightness_service_down(BrightnessService *self);
+
+void brightness_service_set(BrightnessService *self, float percent);
+
+float brightness_service_get_brightness(BrightnessService *self);
+
+gchar *brightness_service_map_icon(BrightnessService *self);

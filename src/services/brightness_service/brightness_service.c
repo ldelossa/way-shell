@@ -22,7 +22,11 @@ struct _BrightnessService {
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(BrightnessService, brightness_service, G_TYPE_OBJECT);
 
-// stub out dispose, finalize, class_init, and init methods
+static float compute_brightness_percent(guint32 brightness,
+                                        guint32 max_brightness) {
+    return (float)brightness / (float)max_brightness;
+}
+
 static void brightness_service_dispose(GObject *object) {
     G_OBJECT_CLASS(brightness_service_parent_class)->dispose(object);
 }
@@ -38,7 +42,7 @@ static void brightness_service_class_init(BrightnessServiceClass *klass) {
 
     signals[brightness_changed] = g_signal_new(
         "brightness-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
-        NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
+        NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_FLOAT);
 }
 
 static void get_current_brightness(BrightnessService *self) {
@@ -138,7 +142,9 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
     get_current_brightness(self);
 
     // emit initial brightness event
-    g_signal_emit(self, signals[brightness_changed], 0, self->brightness);
+    g_signal_emit(
+        self, signals[brightness_changed], 0,
+        compute_brightness_percent(self->brightness, self->max_brightness));
 
     return;
 
@@ -190,7 +196,9 @@ void brightness_service_up(BrightnessService *self) {
         return;
 
     // send signal with new brightness
-    g_signal_emit(self, signals[brightness_changed], 0, self->brightness);
+    g_signal_emit(
+        self, signals[brightness_changed], 0,
+        compute_brightness_percent(self->brightness, self->max_brightness));
 }
 
 void brightness_service_down(BrightnessService *self) {
@@ -198,11 +206,13 @@ void brightness_service_down(BrightnessService *self) {
 
     get_current_brightness(self);
 
+    gint32 brightness = self->brightness - 1000;
+
     // subtract 1000 from current brightness
     self->brightness -= 1000;
 
     // if brightness is under 0 clamp it to 0
-    if (self->brightness < 0) self->brightness = 0;
+    self->brightness = (brightness < 0) ? 0 : brightness;
 
     // use logind service to set backlight
     if (logind_service_session_set_brightness(
@@ -212,7 +222,39 @@ void brightness_service_down(BrightnessService *self) {
         return;
 
     // send signal with new brightness
-    g_signal_emit(self, signals[brightness_changed], 0, self->brightness);
+    g_signal_emit(
+        self, signals[brightness_changed], 0,
+        compute_brightness_percent(self->brightness, self->max_brightness));
+}
+
+void brightness_service_set(BrightnessService *self, float percent) {
+    LogindService *logind = logind_service_get_global();
+
+    // clamp percent to 0.0 - 1.0
+    percent = CLAMP(percent, 0.0, 1.0);
+
+    // calculate new brightness
+    guint32 brightness = (guint32)(self->max_brightness * percent);
+
+    // use logind service to set backlight
+    if (logind_service_session_set_brightness(
+            logind, "backlight",
+            g_settings_get_string(self->backlight_dir, "backlight-directory"),
+            brightness) != 0)
+        return;
+
+    // send signal with new brightness
+    g_signal_emit(
+        self, signals[brightness_changed], 0,
+        compute_brightness_percent(self->brightness, self->max_brightness));
+}
+
+float brightness_service_get_brightness(BrightnessService *self) {
+    return (float)self->brightness / (float)self->max_brightness;
+}
+
+gchar *brightness_service_map_icon(BrightnessService *self) {
+    return "display-brightness-symbolic";
 }
 
 BrightnessService *brightness_service_get_global() { return global; }

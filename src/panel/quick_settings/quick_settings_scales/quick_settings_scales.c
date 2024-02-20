@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 
+#include "../../../services/brightness_service/brightness_service.h"
 #include "../../../services/wireplumber_service.h"
 #include "gtk/gtkrevealer.h"
 
@@ -10,18 +11,24 @@ enum signals { signals_n };
 typedef struct _QuickSettingsScales {
     GObject parent_instance;
     GtkBox *container;
+    GtkBox *audio_scales_revealer_contents;
+    GtkRevealer *audio_scales_revealer;
+    // default sink scales
     GtkEventControllerMotion *default_sink_ctlr;
     GtkBox *default_sink_container;
-    GtkEventControllerMotion *default_source_ctlr;
-    GtkBox *default_source_container;
-    GtkRevealer *audio_scales_revealer;
-    GtkBox *audio_scales_revealer_contents;
     GtkImage *default_sink_icon;
     GtkScale *default_sink_scale;
+    // default source scales
+    GtkEventControllerMotion *default_source_ctlr;
+    GtkBox *default_source_container;
     GtkImage *default_source_icon;
     GtkScale *default_source_scale;
+    // brightness scales
+    GtkEventControllerMotion *brightness_ctlr;
+    GtkBox *brightness_container;
     GtkImage *brightness_icon;
     GtkScale *brightness_scale;
+    // wirepumber nodes
     WirePlumberServiceNode *active_source_node;
     WirePlumberServiceNode *default_sink_node;
 } QuickSettingsScales;
@@ -155,6 +162,15 @@ static void on_sink_scale_value_changed(GtkRange *range,
     gtk_image_set_from_icon_name(self->default_sink_icon, icon);
 }
 
+static void on_brightness_scale_changed(GtkRange *range,
+                                        QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_brightness_scale_changed() called.");
+
+    gdouble r = gtk_range_get_value(range);
+    BrightnessService *bs = brightness_service_get_global();
+    brightness_service_set(bs, r);
+}
+
 static void on_default_source_enter(GtkEventControllerMotion *ctlr, double x,
                                     double y, QuickSettingsScales *self) {
     g_debug("quick_settings_scales.c:on_default_source_enter() called.");
@@ -217,6 +233,42 @@ static void on_default_sink_leave(GtkEventControllerMotion *ctlr, double x,
                                       self);
 }
 
+static void on_brightness_change(BrightnessService *bs, float percent,
+                                 QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_brightness_changed() called.");
+
+    // set scale with new brightness
+    gtk_range_set_value(GTK_RANGE(self->brightness_scale), percent);
+}
+
+static void on_brightness_enter(GtkEventControllerMotion *ctlr, double x,
+                                double y, QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_brightness_enter() called.");
+
+    // pause default-node-changed events
+    BrightnessService *bs = brightness_service_get_global();
+
+    g_signal_handlers_block_by_func(bs, G_CALLBACK(on_brightness_change), self);
+
+    // unblock gtk scale handler
+    g_signal_handlers_unblock_by_func(GTK_RANGE(self->brightness_scale),
+                                      G_CALLBACK(on_brightness_change), self);
+}
+
+static void on_brightness_leave(GtkEventControllerMotion *ctlr, double x,
+                                double y, QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_brightness_leave() called.");
+    // unpause default-node-changed events
+    BrightnessService *bs = brightness_service_get_global();
+
+    // block gtk scale handler
+    g_signal_handlers_block_by_func(GTK_RANGE(self->brightness_scale),
+                                    G_CALLBACK(on_brightness_change), self);
+
+    g_signal_handlers_unblock_by_func(bs, G_CALLBACK(on_brightness_change),
+                                      self);
+}
+
 static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     // create container
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -242,7 +294,7 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     g_signal_connect(self->default_sink_ctlr, "enter",
                      G_CALLBACK(on_default_sink_enter), self);
 
-    // wite into motion controller's leave event
+    // wire into motion controller's leave event
     g_signal_connect(self->default_sink_ctlr, "leave",
                      G_CALLBACK(on_default_sink_leave), self);
 
@@ -283,7 +335,7 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     gtk_widget_set_name(GTK_WIDGET(self->default_source_container),
                         "default-source-container");
 
-    // sart source as hidden
+    // start source as hidden
     gtk_widget_set_visible(GTK_WIDGET(self->default_source_container), false);
 
     gtk_widget_add_controller(GTK_WIDGET(self->default_source_container),
@@ -316,12 +368,57 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     g_signal_connect(wp, "default-sink-changed",
                      G_CALLBACK(on_default_sink_change), self);
 
-    // connect to sink scale's Range::value-changed signal
+    // brightness setup
+    BrightnessService *bs = brightness_service_get_global();
+
+    self->brightness_ctlr =
+        GTK_EVENT_CONTROLLER_MOTION(gtk_event_controller_motion_new());
+
+    // wire into motion controller's enter event
+    g_signal_connect(self->brightness_ctlr, "enter",
+                     G_CALLBACK(on_brightness_enter), self);
+
+    // wire into motion controller's leave event
+    g_signal_connect(self->brightness_ctlr, "leave",
+                     G_CALLBACK(on_brightness_leave), self);
+
+    self->brightness_container =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_set_name(GTK_WIDGET(self->brightness_container),
+                        "brightness-container");
+
+    gtk_widget_add_controller(GTK_WIDGET(self->brightness_container),
+                              GTK_EVENT_CONTROLLER(self->brightness_ctlr));
+
+    self->brightness_scale = GTK_SCALE(
+        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1, 0.05));
+    gtk_widget_set_hexpand(GTK_WIDGET(self->brightness_scale), true);
+
+    self->brightness_icon = GTK_IMAGE(
+        gtk_image_new_from_icon_name(brightness_service_map_icon(bs)));
+
+    gtk_box_append(self->brightness_container,
+                   GTK_WIDGET(self->brightness_icon));
+    gtk_box_append(self->brightness_container,
+                   GTK_WIDGET(self->brightness_scale));
+
+    // listen for brightness changes
+    g_signal_connect(bs, "brightness-changed", G_CALLBACK(on_brightness_change),
+                     self);
+
+    // get initial brightness value
+    float brightness = brightness_service_get_brightness(bs);
+    gtk_range_set_value(GTK_RANGE(self->brightness_scale), brightness);
+
+    // connect to scale's Range::value-changed signal
     g_signal_connect(GTK_RANGE(self->default_sink_scale), "value-changed",
                      G_CALLBACK(on_sink_scale_value_changed), self);
 
     g_signal_connect(GTK_RANGE(self->default_source_scale), "value-changed",
                      G_CALLBACK(on_source_scale_value_changed), self);
+
+    g_signal_connect(GTK_RANGE(self->brightness_scale), "value-changed",
+                     G_CALLBACK(on_brightness_scale_changed), self);
 
     // wire up to container
     gtk_box_append(self->audio_scales_revealer_contents,
@@ -330,6 +427,7 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
                    GTK_WIDGET(self->default_source_container));
 
     gtk_box_append(self->container, GTK_WIDGET(self->audio_scales_revealer));
+    gtk_box_append(self->container, GTK_WIDGET(self->brightness_container));
 }
 
 void quick_settings_scales_reinitialize(QuickSettingsScales *self) {
@@ -372,7 +470,8 @@ void quick_settings_scales_disable_audio_scales(QuickSettingsScales *self,
     if (!wp) return;
 
     // hide audio scales
-    // gtk_widget_set_visible(GTK_WIDGET(self->default_sink_container), !disable);
+    // gtk_widget_set_visible(GTK_WIDGET(self->default_sink_container),
+    // !disable);
     // gtk_widget_set_visible(GTK_WIDGET(self->default_source_container),
     //                        !disable);
 
