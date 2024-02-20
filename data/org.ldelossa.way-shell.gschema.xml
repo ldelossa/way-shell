@@ -18,6 +18,16 @@
             the list above and pick the first supported suspention method.
             </description>
         </key>
+        <key name="backlight-directory" type="s">
+            <default>'intel_backlight'</default>
+            <summary>The relative directory of your backlight device file</summary>
+            <description>
+            The directory located under /sys/class/backlight/ which contains
+            the backlight device files such as "brightness" and "max_brightness"
+            The default is 'intel_backlight' but this may need to change depending
+            on your machine.
+            </description>
+        </key>
     </schema>
 
     <!--window manager related settings-->

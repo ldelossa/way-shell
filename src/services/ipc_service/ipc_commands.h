@@ -9,6 +9,8 @@ enum IPCCommands : uint32_t {
     IPC_CMD_VOLUME_UP,
     IPC_CMD_VOLUME_DOWN,
     IPC_CMD_VOLUME_SET,
+    IPC_CMD_BRIGHTNESS_UP,
+    IPC_CMD_BRIGHTNESS_DOWN,
 };
 
 typedef struct _IPCHeader {
@@ -31,3 +33,11 @@ typedef struct _IPCVolumeSet {
     IPCHeader header;
     float volume;
 } IPCVolumeSet;
+
+typedef struct _IPCBrightnessUp {
+    IPCHeader header;
+} IPCBrightnessUp;
+
+typedef struct _IPCBrightnessDown {
+    IPCHeader header;
+} IPCBrightnessDown;

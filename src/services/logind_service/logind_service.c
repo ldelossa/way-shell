@@ -138,8 +138,8 @@ gboolean logind_service_can_reboot(LogindService *self) {
     dbus_login1_manager_call_can_reboot_sync(self->manager, &can_reboot, NULL,
                                              &error);
     if (error) {
-        g_error("logind_service.c:logind_service_can_reboot(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_can_reboot(): error: %s",
+                   error->message);
     }
 
     if (strcmp(can_reboot, "yes") == 0) {
@@ -156,8 +156,8 @@ void logind_service_reboot(LogindService *self) {
 
     dbus_login1_manager_call_reboot_sync(self->manager, false, NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_reboot(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_reboot(): error: %s",
+                   error->message);
     }
 }
 
@@ -170,8 +170,8 @@ gboolean logind_service_can_power_off(LogindService *self) {
     dbus_login1_manager_call_can_power_off_sync(self->manager, &can_power_off,
                                                 NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_can_power_off(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_can_power_off(): error: %s",
+                   error->message);
     }
 
     if (strcmp(can_power_off, "yes") == 0) {
@@ -188,8 +188,8 @@ void logind_service_power_off(LogindService *self) {
 
     dbus_login1_manager_call_power_off_sync(self->manager, false, NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_power_off(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_power_off(): error: %s",
+                   error->message);
     }
 }
 
@@ -202,8 +202,8 @@ gboolean logind_service_can_suspend(LogindService *self) {
     dbus_login1_manager_call_can_suspend_sync(self->manager, &can_suspend, NULL,
                                               &error);
     if (error) {
-        g_error("logind_service.c:logind_service_can_suspend(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_can_suspend(): error: %s",
+                   error->message);
     }
 
     if (strcmp(can_suspend, "yes") == 0) {
@@ -220,8 +220,8 @@ void logind_service_suspend(LogindService *self) {
 
     dbus_login1_manager_call_suspend_sync(self->manager, false, NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_suspend(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_suspend(): error: %s",
+                   error->message);
     }
 }
 
@@ -234,8 +234,8 @@ gboolean logind_service_can_hibernate(LogindService *self) {
     dbus_login1_manager_call_can_hibernate_sync(self->manager, &can_hibernate,
                                                 NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_can_hibernate(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_can_hibernate(): error: %s",
+                   error->message);
     }
 
     if (strcmp(can_hibernate, "yes") == 0) {
@@ -252,8 +252,8 @@ void logind_service_hibernate(LogindService *self) {
 
     dbus_login1_manager_call_hibernate_sync(self->manager, false, NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_hibernate(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_hibernate(): error: %s",
+                   error->message);
     }
 }
 
@@ -266,8 +266,9 @@ gboolean logind_service_can_hybrid_sleep(LogindService *self) {
     dbus_login1_manager_call_can_hybrid_sleep_sync(
         self->manager, &can_hybrid_sleep, NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_can_hybrid_sleep(): error: %s",
-                error->message);
+        g_critical(
+            "logind_service.c:logind_service_can_hybrid_sleep(): error: %s",
+            error->message);
     }
 
     if (strcmp(can_hybrid_sleep, "yes") == 0) {
@@ -285,8 +286,8 @@ void logind_service_hybrid_sleep(LogindService *self) {
     dbus_login1_manager_call_hybrid_sleep_sync(self->manager, false, NULL,
                                                &error);
     if (error) {
-        g_error("logind_service.c:logind_service_hybrid_sleep(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_hybrid_sleep(): error: %s",
+                   error->message);
     }
 }
 
@@ -299,7 +300,7 @@ gboolean logind_service_can_suspendthenhibernate(LogindService *self) {
     dbus_login1_manager_call_can_suspend_then_hibernate_sync(
         self->manager, &can_suspend_then_hibernate, NULL, &error);
     if (error) {
-        g_error(
+        g_critical(
             "logind_service.c:logind_service_can_suspendthenhibernate(): "
             "error: "
             "%s",
@@ -321,7 +322,7 @@ void logind_service_suspendthenhibernate(LogindService *self) {
     dbus_login1_manager_call_suspend_then_hibernate_sync(self->manager, false,
                                                          NULL, &error);
     if (error) {
-        g_error(
+        g_critical(
             "logind_service.c:logind_service_suspendthenhibernate(): error: %s",
             error->message);
     }
@@ -334,9 +335,28 @@ void logind_service_kill_session(LogindService *self) {
 
     dbus_login1_session_call_terminate_sync(self->session, NULL, &error);
     if (error) {
-        g_error("logind_service.c:logind_service_kill_session(): error: %s",
-                error->message);
+        g_critical("logind_service.c:logind_service_kill_session(): error: %s",
+                   error->message);
     }
+}
+
+int logind_service_session_set_brightness(LogindService *self,
+                                          const gchar *arg_subsystem,
+                                          const gchar *arg_name,
+                                          guint arg_brightness) {
+    g_debug("logind_service.c:logind_service_session_set_brightness(): called");
+
+    GError *error = NULL;
+    dbus_login1_session_call_set_brightness_sync(
+        self->session, arg_subsystem, arg_name, arg_brightness, NULL, &error);
+    if (error) {
+        g_critical(
+            "logind_service.c:logind_service_session_set_brightness(): error: "
+            "%s",
+            error->message);
+        return -1;
+    }
+    return 0;
 }
 
 int logind_service_global_init(void) {

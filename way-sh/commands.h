@@ -38,3 +38,9 @@ cmd_tree_node_t *message_tray_cmd();
 // Subcommands off this node deal with adjusting the default audio sink's
 // volume.
 cmd_tree_node_t *volume_cmd();
+
+// The Brightness command
+//
+// Subcommands off this node deal with adjusting the default display's
+// brightness.
+cmd_tree_node_t *brightness_cmd();

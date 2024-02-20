@@ -8,7 +8,8 @@ static int root_exec(void *ctx, uint8_t argc, char **argv) {
         "\tway-sh COMMAND [SUBCOMMAND...] [ARGUMENTS]\n"
         "Commands: \n"
         "\tmessage-tray\n"
-        "\tvolume\n");
+        "\tvolume\n"
+        "\tbrightness\n");
     return 0;
 };
 

@@ -40,9 +40,11 @@ int client_socket_create(way_sh_ctx *ctx) {
 static void build_command_tree() {
     cmd_tree_node_t *message_tray = message_tray_cmd();
     cmd_tree_node_t *volume = volume_cmd();
+    cmd_tree_node_t *brightness = brightness_cmd();
 
     cmd_tree_node_add_child(&root_cmd, message_tray);
     cmd_tree_node_add_child(&root_cmd, volume);
+    cmd_tree_node_add_child(&root_cmd, brightness);
 }
 
 int main(int argc, char **argv) {

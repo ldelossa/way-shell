@@ -5,6 +5,7 @@
 #include <sys/un.h>
 
 #include "../../panel/message_tray/message_tray.h"
+#include "../../services/brightness_service/brightness_service.h"
 #include "../../services/wireplumber_service.h"
 #include "glib-unix.h"
 #include "ipc_commands.h"
@@ -99,6 +100,32 @@ static gboolean ipc_cmd_volume_set(IPCVolumeSet *msg) {
     return false;
 }
 
+static gboolean ipc_cmd_brightness_up() {
+    g_debug("ipc_service.c:ipc_cmd_brightness_up()");
+    BrightnessService *b = brightness_service_get_global();
+    if (!b) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_brightness_up() failed to get brightness "
+            "service");
+        return false;
+    }
+    brightness_service_up(b);
+    return true;
+}
+
+static gboolean ipc_cmd_brightness_down() {
+    g_debug("ipc_service.c:ipc_cmd_brightness_down()");
+    BrightnessService *b = brightness_service_get_global();
+    if (!b) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_brightness_down() failed to get brightness "
+            "service");
+        return false;
+    }
+    brightness_service_down(b);
+    return true;
+}
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -145,6 +172,18 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() recieved "
                 "IPC_CMD_VOLUME_SET");
             ret = ipc_cmd_volume_set((IPCVolumeSet *)hdr);
+            break;
+        case IPC_CMD_BRIGHTNESS_UP:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() recieved "
+                "IPC_CMD_BRIGHTNESS_UP");
+            ret = ipc_cmd_brightness_up();
+            break;
+        case IPC_CMD_BRIGHTNESS_DOWN:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() recieved "
+                "IPC_CMD_BRIGHTNESS_DOWN");
+            ret = ipc_cmd_brightness_down();
             break;
         default:
             goto skip_resp;

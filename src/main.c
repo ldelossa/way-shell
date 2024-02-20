@@ -4,6 +4,7 @@
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/message_tray/message_tray_mediator.h"
 #include "./panel/panel.h"
+#include "./services/brightness_service/brightness_service.h"
 #include "./services/clock_service.h"
 #include "./services/ipc_service/ipc_service.h"
 #include "./services/logind_service/logind_service.h"
@@ -30,8 +31,7 @@ AdwApplicationWindow *global = NULL;
 static void activate(AdwApplication *app, gpointer user_data) {
     GtkCssProvider *provider = gtk_css_provider_new();
     gtk_css_provider_load_from_path(
-        provider,
-        "/home/louis/git/c/way-shell/data/theme/way-shell-dark.css");
+        provider, "/home/louis/git/c/way-shell/data/theme/way-shell-dark.css");
 
     GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
     GdkDisplay *display = gdk_seat_get_display(seat);
@@ -89,6 +89,10 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
     if (logind_service_global_init() != 0) {
         g_error("main.c: activate(): failed to initialize logind service.");
+    }
+
+    if (brightness_service_global_init() != 0) {
+        g_error("main.c: activate(): failed to initialize brightness service.");
     }
 
     // Subsystem activation //
