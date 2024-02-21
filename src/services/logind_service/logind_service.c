@@ -18,7 +18,7 @@ struct _LogindService {
     GArray *profiles;
     gboolean enabled;
     int idle_inhibitor_fd;
-    // org.ldelossa.way-shell.system : intereste settings:
+    // org.ldelossa.way-shell.system : interested settings:
     // idle-inhibitor
     GSettings *settings;
 };

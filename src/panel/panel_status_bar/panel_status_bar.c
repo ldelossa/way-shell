@@ -5,6 +5,7 @@
 #include "../panel.h"
 #include "../quick_settings/quick_settings.h"
 #include "../quick_settings/quick_settings_mediator.h"
+#include "./panel_status_bar_idle_inhibitor_button.h"
 #include "./panel_status_bar_network_button.h"
 #include "./panel_status_bar_power_button.h"
 #include "./panel_status_bar_sound_button.h"
@@ -71,6 +72,14 @@ static void panel_status_bar_init_layout(PanelStatusBar *self) {
 
     // create holder for each button
     self->box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+
+    // create idle inhibitor button
+    PanelStatusBarIdleInhibitorButton *idle_inhibitor_button =
+        g_object_new(PANEL_STATUS_BAR_IDLE_INHIBITOR_BUTTON_TYPE, NULL);
+    gtk_box_append(self->box, panel_status_bar_idle_inhibitor_button_get_widget(
+                                  idle_inhibitor_button));
+    // append to buttons
+    g_ptr_array_add(self->buttons, idle_inhibitor_button);
 
     // create network icon and append it to box
     PanelStatusBarNetworkButton *network_button =
