@@ -42,3 +42,7 @@ int logind_service_session_set_brightness(LogindService *self,
                                           const gchar *arg_subsystem,
                                           const gchar *arg_name,
                                           guint arg_brightness);
+
+gboolean logind_service_set_idle_inhibit(LogindService *self, gboolean enable);
+
+gboolean logind_service_get_idle_inhibit(LogindService *self);

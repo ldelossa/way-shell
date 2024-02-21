@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 
+#include "../../../services/logind_service/logind_service.h"
 #include "../../../services/network_manager_service.h"
 #include "../../../services/power_profiles_service/power_profiles_service.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
@@ -10,6 +11,7 @@
 #include "quick_settings_grid_button.h"
 #include "quick_settings_grid_cluster.h"
 #include "quick_settings_grid_ethernet.h"
+#include "quick_settings_grid_idle_inhibitor.h"
 #include "quick_settings_grid_oneshot_button.h"
 
 enum signals { signals_n };
@@ -246,6 +248,15 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
             quick_settings_grid_power_profiles_button_init();
         quick_settings_grid_add_button(self,
                                        (QuickSettingsGridButton *)pps_button);
+    }
+
+    // if logind service is available add inhibitor button
+    LogindService *logind = logind_service_get_global();
+    if (logind) {
+        QuickSettingsGridIdleInhibitorButton *inhibitor_button =
+            quick_settings_grid_idle_inhibitor_button_init();
+        quick_settings_grid_add_button(
+            self, (QuickSettingsGridButton *)inhibitor_button);
     }
 
     // setup change signal

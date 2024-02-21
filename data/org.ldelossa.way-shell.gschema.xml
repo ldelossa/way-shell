@@ -28,6 +28,17 @@
             on your machine.
             </description>
         </key>
+        <key name="idle-inhibitor" type="b">
+            <default>false</default>
+            <summary>Enable idle inhibitor</summary>
+            <description>
+            Enable or disable the idle inhibitor. When enabled the system will not
+            suspend or hibernate when the screen is locked.
+            The inhibitor lock is created via LoginD and way-shell expects the
+            idle daemon to integrate with this service as well to understand
+            ide locks.
+            </description>
+        </key>
     </schema>
 
     <!--window manager related settings-->

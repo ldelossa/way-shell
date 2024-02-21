@@ -7,7 +7,7 @@
 
 static LogindService *global = NULL;
 
-enum signals { signals_n };
+enum signals { idle_inhibitor_changed, signals_n };
 
 struct _LogindService {
     GObject parent_instance;
@@ -17,6 +17,10 @@ struct _LogindService {
     const char *active_profile;
     GArray *profiles;
     gboolean enabled;
+    int idle_inhibitor_fd;
+    // org.ldelossa.way-shell.system : intereste settings:
+    // idle-inhibitor
+    GSettings *settings;
 };
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(LogindService, logind_service, G_TYPE_OBJECT);
@@ -38,6 +42,10 @@ static void logind_service_class_init(LogindServiceClass *klass) {
     GObjectClass *object_class = G_OBJECT_CLASS(klass);
     object_class->dispose = logind_service_dispose;
     object_class->finalize = logind_service_finalize;
+
+    signals[idle_inhibitor_changed] = g_signal_new(
+        "idle-inhibitor-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST,
+        0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 };
 
 static void logind_service_session_dbus_connect(LogindService *self) {
@@ -122,11 +130,28 @@ static void logind_service_manager_dbus_connect(LogindService *self) {
             error->message);
 }
 
+static void on_idle_inhibitor_changed(GSettings *settings, gchar *key,
+                                      LogindService *self) {
+    g_debug("logind_service.c:on_idle_inhibitor_changed(): called");
+
+    gboolean inhibit = g_settings_get_boolean(settings, "idle-inhibitor");
+    logind_service_set_idle_inhibit(self, inhibit);
+}
+
 static void logind_service_init(LogindService *self) {
     g_debug("logind_service.c:logind_service_init():");
 
     logind_service_manager_dbus_connect(self);
     logind_service_session_dbus_connect(self);
+
+    // connect to settings
+    self->settings = g_settings_new("org.ldelossa.way-shell.system");
+
+    // watch idle-inhibitor setting
+    g_signal_connect(self->settings, "changed::idle-inhibitor",
+                     G_CALLBACK(on_idle_inhibitor_changed), self);
+
+    self->idle_inhibitor_fd = -1;
 }
 
 gboolean logind_service_can_reboot(LogindService *self) {
@@ -357,6 +382,82 @@ int logind_service_session_set_brightness(LogindService *self,
         return -1;
     }
     return 0;
+}
+
+gboolean logind_service_set_idle_inhibit(LogindService *self, gboolean enable) {
+    g_debug(
+        "logind_service.c:logind_service_set_idle_inhibit(): called. enable: "
+        "%d idle_inhibitor_fd: %d",
+        enable, self->idle_inhibitor_fd);
+
+    if (enable && self->idle_inhibitor_fd != -1) return true;
+
+    if (!enable && self->idle_inhibitor_fd == -1) return true;
+
+    if (!enable) {
+        g_debug(
+            "logind_service.c:logind_service_set_idle_inhibit(): closing "
+            "idle_inhibitor_fd: %d",
+            self->idle_inhibitor_fd);
+
+        if (close(self->idle_inhibitor_fd) != 0) {
+            g_critical(
+                "logind_service.c:logind_service_set_idle_inhibit(): error: "
+                "close: %s",
+                strerror(errno));
+            return false;
+        }
+        self->idle_inhibitor_fd = -1;
+        g_signal_emit(self, signals[idle_inhibitor_changed], 0, FALSE);
+
+        return true;
+    }
+
+    GError *error = NULL;
+    GVariant *result;
+    GUnixFDList *fd_list = NULL;
+    gint fd;
+    gchar *what = "idle";
+    gchar *who = "way-shell";
+    gchar *why = "User initiated idle block";
+    gchar *mode = "block";
+
+    // Call the Inhibit method directly, for some reason the codegen does not
+    // work :(
+    result = g_dbus_connection_call_with_unix_fd_list_sync(
+        self->conn,
+        "org.freedesktop.login1",                       // service name
+        "/org/freedesktop/login1",                      // object path
+        "org.freedesktop.login1.Manager",               // interface name
+        "Inhibit",                                      // method name
+        g_variant_new("(ssss)", what, who, why, mode),  // parameters
+        G_VARIANT_TYPE("(h)"),                          // response type
+        G_DBUS_CALL_FLAGS_NONE,
+        -1,        // timeout
+        NULL,      // fd list for input
+        &fd_list,  // fd list for output
+        NULL,      // cancellable
+        &error);
+
+    // get fd
+    g_variant_get(result, "(h)", &fd);
+
+    self->idle_inhibitor_fd = g_unix_fd_list_get(fd_list, fd, NULL);
+
+    g_object_unref(fd_list);
+    g_variant_unref(result);
+
+    g_debug("logind_service.c:logind_service_set_idle_inhibit(): fd: %d",
+            self->idle_inhibitor_fd);
+
+    g_signal_emit(self, signals[idle_inhibitor_changed], 0, TRUE);
+
+    return true;
+}
+
+gboolean logind_service_get_idle_inhibit(LogindService *self) {
+    g_debug("logind_service.c:logind_service_get_idle_inhibit(): called");
+    return self->idle_inhibitor_fd != -1;
 }
 
 int logind_service_global_init(void) {
