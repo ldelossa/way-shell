@@ -13,6 +13,12 @@ static void on_active_profile_change(
 
     const char *icon = power_profiles_service_profile_to_icon(power_profile);
     gtk_image_set_from_icon_name(self->button.icon, icon);
+
+    // on selection of a new profile simulate a revealer button click which
+    // closes the menu.
+    if (gtk_revealer_get_child_revealed(self->button.revealer)) {
+        g_signal_emit_by_name(G_OBJECT(self->button.reveal_button), "clicked");
+    }
 }
 
 void quick_settings_grid_power_profiles_button_layout(

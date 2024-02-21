@@ -72,13 +72,17 @@ static void power_profiles_service_dbus_connect(PowerProfilesService *self) {
 
 static void on_power_profiles_service_active_profile_change(
     DbusPowerProfiles *dbus, GParamSpec *pspec, PowerProfilesService *self) {
-    self->active_profile =
-        g_strdup(dbus_power_profiles_get_active_profile(dbus));
-
     g_debug(
         "power_profiles_service.c:on_power_profiles_service_active_profile_"
-        "change() called %s",
-        self->active_profile);
+        "change() called");
+
+    char *active_profile =
+        g_strdup(dbus_power_profiles_get_active_profile(dbus));
+
+    // there is a chance this can be NULL if the service was restarted.
+    if (!active_profile) return;
+
+    self->active_profile = active_profile;
 
     // emit signal
     g_signal_emit(self, signals[active_profile_changed], 0,
@@ -129,6 +133,7 @@ static void power_profiles_service_init(PowerProfilesService *self) {
 
     // profiles
     on_power_profiles_service_profiles_change(self->dbus, NULL, self);
+
     // get active profile
     on_power_profiles_service_active_profile_change(self->dbus, NULL, self);
 
@@ -182,7 +187,6 @@ const gchar *power_profiles_service_get_active_profile(
         "called");
     return g_strdup(self->active_profile);
 }
-
 
 const char *power_profiles_service_profile_to_icon(const char *profile) {
     if (strcmp(profile, "performance") == 0) {

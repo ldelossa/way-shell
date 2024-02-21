@@ -112,9 +112,9 @@ static void wire_plumber_service_class_init(WirePlumberServiceClass *klass) {
                      G_TYPE_POINTER);
 
     service_signals[default_sink_volume_changed] =
-        g_signal_new("default-sink-volume-changed", G_TYPE_FROM_CLASS(object_class),
-                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
-                     G_TYPE_POINTER);
+        g_signal_new("default-sink-volume-changed",
+                     G_TYPE_FROM_CLASS(object_class), G_SIGNAL_RUN_FIRST, 0,
+                     NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
     // define 'default_source_changed' signal
     service_signals[default_source_changed] =
@@ -123,9 +123,9 @@ static void wire_plumber_service_class_init(WirePlumberServiceClass *klass) {
                      G_TYPE_POINTER);
 
     service_signals[default_source_volume_changed] =
-        g_signal_new("default-source-volume-changed", G_TYPE_FROM_CLASS(object_class),
-                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
-                     G_TYPE_POINTER);
+        g_signal_new("default-source-volume-changed",
+                     G_TYPE_FROM_CLASS(object_class), G_SIGNAL_RUN_FIRST, 0,
+                     NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
     // define microphone-active signal
     service_signals[microphone_active] =
@@ -686,7 +686,7 @@ void context_state_cb(pa_context *c, void *self) {
         }
         case PA_CONTEXT_FAILED:
         case PA_CONTEXT_TERMINATED:
-            g_error(
+            g_critical(
                 "wireplumber_service.c:context_state_cb() pulseaudio context "
                 "failed");
             break;
