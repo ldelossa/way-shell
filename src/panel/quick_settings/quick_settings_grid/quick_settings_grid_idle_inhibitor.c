@@ -30,9 +30,9 @@ static void on_idle_inhibit_changed(
         inhibited);
 
     if (inhibited)
-        gtk_widget_remove_css_class(GTK_WIDGET(self->button.toggle), "off");
+        quick_settings_grid_button_set_toggled(&self->button, true);
     else
-        gtk_widget_add_css_class(GTK_WIDGET(self->button.toggle), "off");
+        quick_settings_grid_button_set_toggled(&self->button, false);
 }
 
 QuickSettingsGridIdleInhibitorButton *
@@ -41,7 +41,7 @@ quick_settings_grid_idle_inhibitor_button_init() {
         g_malloc0(sizeof(QuickSettingsGridIdleInhibitorButton));
 
     quick_settings_grid_button_init(
-        &self->button, QUICK_SETTINGS_BUTTON_IDLE_INHIBITOR, "Idle Inhibit",
+        &self->button, QUICK_SETTINGS_BUTTON_IDLE_INHIBITOR, "Idle Inhibitor",
         NULL, "radio-mixed-symbolic", NULL, NULL);
 
     g_signal_connect(self->button.toggle, "clicked",
@@ -60,10 +60,15 @@ quick_settings_grid_idle_inhibitor_button_init() {
     return self;
 }
 
-void quick_settings_grid_idle_inhibitor_button_free(
+void quick_settings_grid_inhibitor_button_free(
     QuickSettingsGridIdleInhibitorButton *self) {
     // unref button's container
     g_object_unref(self->button.container);
+
+    // kill signals
+    LogindService *logind = logind_service_get_global();
+    g_signal_handlers_disconnect_by_func(logind, on_idle_inhibit_changed, self);
+
     // free ourselves
     g_free(self);
 }

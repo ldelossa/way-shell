@@ -49,7 +49,7 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
         case NM_DEVICE_STATE_DISCONNECTED:
         case NM_DEVICE_STATE_FAILED:
         case NM_DEVICE_STATE_DEACTIVATING:
-            gtk_widget_add_css_class(GTK_WIDGET(self->button.toggle), "off");
+            quick_settings_grid_button_set_toggled(&self->button, false);
             icon = "network-wireless-offline-symbolic";
             break;
         case NM_DEVICE_STATE_PREPARE:
@@ -58,12 +58,12 @@ static void on_active_access_point(NMDeviceWifi *dev, GParamSpec *pspec,
         case NM_DEVICE_STATE_IP_CONFIG:
         case NM_DEVICE_STATE_IP_CHECK:
         case NM_DEVICE_STATE_SECONDARIES:
-            gtk_widget_add_css_class(GTK_WIDGET(self->button.toggle), "off");
+            quick_settings_grid_button_set_toggled(&self->button, false);
             preparing = true;
             icon = "network-wireless-acquiring-symbolic";
             break;
         default:
-            gtk_widget_remove_css_class(GTK_WIDGET(self->button.toggle), "off");
+            quick_settings_grid_button_set_toggled(&self->button, true);
     }
 
     NMAccessPoint *ap = nm_device_wifi_get_active_access_point(dev);

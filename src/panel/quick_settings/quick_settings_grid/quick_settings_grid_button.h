@@ -43,4 +43,12 @@ void quick_settings_grid_button_init(
     const gchar *title, const gchar *subtitle, const gchar *icon_name,
     GtkWidget *reveal_widget, QuickSettingsClusterOnRevealFunc on_reveal);
 
+// this just controls the CSS classes, such that 'true' makes the button look
+// enabled while 'false' looks disabled.
+//
+// buttons have multiple widgets so a method handles altering multiple widget's
+// css.
+void quick_settings_grid_button_set_toggled(QuickSettingsGridButton *self,
+                                            gboolean toggled);
+
 void quick_settings_grid_button_free(QuickSettingsGridButton *self);

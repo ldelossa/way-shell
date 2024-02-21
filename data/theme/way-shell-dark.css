@@ -405,6 +405,10 @@ label.day-number.today:focus {
   padding: 2px;
 }
 
+#quick-settings .quick-settings-grid-button-toggle.no-revealer {
+  border-radius: 99px;
+}
+
 #quick-settings .quick-settings-grid-button-toggle.off {
   background-color: rgba(242, 242, 242, 0.35);
 }

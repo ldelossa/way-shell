@@ -2,11 +2,12 @@
 
 #include <adwaita.h>
 
+#include "../quick_settings.h"
+#include "./quick_settings_grid_idle_inhibitor.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_ethernet.h"
-#include "../quick_settings.h"
 
 static void quick_settings_grid_button_on_reveal(
     GtkButton *button, QuickSettingsGridButton *self) {
@@ -22,7 +23,6 @@ static void quick_settings_grid_button_on_reveal(
 
         if (self->on_reveal) self->on_reveal(self, false);
     } else {
-
         // emit will-reveal signal on behalf of our cluster
         g_signal_emit_by_name(self->cluster, "will-reveal", self);
 
@@ -111,13 +111,14 @@ void quick_settings_grid_button_init(
     gtk_widget_add_css_class(GTK_WIDGET(self->revealer),
                              "quick-settings-grid-button-revealer");
 
-    self->reveal_button =
-        GTK_BUTTON(gtk_button_new_from_icon_name("go-next-symbolic"));
-    gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
-                             "quick-settings-grid-button-reveal-hidden");
-    gtk_box_append(self->container, GTK_WIDGET(self->reveal_button));
-
     if (self->reveal_widget) {
+        self->reveal_button =
+            GTK_BUTTON(gtk_button_new_from_icon_name("go-next-symbolic"));
+        gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
+                                 "quick-settings-grid-button-reveal-hidden");
+
+        gtk_box_append(self->container, GTK_WIDGET(self->reveal_button));
+
         // add reveal_widget as child of revealer
         gtk_revealer_set_child(self->revealer, self->reveal_widget);
 
@@ -128,6 +129,9 @@ void quick_settings_grid_button_init(
 
         gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
                                  "quick-settings-grid-button-reveal-visible");
+    } else {
+        // add no-revealer class to toggle button
+        gtk_widget_add_css_class(GTK_WIDGET(self->toggle), "no-revealer");
     }
 }
 
@@ -141,6 +145,22 @@ QuickSettingsGridButton *quick_settings_grid_button_new(
                                     reveal_widget, on_reveal);
 
     return self;
+}
+
+void quick_settings_grid_button_set_toggled(QuickSettingsGridButton *self,
+                                            gboolean toggled) {
+    if (toggled) {
+        gtk_widget_remove_css_class(GTK_WIDGET(self->toggle), "off");
+    } else {
+        gtk_widget_add_css_class(GTK_WIDGET(self->toggle), "off");
+    }
+    if (!self->reveal_widget) {
+        if (toggled) {
+            gtk_widget_remove_css_class(GTK_WIDGET(self->reveal_button), "off");
+        } else {
+            gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button), "off");
+        }
+    }
 }
 
 void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
@@ -159,6 +179,10 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
         case QUICK_SETTINGS_BUTTON_PERFORMANCE:
             quick_settings_grid_power_profiles_button_free(
                 (QuickSettingsGridPowerProfilesButton *)self);
+            break;
+        case QUICK_SETTINGS_BUTTON_IDLE_INHIBITOR:
+            quick_settings_grid_inhibitor_button_free(
+                (QuickSettingsGridIdleInhibitorButton *)self);
             break;
     }
 }
