@@ -2,4 +2,4 @@
 compile_commands.json
 way-shell
 .gdb_history
-src/way-sh/way-sh
+way-sh/way-sh
