@@ -16,6 +16,8 @@ OBJS += lib/cmd_tree/cmd_tree.o
 
 all: gresources way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
 
+install: all gschema
+
 way-shell: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
 
@@ -66,6 +68,11 @@ dbus-codegen:
 	--interface-prefix net.hadess. \
 	--output-directory ./src/services/power_profiles_service \
 	./data/dbus-interfaces/net.hadess.PowerProfiles.xml
+
+.PHONY:
+install:
+	sudo cp ./way-shell /usr/local/bin
+	sudo cp ./way-sh/way-sh /usr/local/bin
 
 clean:
 	find . -name "*.o" -type f -exec rm -f {} \;

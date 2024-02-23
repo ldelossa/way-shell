@@ -73,6 +73,20 @@ on my immediate radar.
 
 Contributions welcome!
 
+## Configuring Sway
+
+Here is an example of how I configure Sway once way-shell is installed and its
+binaries are in $PATH
+
+```shell
+# way-shell configuration
+exec way-shell
+bindsym XF86AudioRaiseVolume exec way-sh volume up
+bindsym XF86AudioLowerVolume exec way-sh volume down
+bindsym XF86MonBrightnessDown exec way-sh brightness down
+bindsym XF86MonBrightnessUp exec way-sh brightness up
+```
+
 ## Road to v1.0
 
 - [x] Multi-monitor support
