@@ -108,7 +108,7 @@ bindsym XF86MonBrightnessUp exec way-sh brightness up
 ## Road to v2.0
 
 - [ ] Figure out proper rpm and deb packaging
-- [ ] Lock Screen (Wayland protocal based) implementation
+- [ ] Lock Screen (Wayland protocol based) implementation
 - [ ] App/Workspace switcher (alt+tab replacement)
 - [ ] Workspace Overview/Application launcher overlay widget
 - [ ] Option to turn on idle inhibitor when video/audio sources are detected.
