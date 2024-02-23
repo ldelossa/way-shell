@@ -21,8 +21,6 @@ G_DEFINE_TYPE(PowerProfilesService, power_profiles_service, G_TYPE_OBJECT);
 
 // stub out dispose, finalize, class_init, and init methods
 static void power_profiles_service_dispose(GObject *gobject) {
-    PowerProfilesService *self = POWER_PROFILES_SERVICE(gobject);
-
     // Chain-up
     G_OBJECT_CLASS(power_profiles_service_parent_class)->dispose(gobject);
 };

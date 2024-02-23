@@ -27,8 +27,6 @@ G_DEFINE_TYPE(LogindService, logind_service, G_TYPE_OBJECT);
 
 // stub out dispose, finalize, class_init, and init methods
 static void logind_service_dispose(GObject *gobject) {
-    LogindService *self = LOGIND_SERVICE(gobject);
-
     // Chain-up
     G_OBJECT_CLASS(logind_service_parent_class)->dispose(gobject);
 };

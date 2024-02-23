@@ -79,8 +79,6 @@ G_DEFINE_TYPE(WirePlumberService, wire_plumber_service, G_TYPE_OBJECT);
 // stub out dispose, finalize, class init and init methods for this GObject
 // class.
 static void wire_plumber_service_dispose(GObject *gobject) {
-    WirePlumberService *self = WIRE_PLUMBER_SERVICE(gobject);
-
     // Chain-up
     G_OBJECT_CLASS(wire_plumber_service_parent_class)->dispose(gobject);
 };
@@ -713,15 +711,30 @@ static void wire_plumber_service_init_pulseaudio(WirePlumberService *self) {
     }
 }
 
-static void wire_plumber_service_init(WirePlumberService *self) {
-    GError *error = NULL;
+static gboolean wire_plumber_service_connect_retry(gpointer user_data);
 
-    g_debug("wireplumber_service.c:wire_plumber_service_init() called");
+static void on_core_disconnect(WpCore *core, WirePlumberService *self) {
+    g_debug("wireplumber_service.c:on_core_disconnect() called");
+    g_critical(
+        "wireplumber_service.c:on_core_disconnect() PipeWire connection lost");
+    g_timeout_add_seconds(5, wire_plumber_service_connect_retry, self);
+}
 
-    // init pulseaudio
-    wire_plumber_service_init_pulseaudio(self);
+gboolean wire_plumber_service_connect(WirePlumberService *self) {
+    g_debug("wireplumber_service.c:wire_plumber_service_connect() called");
+
+    GError *error;
 
     wp_init(WP_INIT_PIPEWIRE);
+
+    // cleanup all existing arrays, hashtables, core and om
+    if (self->db) g_hash_table_destroy(self->db);
+    if (self->sinks) g_ptr_array_free(self->sinks, true);
+    if (self->sources) g_ptr_array_free(self->sources, true);
+    if (self->streams) g_ptr_array_free(self->streams, true);
+    if (self->links) g_ptr_array_free(self->links, true);
+    if (self->core) g_object_unref(self->core);
+    if (self->om) g_object_unref(self->om);
 
     self->db = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->sources = g_ptr_array_new();
@@ -754,24 +767,28 @@ static void wire_plumber_service_init(WirePlumberService *self) {
     if (!wp_core_load_component(self->core,
                                 "libwireplumber-module-default-nodes-api",
                                 "module", NULL, &error)) {
-        g_error(
+        g_critical(
             "wireplumber_service.c:wire_plumber_service_init() failed to load "
             "default-nodes-api module: %s",
             error->message);
+        return false;
     }
     if (!wp_core_load_component(self->core, "libwireplumber-module-mixer-api",
                                 "module", NULL, &error)) {
-        g_error(
+        g_critical(
             "wireplumber_service.c:wire_plumber_service_init() failed to load "
             "mixer-api module: %s",
             error->message);
+        return false;
     }
 
     // make a connection to PipeWire
-    if (!wp_core_connect(self->core))
-        g_error(
+    if (!wp_core_connect(self->core)) {
+        g_critical(
             "wireplumber_service.c:wire_plumber_service_init() failed to "
             "connect to PipeWire daemon");
+        return false;
+    }
 
     // get the default nodes api plugin
     self->default_nodes_api = wp_plugin_find(self->core, "default-nodes-api");
@@ -801,6 +818,38 @@ static void wire_plumber_service_init(WirePlumberService *self) {
 
     wp_object_activate(WP_OBJECT(self->mixer_api), WP_PLUGIN_FEATURE_ENABLED,
                        NULL, (GAsyncReadyCallback)on_plugin_activate, self);
+
+    wire_plumber_service_init_pulseaudio(self);
+
+    // attach to core's disconnect signal
+    g_signal_connect(self->core, "disconnected", G_CALLBACK(on_core_disconnect),
+                     self);
+
+    return true;
+}
+
+static gboolean wire_plumber_service_connect_retry(gpointer user_data) {
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_connect_retry() called");
+
+    WirePlumberService *self = (WirePlumberService *)user_data;
+
+    if (!wire_plumber_service_connect(self)) {
+        g_debug(
+            "wireplumber_service.c:wire_plumber_service_connect_retry() failed "
+            "to connect to PipeWire, retrying in 5 seconds");
+        return G_SOURCE_CONTINUE;
+    }
+
+    return G_SOURCE_REMOVE;
+}
+
+static void wire_plumber_service_init(WirePlumberService *self) {
+    g_debug("wireplumber_service.c:wire_plumber_service_init() called");
+
+    if (!wire_plumber_service_connect(self)) {
+        g_timeout_add_seconds(5, wire_plumber_service_connect_retry, self);
+    }
 };
 
 int wire_plumber_service_global_init() {
