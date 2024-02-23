@@ -16,7 +16,7 @@ https://private-user-images.githubusercontent.com/5642902/307390891-d82cb4fe-6fb
 
 I'll focus on Fedora since this my daily driver distro.
 
-I believe the instructions here can be translated for other distros wit a bit
+I believe the instructions here can be translated for other distros with a bit
 of effort.
 
 I'd love any community members to contribute their own methods of installation
@@ -50,14 +50,16 @@ Running inside a toolbox is not perfect tho.
 Inside the toolbox we can't resolve application icons so the mixer panel will
 show a generic 'media' icon for audio sources.
 
-You'll only need to interface with DConf inside the container.
+You'll also need to interface with DConf inside the container.
 
 Given the docker file in that folder you could always just run those steps
-or a translation of those steps for your distro and install Way-Shell on your
+or, a translation of those steps for your distro, and install Way-Shell on your
 host machine.
 
 Eventually, I hope to get proper deb/rpm packaging for this project but its not
-on my immediate radar. Contributions welcome!
+on my immediate radar.
+
+Contributions welcome!
 
 ## Road to v1.0
 
@@ -79,4 +81,7 @@ on my immediate radar. Contributions welcome!
 ## Road to v2.0
 
 - [ ] Figure out proper rpm and deb packaging
-- [ ]
+- [ ] Lock Screen (Wayland protocal based) implementation
+- [ ] App/Workspace switcher (alt+tab replacement)
+- [ ] Workspace Overview/Application launcher overlay widget
+- [ ] Option to turn on idle inhibitor when video/audio sources are detected.
