@@ -14,7 +14,7 @@ SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
 
-all: way-shell lib/cmd_tree/cmd_tree.o way-sh
+all: way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
 
 way-shell: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -30,7 +30,7 @@ gschema: ./data/org.ldelossa.way-shell.gschema.xml
 	sudo glib-compile-schemas /usr/share/glib-2.0/schemas/
 
 .PHONY:
-way-sh:
+way-sh/way-sh:
 	make -C way-sh/
 
 .PHONY:

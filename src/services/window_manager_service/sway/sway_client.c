@@ -3,6 +3,7 @@
 #include <adwaita.h>
 #include <asm-generic/errno.h>
 #include <errno.h>
+#include <glob.h>
 #include <json-glib/json-glib.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -23,6 +24,29 @@ WMWorkspaceEventType sway_client_event_map(char *event) {
     return -1;
 }
 
+gchar *sway_client_find_socket_glob() {
+    glob_t res;
+    char pattern[1024];
+    char *xdg_runtime_dir = NULL;
+
+    xdg_runtime_dir = getenv("XDG_RUNTIME_DIR");
+    if (!xdg_runtime_dir) return NULL;
+
+    snprintf(pattern, sizeof(pattern), "%s/sway-ipc.*.sock", xdg_runtime_dir);
+
+    if (glob(pattern, 0, NULL, &res) != 0) return NULL;
+
+    if (res.gl_pathc == 0) {
+        globfree(&res);
+        return NULL;
+    }
+
+    char *socket_path = g_strdup(res.gl_pathv[0]);
+    globfree(&res);
+
+    return socket_path;
+}
+
 gchar *sway_client_find_socket_path() {
     char *socket_path;
 
@@ -31,6 +55,12 @@ gchar *sway_client_find_socket_path() {
     socket_path = getenv("SWAYSOCK");
 
     if (!socket_path) socket_path = getenv("I3SOCK");
+
+    // No env vars lets see we can find it xdg runtime dir
+    if (!socket_path) socket_path = sway_client_find_socket_glob();
+    if (socket_path) {
+        return socket_path;
+    }
 
     return g_strdup(socket_path);
 }
@@ -417,9 +447,7 @@ gboolean sway_client_ipc_subscribe_resp(sway_client_ipc_msg *msg) {
 }
 
 int sway_client_ipc_focus_workspace(int socket_fd, gchar *name) {
-    sway_client_ipc_msg msg = {
-        .type = IPC_COMMAND
-    };
+    sway_client_ipc_msg msg = {.type = IPC_COMMAND};
     char *cmd = "workspace ";
 
     if (!name) {
