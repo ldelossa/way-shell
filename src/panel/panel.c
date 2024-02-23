@@ -2,7 +2,6 @@
 
 #include <adwaita.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
-#include <panel.h>
 
 #include "./panel_status_bar/panel_status_bar.h"
 #include "message_tray/message_tray_mediator.h"
@@ -128,7 +127,6 @@ void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
     panel_init_workspaces_bar(self);
     panel_init_panel_clock(self);
     panel_init_status_bar(self);
-
 }
 
 // Iterates over the monitors GListModel, creating panels for any new monitors.
@@ -236,7 +234,6 @@ void panel_activate(AdwApplication *app, gpointer user_data) {
     g_signal_connect(monitors, "items-changed",
                      G_CALLBACK(panel_on_monitor_change), app);
 }
-
 
 Panel *panel_get_from_monitor(GdkMonitor *monitor) {
     return g_hash_table_lookup(panels, monitor);

@@ -5,7 +5,6 @@
 
 #include "../message_tray.h"
 #include "../message_tray_mediator.h"
-#include "../panel.h"
 #include "./notification_widget.h"
 #include "gtk/gtkrevealer.h"
 #include "notifications_list.h"
