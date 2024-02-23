@@ -1,7 +1,18 @@
 # Way-Shell
 
-A Gnome inspired desktop shell for Wayland compositors and window managers written
-in Gtk4.
+A Gnome inspired desktop shell for Wayland compositors/window managers written
+in C and Gtk4.
+
+Way-Shell expects a Gnome-like environment to be available.
+This means DBus must be running and the following services must be available:
+
+- Logind
+- NetworkManager
+- WirePlumber/Pipewire
+- PowerProfiles Daemon
+- UPower
+
+If you're using Fedora these services should be available by default.
 
 Currently Way-Shell only supports Sway but this will change as the project
 matures.
@@ -10,7 +21,7 @@ Way-Shell is in its very early stages of development so expect some crashes and
 bugs. However, it is my daily driver and I'm rather quick to fix show stopper
 issues.
 
-https://private-user-images.githubusercontent.com/5642902/307390891-d82cb4fe-6fb0-413f-9275-5d01733b8685.mp4?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MDg3MDc5OTQsIm5iZiI6MTcwODcwNzY5NCwicGF0aCI6Ii81NjQyOTAyLzMwNzM5MDg5MS1kODJjYjRmZS02ZmIwLTQxM2YtOTI3NS01ZDAxNzMzYjg2ODUubXA0P1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI0MDIyMyUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNDAyMjNUMTcwMTM0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9MjExZjY3ODE0ODMzZmM3NmJiMDYzOTQyMWVkYTU0MGE1NjI5M2RlMTFhMWQ5MTVjY2E1MzhjYjRhYmQ3YTYyZSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmYWN0b3JfaWQ9MCZrZXlfaWQ9MCZyZXBvX2lkPTAifQ.JY7n4jMhZwgFnRyZsoYALXqeTbncTIxM3h6V1kkxJ9o
+<https://private-user-images.githubusercontent.com/5642902/307390891-d82cb4fe-6fb0-413f-9275-5d01733b8685.mp4?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MDg3MDc5OTQsIm5iZiI6MTcwODcwNzY5NCwicGF0aCI6Ii81NjQyOTAyLzMwNzM5MDg5MS1kODJjYjRmZS02ZmIwLTQxM2YtOTI3NS01ZDAxNzMzYjg2ODUubXA0P1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI0MDIyMyUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNDAyMjNUMTcwMTM0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9MjExZjY3ODE0ODMzZmM3NmJiMDYzOTQyMWVkYTU0MGE1NjI5M2RlMTFhMWQ5MTVjY2E1MzhjYjRhYmQ3YTYyZSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmYWN0b3JfaWQ9MCZrZXlfaWQ9MCZyZXBvX2lkPTAifQ.JY7n4jMhZwgFnRyZsoYALXqeTbncTIxM3h6V1kkxJ9o>
 
 ## Installing and Running Way-Shell
 
@@ -40,7 +51,8 @@ which isn't currently packaged for Fedora.
 Currently, the easiest way to run Way-Shell is to use a [toolbox](https://github.com/containers/toolbox).
 
 A makefile exists in `contrib/toolbox/fedora` which will automate the setup
-of a sway-shell toolbox container.
+of a sway-shell toolbox container. Just run 'make' in that directory after you
+installed toolbox.
 
 You may need to adjust the container's `FROM` statement to match your Fedora
 version.
@@ -74,6 +86,7 @@ Contributions welcome!
 - [x] PowerProfiles daemon integration
 - [x] Brightness and Audio sliders
 - [x] DConf integration (configuration is driven via dconf)
+- [x] CLI interface (way-sh)
 - [ ] Media Player integration (control DBus announced media players)
 - [ ] Bluetooth integration (pair with discoverable bluetooth devices)
 - [ ] Themeing (provide CSS override directory, light/dark theme switch button, and allow a script to be ran after the theme is switched)
