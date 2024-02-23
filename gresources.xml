@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+    <gresource prefix="/org/ldelossa/way-shell">
+        <file>data/theme/way-shell-dark.css</file>
+    </gresource>
+</gresources>

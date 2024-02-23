@@ -14,6 +14,7 @@
 #include "./services/upower_service.h"
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
+#include "gresources.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
@@ -29,9 +30,15 @@ AdwApplicationWindow *global = NULL;
 
 // activates all the components of our shell.
 static void activate(AdwApplication *app, gpointer user_data) {
+    GError *error;
+
+    // CSS Theme is embedded as a GResource
+    GResource *resource = gresources_get_resource();
+    g_resources_register(resource);
+
     GtkCssProvider *provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_path(
-        provider, "/home/louis/git/c/way-shell/data/theme/way-shell-dark.css");
+    gtk_css_provider_load_from_resource(
+        provider, "/org/ldelossa/way-shell/data/theme/way-shell-dark.css");
 
     GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
     GdkDisplay *display = gdk_seat_get_display(seat);

@@ -14,7 +14,7 @@ SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
 
-all: way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
+all: gresources way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
 
 way-shell: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -23,6 +23,11 @@ lib/cmd_tree/cmd_tree.o: lib/cmd_tree/cmd_tree.c
 
 lib/cmd_tree/cmd_tree.c:
 	make -C lib/cmd_tree
+
+.PHONY:
+gresources:
+	glib-compile-resources --generate-source --target src/gresources.c gresources.xml
+	glib-compile-resources --generate-header --target src/gresources.h gresources.xml
 
 .PHONY:
 gschema: ./data/org.ldelossa.way-shell.gschema.xml
