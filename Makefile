@@ -71,6 +71,7 @@ dbus-codegen:
 
 .PHONY:
 install:
+	sudo rm -rf /usr/local/bin/{way-shell,way-sh}
 	sudo cp ./way-shell /usr/local/bin
 	sudo cp ./way-sh/way-sh /usr/local/bin
 

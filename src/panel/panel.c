@@ -167,10 +167,9 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
         }
 
         Panel *panel = g_object_new(PANEL_TYPE, NULL);
-        panel_attach_to_monitor(panel, mon);
-
         g_signal_connect(mon, "invalidate", G_CALLBACK(on_monitor_invalidate),
                          panel);
+        panel_attach_to_monitor(panel, mon);
 
         g_debug(
             "panel.c:panel_on_monitor_change(): initialized bar for monitor: "

@@ -1052,6 +1052,8 @@ void wire_plumber_service_set_volume(WirePlumberService *self,
         "wireplumber_service.c:wire_plumber_service_set_volume() called: %f",
         volume);
 
+    if (!node) return;
+
     g_auto(GVariantBuilder) b = G_VARIANT_BUILDER_INIT(G_VARIANT_TYPE_VARDICT);
     GVariant *variant = NULL;
     gboolean res = FALSE;
@@ -1070,6 +1072,9 @@ void wire_plumber_service_set_volume(WirePlumberService *self,
 void wire_plumber_service_volume_up(WirePlumberService *self,
                                     const WirePlumberServiceNode *node) {
     g_debug("wireplumber_service.c:wire_plumber_service_volume_up() called");
+
+    if (!node) return;
+
     if (node->volume == 1.0) {
         g_debug(
             "wireplumber_service.c:wire_plumber_service_volume_up() volume is "
@@ -1084,6 +1089,8 @@ void wire_plumber_service_volume_down(WirePlumberService *self,
                                       const WirePlumberServiceNode *node) {
     g_debug("wireplumber_service.c:wire_plumber_service_volume_down() called");
 
+    if (!node) return;
+
     if (node->volume == 0.0) {
         g_debug(
             "wireplumber_service.c:wire_plumber_service_volume_down() volume "
@@ -1097,6 +1104,8 @@ void wire_plumber_service_volume_down(WirePlumberService *self,
 void wire_plumber_service_volume_mute(WirePlumberService *self,
                                       const WirePlumberServiceNode *node) {
     gboolean res = FALSE;
+
+    if (!node) return;
 
     g_debug("wireplumber_service.c:wire_plumber_service_volume_mute() called");
 
@@ -1119,6 +1128,8 @@ void wire_plumber_service_volume_unmute(WirePlumberService *self,
                                         const WirePlumberServiceNode *node) {
     g_debug(
         "wireplumber_service.c:wire_plumber_service_volume_unmute() called");
+
+    if (!node) return;
 
     gboolean res = FALSE;
 
