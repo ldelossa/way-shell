@@ -151,37 +151,37 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
     switch (hdr->type) {
         case IPC_CMD_MESSAGE_TRAY_OPEN:
             g_debug(
-                "ipc_service.c:on_ipc_readable() recieved "
+                "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_MESSAGE_TRAY_OPEN");
             ret = ipc_cmd_message_tray_open();
             break;
         case IPC_CMD_VOLUME_UP:
             g_debug(
-                "ipc_service.c:on_ipc_readable() recieved "
+                "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_VOLUME_UP");
             ret = ipc_cmd_volume_up();
             break;
         case IPC_CMD_VOLUME_DOWN:
             g_debug(
-                "ipc_service.c:on_ipc_readable() recieved "
+                "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_VOLUME_DOWN");
             ret = ipc_cmd_volume_down();
             break;
         case IPC_CMD_VOLUME_SET:
             g_debug(
-                "ipc_service.c:on_ipc_readable() recieved "
+                "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_VOLUME_SET");
             ret = ipc_cmd_volume_set((IPCVolumeSet *)hdr);
             break;
         case IPC_CMD_BRIGHTNESS_UP:
             g_debug(
-                "ipc_service.c:on_ipc_readable() recieved "
+                "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_BRIGHTNESS_UP");
             ret = ipc_cmd_brightness_up();
             break;
         case IPC_CMD_BRIGHTNESS_DOWN:
             g_debug(
-                "ipc_service.c:on_ipc_readable() recieved "
+                "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_BRIGHTNESS_DOWN");
             ret = ipc_cmd_brightness_down();
             break;

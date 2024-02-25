@@ -136,7 +136,7 @@ static gboolean on_ipc_recv(gint fd, GIOCondition condition,
     if (condition & G_IO_HUP || condition & G_IO_ERR) {
         g_debug(
             "window_manager_service_sway.c:handle_ipc_recv() "
-            "received G_IO_HUP or G_IO_ERR, GLib polling stoped.");
+            "received G_IO_HUP or G_IO_ERR, GLib polling stopped.");
         return false;
     }
 
