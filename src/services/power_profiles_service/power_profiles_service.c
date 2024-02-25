@@ -100,6 +100,8 @@ static void on_power_profiles_service_profiles_change(
 
     // extract profile strings from from 'aa{sv}'
     GVariant *profiles = dbus_power_profiles_get_profiles(dbus);
+	if (!profiles) 
+		return;
 
     if (!g_variant_is_of_type(profiles, G_VARIANT_TYPE("aa{sv}"))) {
         g_error("Variant is not of type 'aa{sv}'");
