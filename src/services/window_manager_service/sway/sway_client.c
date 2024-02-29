@@ -1,6 +1,7 @@
 #include "sway_client.h"
 
 #include <adwaita.h>
+#include <ctype.h>
 #include <asm-generic/errno.h>
 #include <errno.h>
 #include <glob.h>
@@ -453,6 +454,11 @@ int sway_client_ipc_focus_workspace(int socket_fd, gchar *name) {
     if (!name) {
         return -1;
     }
+
+    if (isdigit(name[0])) {
+        cmd = "workspace number ";
+    }
+
     msg.size = strlen(cmd) + strlen(name) + 1;
     msg.payload = g_malloc0(msg.size);
 
