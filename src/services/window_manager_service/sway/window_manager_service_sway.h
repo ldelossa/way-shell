@@ -1,6 +1,7 @@
 #pragma once
 
 #include <adwaita.h>
+#include "../window_manager_service.h"
 
 G_BEGIN_DECLS
 
@@ -22,4 +23,4 @@ WMServiceSway *wm_service_sway_get_global();
 GPtrArray *wm_service_sway_get_workspaces(WMServiceSway *self);
 
 // Attempts to focus the provided workspace name.
-int wm_service_sway_focus_workspace(WMServiceSway *self, gchar *name);
+int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws);

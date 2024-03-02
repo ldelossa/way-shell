@@ -446,19 +446,26 @@ gboolean sway_client_ipc_subscribe_resp(sway_client_ipc_msg *msg) {
     return ok;
 }
 
-int sway_client_ipc_focus_workspace(int socket_fd, gchar *name) {
+int sway_client_ipc_focus_workspace(int socket_fd, WMWorkspace *ws) {
     sway_client_ipc_msg msg = {.type = IPC_COMMAND};
-    char *cmd = "workspace ";
+    char cmd[20];
 
-    if (!name) {
+    if (ws == NULL) {
         return -1;
     }
-    msg.size = strlen(cmd) + strlen(name) + 1;
+
+    if (ws->num == -1) {
+        strcpy(cmd, "workspace ");
+    } else {
+        strcpy(cmd, "workspace number ");
+    }
+
+    msg.size = strlen(cmd) + strlen(ws->name) + 1;
     msg.payload = g_malloc0(msg.size);
 
     // concat cmd and name into payload buffer
     strcpy(msg.payload, cmd);
-    strcat(msg.payload, name);
+    strcat(msg.payload, ws->name);
 
     // send off message
     return sway_client_ipc_send(socket_fd, &msg);
