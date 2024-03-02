@@ -1,630 +1,617 @@
- .active-icon-activated {
-     color: #4AD589;
-     /* GNOME Green */
- }
+@define-color transparent rgba(0, 0, 0, 0.0);
+@define-color base-panel-background #deddda;
+@define-color top-panel-background #c0bfbc;
+@define-color base-panel-border #9a9996;
+@define-color scale-trough #deddda;
+@define-color highlight #99c1f1;
+@define-color scale-trough-highlight #3584e4;
+@define-color osd-icon-image #303030;
+@define-color underlay-background rgba(0, 0, 0, 0.1);
+@define-color box-shadow rgba(0, 0, 0, 0.2);
+@define-color panel-background #ffffff;
+@define-color panel-button-color #3d3846;
+@define-color panel-button-hover rgba(35, 35, 35, 0.25);
+@define-color panel-button-active rgba(35, 35, 35, 0.35);
+@define-color scrolled-window-undershoot rgba(35, 35, 35, .35);
+@define-color workspace-button-start-gradient #7dafe8;
+@define-color workspace-button-end-gradient #b3d4f5;
+@define-color workspace-bar-urgent #f66151;
+@define-color calendar-text-color #606060;
+@define-color calendar-text-dirty-color #101010;
+@define-color calendar-text-dirty-background rgba(35, 35, 35, 0.15);
+@define-color calendar-focus-background rgba(35, 35, 35, 0.05);
+@define-color calendar-focus-selected-background rgba(35, 35, 35, 0.15);
+@define-color notification-background #9a9996;
+@define-color notification-background-critical #f66151;
+@define-color quick-settings-button #99c1f1;
+@define-color quick-settings-button-hover #62a0ea;
+@define-color quick-settings-menu-option #555555;
+@define-color quick-settings-menu-option-hover #9a9996;
+@define-color success #26a269;
+@define-color failure #ed333b;
 
- /*
-  * OSD
-  */
- #osd {
-     background-color: rgba(0, 0, 0, 0.0);
- }
+.active-icon-activated {
+  color: @success;
+}
 
- #osd #osd-container {
-     background-color: #FFFFFF;
-     /* GNOME White */
-     border-radius: 99px;
-     padding: 15px;
- }
-
- #osd #osd-container scale trough slider {
-     background-color: rgba(0, 0, 0, 0.0);
- }
-
- #osd #osd-container scale trough {
-     background-color: #F6F5F4;
-     /* GNOME Light Grey */
- }
-
- #osd #osd-container scale trough highlight {
-     background-color: #4A90D9;
-     /* GNOME Blue */
- }
-
- #osd #osd-container image {
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
-
- /*
-  * Underlay
-  */
- .underlay {
-     background-color: rgba(0, 0, 0, 0.05);
- }
-
- .underlay:hover,
- .underlay:active {
-     background-color: rgba(0, 0, 0, 0.1);
- }
-
- /*
-  * Panel
-  */
- #panel {
-     background-color: #FFFFFF;
-     /* GNOME White */
-     font-weight: normal;
-     transition-duration: 250ms;
- }
-
- #panel .panel-button label {
-     margin: 4px;
- }
-
- #panel .panel-button {
-     margin: 2px;
-     transition-duration: 150ms;
-     font-weight: bold;
-     background-color: transparent;
-     color: #5C616C;
-     /* GNOME Dark Grey */
-     box-shadow: none;
-     margin: 2px;
-     padding: 2px;
-     border-radius: 35px;
- }
-
- #panel .panel-button:hover {
-     background-color: rgba(242, 242, 242, 0.25);
- }
-
- #panel .panel-button:active {
-     background-color: rgba(242, 242, 242, 0.35);
- }
-
- #panel .panel-button-toggled {
-     background-color: rgba(242, 242, 242, 0.25);
- }
-
- #panel image {
-     margin-left: 6px;
-     margin-right: 6px;
- }
-
- #panel #workspaces-bar {
-     border-radius: 5px;
- }
-
- #panel scrollbar {
-     opacity: 100;
-     margin-bottom: -12px;
-     margin-left: 12px;
-     margin-right: 12px;
-     border-radius: 0px;
- }
-
- #panel scrolledwindow undershoot.left {
-     background: linear-gradient(to right, rgba(211, 211, 211, .35), transparent);
- }
-
- #panel scrolledwindow undershoot.right {
-     background: linear-gradient(to left, rgba(211, 211, 211, .35), transparent);
- }
-
- #panel #workspaces-bar-list {
-     font-weight: normal;
-     font-size: 12px;
-     box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.1), inset -1px -1px 3px rgba(255, 255, 255, 0.1);
- }
-
- #panel #workspaces-bar-list .panel-button {
-     margin: 2px;
-     border-radius: 5px;
- }
-
- #panel #workspaces-bar-list .panel-button-toggled {
-     background: linear-gradient(to bottom, #79BAEC, #567DBC);
-     animation: pulse 1s ease-in;
- }
-
- #panel #workspaces-bar-list .panel-button-urgent {
-     color: #CC575D;
-     /* GNOME Red */
-     animation: pulse 1s ease-in;
- }
-
- #panel .panel-clock-notif {
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
-
- @keyframes pulse {
-     0% {
-         opacity: 1;
-     }
-
-     50% {
-         opacity: 0.7;
-     }
-
-     100% {
-         opacity: 1;
-     }
- }
-
- /*
- / Message Tray
+/*
+ * OSD
  */
- #message-tray {
-     padding: 6px;
-     background-color: #EDEDED;
-     /* Lighter background */
-     border-radius: 20px;
-     border: 1px solid #C0C0C0;
-     /* Lighter border */
-     box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-     /* Softer shadow */
-     color: #2E3436;
-     /* Darker text for readability */
- }
+#osd {
+  background-color: @transparent;
+}
 
- #message-tray .calendar-area {
-     padding: 15px;
-     margin-bottom: 12em;
- }
+#osd #osd-container {
+  background-color: @base-panel-background;
+  border-radius: 99px;
+  padding: 15px;
+}
 
- #message-tray #calendar-month-selector {
-     padding: 0px;
-     margin: 0px;
- }
+#osd #osd-container scale trough slider {
+  background-color: @transparent;
+}
 
- #message-tray #calendar-month-selector label {
-     font-size: 15px;
-     font-weight: bold;
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
+#osd #osd-container scale trough {
+  background-color: @scale-trough;
+}
 
- #message-tray #calendar-month-selector button {
-     background-color: inherit;
- }
+#osd #osd-container scale trough highlight {
+  background-color: @scale-trough-highlight;
+}
 
- #message-tray #calendar-month-selector button:hover {
-     background-color: rgba(242, 242, 242, 0.25);
- }
+#osd #osd-container image {
+  color: @osd-icon-image;
+}
 
- #message-tray #calendar-today {
-     background-color: #FFFFFF;
-     /* GNOME White */
-     padding-bottom: 15px;
-     color: #5C616C;
-     /* GNOME Dark Grey */
-     transition: 250ms;
- }
-
- #message-tray #calendar-today.calendar-today-dirty {
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
-
- #message-tray #calendar-today.calendar-today-dirty:hover {
-     color: #000000;
-     /* Black for contrast */
-     background-color: rgba(242, 242, 242, 0.15);
- }
-
- #message-tray #calendar-today row label.title {
-     font-size: 16px;
-     font-weight: bold;
- }
-
- #message-tray #calendar-today row label.subtitle {
-     font-size: 20px;
-     font-weight: bold;
- }
-
- /*
-  * Message Tray Calendar
-  */
-
- #message-tray calendar {
-     background-color: #FFFFFF;
-     /* GNOME White */
- }
-
- #message-tray calendar.view {
-     background-color: #FFFFFF;
-     /* GNOME White */
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
-
- #message-tray calendar.view grid {
-     background-color: #FFFFFF;
-     /* GNOME White */
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
-
- #message-tray calendar.view grid label.day-number,
- label.day-name {
-     color: #2E3436;
-     /* GNOME Dark Grey */
-     padding: 0px;
-     margin: 0px;
- }
-
- #message-tray calendar.view grid label.day-number:active {
-     border-radius: 100%;
- }
-
- #message-tray calendar.view grid label.day-number:focus {
-     border-radius: 100%;
-     background-color: rgba(242, 242, 242, 0.05);
-     outline-color: #4A90D9;
-     /* GNOME Blue */
- }
-
- #message-tray calendar.view grid label.day-number:focus:selected {
-     border-radius: 100%;
-     background-color: rgba(242, 242, 242, 0.15);
-     outline-color: #4A90D9;
-     /* GNOME Blue */
- }
-
- #message-tray calendar.view grid label.day-number.today,
- label.day-number.today:focus {
-     border-radius: 100%;
-     background-color: #4A90D9;
-     /* GNOME Blue */
- }
-
- #message-tray calendar.view grid label.day-number.today:focus:selected {
-     background-color: #4A90D9;
-     /* GNOME Blue */
-     outline-color: #ffffff;
-     /* White for contrast */
- }
-
- #message-tray calendar.view grid label:selected {
-     border-radius: 100%;
- }
-
- #message-tray calendar.view grid label.other-month {
-     color: rgba(92, 97, 108, 0.25);
-     /* Lighter, for less emphasis */
- }
-
- #message-tray separator {
-     color: #5C616C;
-     /* GNOME Dark Grey */
- }
-
- /*
-  * Message Tray Notifications
-  */
-
- #notifications-osd .notification-widget,
- #notifications-list .notification-widget {
-     border-radius: 10px;
-     padding: 4px;
- }
-
- #notification-list .notifications-list-controls {
-     font-weight: bold;
-     font-size: 8px;
- }
-
- #notifications-osd {
-     background-color: rgba(0, 0, 0, 0.0);
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
-
- #notifications-osd .notification-widget-button,
- #notifications-list .notification-widget-button {
-     border-radius: 10px;
-     background-color: #EDEDED;
-     /* Light background */
- }
-
- #notifications-osd .notification-widget-button-critical,
- #notifications-list .notification-widget-button-critical {
-     border-radius: 10px;
-     background-color: #CC575D;
-     /* GNOME Red */
- }
-
- #notifications-osd .notification-widget-icon,
- #notifications-list .notification-widget-icon {
-     border-radius: 10px;
-     padding: 8px;
- }
-
- #notifications-osd .notification-widget label.summary,
- #notifications-list .notification-widget label.summary {
-     font-weight: bold;
- }
-
- #notifications-osd .notification-widget label.title,
- #notifications-list .notification-widget label.title {
-     font-size: 14px;
- }
-
- #notifications-list .notification-widget-dismiss-button {
-     border-radius: 100%;
-     padding: 4px;
-     margin: 6px;
- }
-
- #notifications-list #notifications-list-controls {
-     font-weight: bold;
-     font-size: 14px;
- }
-
- #notifications-list #notifications-list-controls .notifications-list-clear {
-     margin: 6px;
- }
-
- /*
- / Quick Settings
+/*
+ * Underlay
  */
- #quick-settings {
-     padding: 6px;
-     background-color: #FFFFFF;
-     /* GNOME White */
-     border-radius: 20px;
-     border: 1px solid #C0C0C0;
-     /* Light border */
-     box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.1);
-     /* Softer shadow */
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
+.underlay {
+  background-color: @underlay-background;
+}
 
- /*
- / Quick Settings Header (note: right side button box spacing set in GtkBox settings to 8)
+.underlay:hover,
+.underlay:active {
+  background-color: @underlay-background;
+}
+
+/*
+ * Panel
+ */
+#panel {
+  background-color: @panel-background;
+  font-weight: normal;
+  transition-duration: 250ms;
+}
+
+#panel .panel-button label {
+  margin: 4px;
+}
+
+#panel .panel-button {
+  margin: 2px;
+  transition-duration: 150ms;
+  font-weight: bold;
+  background-color: transparent;
+  color: @panel-button-color;
+  box-shadow: none;
+  margin: 2px;
+  padding: 2px;
+  border-radius: 35px;
+}
+
+#panel .panel-button:hover {
+  background-color: @panel-button-hover;
+}
+
+#panel .panel-button:active {
+  background-color: @panel-button-active;
+}
+
+#panel .panel-button-toggled {
+  background-color: @panel-button-hover;
+}
+
+#panel image {
+  margin-left: 6px;
+  margin-right: 6px;
+}
+
+#panel #workspaces-bar {
+  border-radius: 5px;
+}
+
+#panel scrollbar {
+  opacity: 100;
+  margin-bottom: -12px;
+  margin-left: 12px;
+  margin-right: 12px;
+  border-radius: 0px;
+}
+
+#panel scrolledwindow undershoot.left {
+  background: linear-gradient(to right, @scrolled-window-undershoot, transparent);
+}
+
+#panel scrolledwindow undershoot.right {
+  background: linear-gradient(to left, @scrolled-window-undershoot, transparent);
+}
+
+#panel #workspaces-bar-list {
+  font-weight: normal;
+  font-size: 12px;
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset -1px -1px 3px rgba(255, 255, 255, 0.04);
+}
+
+#panel #workspaces-bar-list .panel-button {
+  margin: 2px;
+  border-radius: 5px;
+}
+
+#panel #workspaces-bar-list .panel-button-toggled {
+  background: linear-gradient(to bottom, @workspace-button-start-gradient, @workspace-button-end-gradient);
+  animation: pulse 1s ease-in;
+}
+
+#panel #workspaces-bar-list .panel-button-urgent {
+  color: @workspace-bar-urgent;
+  animation: pulse 1s ease-in;
+}
+
+#panel .panel-clock-notif {
+  color: @panel-button-color;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.7;
+  }
+
+  100% {
+    opacity: 1;
+  }
+}
+
+/*
+/ Message Tray
+*/
+#message-tray {
+  padding: 6px;
+  background-color: @base-panel-background;
+  border-radius: 20px;
+  border: 1px solid @base-panel-border;
+  box-shadow: 0 2px 4px 0 @underlay-background;
+  color: @panel-button-color;
+}
+
+#message-tray .calendar-area {
+  padding: 15px;
+  margin-bottom: 12em;
+}
+
+#message-tray #calendar-month-selector {
+  padding: 0px;
+  margin: 0px;
+}
+
+#message-tray #calendar-month-selector label {
+  font-size: 15px;
+  font-weight: bold;
+  color: @panel-button-color;
+}
+
+#message-tray #calendar-month-selector button {
+  background-color: inherit;
+}
+
+#message-tray #calendar-month-selector button:hover {
+  background-color: @panel-button-hover;
+}
+
+#message-tray #calendar-today {
+  background-color: @base-panel-background;
+  padding-bottom: 15px;
+  color: @calendar-text-color;
+  transition: 250ms;
+}
+
+#message-tray #calendar-today.calendar-today-dirty {
+  color: @calendar-text-dirty-color;
+}
+
+#message-tray #calendar-today.calendar-today-dirty:hover {
+  color: @panel-button-color;
+  background-color: @calendar-text-dirty-background;
+}
+
+#message-tray #calendar-today row label.title {
+  font-size: 16px;
+  font-weight: bold;
+}
+
+#message-tray #calendar-today row label.subtitle {
+  font-size: 20px;
+  font-weight: bold;
+}
+
+/*
+ * Message Tray Calendar
  */
 
- #quick-settings-header {
-     padding: 4px;
- }
+#message-tray calendar {
+  background-color: @base-panel-background;
+}
 
- #quick-settings #quick-settings-header .battery-button {
-     border-radius: 15px;
-     padding: 5px 10px;
- }
+#message-tray calendar.view {
+  background-color: @base-panel-background;
+  color: @base-panel-background;
+}
 
- #quick-settings #quick-settings-header image,
- #quick-settings #quick-settings-header label {
-     padding: 2px;
- }
+#message-tray calendar.view grid {
+  background-color: @base-panel-background;
+  color: @base-panel-background;
+}
 
- #quick-settings #quick-settings-scales {
-     padding: 10px;
- }
+#message-tray calendar.view grid label.day-number,
+label.day-name {
+  color: @panel-button-color;
+  padding: 0px;
+  margin: 0px;
+}
 
- #quick-settings #quick-settings-grid {
-     margin: 20px;
- }
+#message-tray calendar.view grid label.day-number:active {
+  border-radius: 100%;
+}
 
- /*
-  * Quick Settings Grid
-  */
- #quick-settings #quick-settings-grid {
-     margin: 4px;
- }
+#message-tray calendar.view grid label.day-number:focus {
+  border-radius: 100%;
+  background-color: @calendar-focus-background;
+  outline-color: @highlight;
+}
 
- #quick-settings .quick-settings-grid-button {
-     padding: 3px;
-     margin: 0px;
- }
+#message-tray calendar.view grid label.day-number:focus:selected {
+  border-radius: 100%;
+  background-color: @calendar-focus-selected-background;
+  outline-color: @highlight;
+}
 
- #quick-settings .quick-settings-grid-button button:hover {
-     background-color: #62a0ea;
-     /* Lighter hover effect */
- }
+#message-tray calendar.view grid label.day-number.today,
+label.day-number.today:focus {
+  border-radius: 100%;
+  outline-color: @highlight;
+}
 
- #quick-settings .quick-settings-grid-button button:active {
-     background-color: #3584e4;
-     /* Active state */
- }
+#message-tray calendar.view grid label.day-number.today:focus:selected {
+  background-color: @highlight;
+  outline-color: @panel-button-color;
+}
 
- #quick-settings .quick-settings-grid-button-icon {
-     padding: 4px;
-     margin: 3px;
- }
+#message-tray calendar.view grid label:selected {
+  border-radius: 100%;
+}
 
- #quick-settings .quick-settings-grid-button-toggle {
-     border-top-left-radius: 99px;
-     border-bottom-left-radius: 99px;
-     background-color: #3584e4;
-     /* Active toggle */
-     padding: 2px;
- }
+#message-tray calendar.view grid label.other-month {
+  color: @panel-button-hover;
+}
 
- #quick-settings .quick-settings-grid-button-toggle.off {
-     background-color: rgba(242, 242, 242, 0.35);
-     /* Off state */
- }
+#message-tray separator {
+  color: @panel-button-color;
 
- #quick-settings .quick-settings-grid-button-toggle.off:hover {
-     background-color: rgba(242, 242, 242, 0.25);
-     /* Hover on off */
- }
+}
 
- #quick-settings .quick-settings-grid-button-toggle.off:active {
-     background-color: rgba(242, 242, 242, 0.35);
-     /* Active off */
- }
+/*
+ * Message Tray Notifications
+ */
 
- #quick-settings .quick-settings-grid-button-reveal-hidden {
-     border-top-right-radius: 99px;
-     border-bottom-right-radius: 99px;
-     border-top-left-radius: 0px;
-     border-bottom-left-radius: 0px;
-     background-color: #3584e4;
-     /* Reveal button */
-     border-left: 0px solid black;
-     color: rgba(0, 0, 0, 0)
- }
+#notifications-osd .notification-widget,
+#notifications-list .notification-widget {
+  border-radius: 10px;
+  padding: 4px;
+}
 
- #quick-settings .quick-settings-grid-button-reveal-visible {
-     border-top-right-radius: 99px;
-     border-bottom-right-radius: 99px;
-     border-top-left-radius: 0px;
-     border-bottom-left-radius: 0px;
-     background-color: #3584e4;
-     /* Visible state */
-     border-left: 1px solid black;
-     color: #ffffff
-         /* White text */
- }
+statuspage {
+  color: @panel-button-color;
+}
 
- #quick-settings .quick-settings-grid-button-subtitle {
-     font-weight: normal;
-     font-size: 12px;
- }
+#notification-list .notifications-list-controls {
+  font-weight: bold;
+  font-size: 8px;
+}
 
- #quick-settings #quick-settings-grid .quick-settings-grid-button-transparent * {
-     background-color: rgba(0, 0, 0, 0);
-     color: rgba(0, 0, 0, 0);
- }
+#notifications-osd {
+  background-color: @transparent;
+  color: @panel-button-color;
+}
 
- #quick-settings #quick-settings-grid .quick-settings-grid-button-transparent button:hover {
-     background-color: rgba(0, 0, 0, 0);
-     color: rgba(0, 0, 0, 0);
- }
+#notifications-osd .notification-widget-button,
+#notifications-list .notification-widget-button {
+  border-radius: 10px;
+  background-color: @notification-background;
+}
 
- /*
-  * Quick Settings Menu Widget
-  */
+#notifications-osd .notification-widget-button-critical,
+#notifications-list .notification-widget-button-critical {
+  border-radius: 10px;
+  background-color: @notification-background-critical;
+}
 
- #quick-settings-menu {
-     padding: 20px;
- }
+#notifications-osd .notification-widget-icon,
+#notifications-list .notification-widget-icon {
+  border-radius: 10px;
+  padding: 8px;
+}
 
- #quick-settings-menu #container {
-     padding: 5px;
-     border-radius: 20px;
-     background: #F6F5F4;
-     /* Light background */
+#notifications-osd .notification-widget label.summary,
+#notifications-list .notification-widget label.summary {
+  font-weight: bold;
+}
 
-     transition-duration: 250ms;
- }
+#notifications-osd .notification-widget label.title,
+#notifications-list .notification-widget label.title {
+  font-size: 14px;
+}
 
- #quick-settings-menu #container button {
-     background-color: inherit;
-     font-weight: normal;
-     font-size: 16px;
- }
+#notifications-list .notification-widget-dismiss-button {
+  border-radius: 100%;
+  padding: 4px;
+  margin: 6px;
+}
 
- #quick-settings-menu #options-container button:hover {
-     background-color: #D3D7CF;
-     /* Light hover */
- }
+#notifications-list #notifications-list-controls {
+  font-weight: bold;
+  font-size: 14px;
+}
 
- #quick-settings-menu #container #title-container {
-     padding: 4px;
- }
+#notifications-list #notifications-list-controls .notifications-list-clear {
+  margin: 6px;
+}
 
- #quick-settings-menu #container #title-container label,
- #quick-settings-menu #container #title-container image {
-     padding: 4px;
-     font-weight: bold;
-     font-size: 20px;
- }
 
- #quick-settings-menu #container #title-container #icon-container {
-     margin: 4px;
-     padding: 4px;
-     background-color: #4A90D9;
-     /* GNOME Blue */
-     border-radius: 100px;
- }
+/*
+/ Quick Settings
+*/
+#quick-settings {
+  padding: 6px;
+  background-color: @base-panel-background;
+  border-radius: 20px;
+  border: 1px solid @base-panel-border;
+  box-shadow: 0 2px 4px 0 @box-shadow;
+  color: @panel-button-color;
+}
 
- #quick-settings-menu #container #options-container {
-     margin: 2px;
- }
+/*
+/ Quick Settings Header (note: right side button box spacing set in GtkBox settings to 8)
+*/
 
- #quick-settings-menu #container #options-container .confirm-button {
-     color: #ffffff;
-     /* White text */
-     background-color: #4AD589;
-     /* GNOME Green */
-     margin: 8px;
- }
+#quick-settings-header {
+  padding: 4px;
+}
 
- #quick-settings-menu #container #options-container .confirm-button:hover {
-     background-color: #33d17a;
-     /* Lighter green on hover */
- }
+#quick-settings #quick-settings-header .battery-button {
+  border-radius: 15px;
+  padding: 5px 10px;
+}
 
- #quick-settings-menu #container #options-container dropdown popover.background contents {
-     background-color: #EDEDED;
-     /* Light background */
-     color: #2E3436;
-     /* GNOME Dark Grey */
- }
+#quick-settings #quick-settings-header image,
+#quick-settings #quick-settings-header label {
+  padding: 2px;
+}
 
- /*
-  * Quick Settings Menu Wifi Options
-  */
+#quick-settings #quick-settings-scales {
+  padding: 10px;
+}
 
- #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container {
-     padding: 4px;
-     margin: 4px;
- }
+#quick-settings #quick-settings-grid {
+  margin: 20px;
+}
 
- #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container imag #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container labe {
-     padding: 10px;
- }
+/*
+ * Quick Settings Grid
+ */
+#quick-settings #quick-settings-grid {
+  margin: 4px;
+}
 
- #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi image,
- #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi label {
-     padding-left: 7px;
-     padding-right: 4px;
-     padding-top: 0px;
-     padding-bottom: 0px;
- }
+#quick-settings .quick-settings-grid-button {
+  padding: 3px;
+  margin: 0px;
+}
 
- #quick-settings-menu #container #options-container .quick-settings-menu-option-wifi entry {
-     margin: 6px;
- }
+#quick-settings .quick-settings-grid-button button:hover {
+  background-color: @quick-settings-button-hover;
+}
 
- .failure-banner {
-     background-color: #ed333b;
-     /* GNOME Red */
-     font-size: 20px;
-     border-bottom-left-radius: 5px;
-     border-bottom-right-radius: 5px;
- }
+#quick-settings .quick-settings-grid-button button:active {
+  background-color: @quick-settings-button;
+}
 
- /*
-  * Quick Settings Menu Power Profiles Options
-  */
+#quick-settings .quick-settings-grid-button-icon {
+  padding: 4px;
+  margin: 3px;
+}
 
- #quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles image,
- #quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles label {
-     padding-left: 7px;
-     padding-right: 4px;
-     padding-top: 0px;
-     padding-bottom: 0px;
- }
+#quick-settings .quick-settings-grid-button-toggle {
+  border-top-left-radius: 99px;
+  border-bottom-left-radius: 99px;
+  background-color: @quick-settings-button;
+  padding: 2px;
+}
 
- /*
-  * Quick Settings Menu Mixer Options
-  */
+#quick-settings .quick-settings-grid-button-toggle.no-revealer {
+  border-radius: 99px;
+}
 
- #quick-settings-menu #container #options-container .quick-settings-menu-option-mixer image,
- #quick-settings-menu #container #options-container .quick-settings-menu-option-mixer label {
-     padding-left: 7px;
-     padding-right: 4px;
-     padding-top: 0px;
-     padding-bottom: 0px;
- }
+#quick-settings .quick-settings-grid-button-toggle.off {
+  background-color: @panel-button-active;
+}
 
- #quick-settings-menu #container #options-container .mixer-link {
-     margin-left: 38px;
- }
+#quick-settings .quick-settings-grid-button-toggle.off:hover {
+  background-color: @panel-button-hover;
+}
+
+#quick-settings .quick-settings-grid-button-toggle.off:active {
+  background-color: @panel-button-active;
+}
+
+#quick-settings .quick-settings-grid-button-reveal-hidden {
+  border-top-right-radius: 99px;
+  border-bottom-right-radius: 99px;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+  background-color: @quick-settings-button;
+  border-left: 0px solid black;
+  color: rgba(0, 0, 0, 0);
+}
+
+#quick-settings .quick-settings-grid-button-reveal-visible {
+  border-top-right-radius: 99px;
+  border-bottom-right-radius: 99px;
+  border-top-left-radius: 0px;
+  border-bottom-left-radius: 0px;
+  background-color: @quick-settings-button;
+  border-left: 1px solid black;
+  color: #ffffff;
+}
+
+#quick-settings .quick-settings-grid-button-subtitle {
+  font-weight: normal;
+  font-size: 12px;
+}
+
+#quick-settings #quick-settings-grid .quick-settings-grid-button-transparent * {
+  background-color: rgba(0, 0, 0, 0);
+  color: rgba(0, 0, 0, 0);
+}
+
+#quick-settings #quick-settings-grid .quick-settings-grid-button-transparent button:hover {
+  background-color: rgba(0, 0, 0, 0);
+  color: rgba(0, 0, 0, 0);
+}
+
+/*
+ * Quick Settings Menu Widget
+ */
+
+#quick-settings-menu {
+  padding: 20px;
+}
+
+#quick-settings-menu #container {
+  padding: 5px;
+  border-radius: 20px;
+  background: @top-panel-background;
+
+  transition-duration: 250ms;
+}
+
+#quick-settings-menu #container button {
+  background-color: inherit;
+  font-weight: normal;
+  font-size: 16px;
+}
+
+#quick-settings-menu #options-container button:hover {
+  background-color: @quick-settings-menu-option-hover;
+}
+
+#quick-settings-menu #container #title-container {
+  padding: 4px;
+}
+
+#quick-settings-menu #container #title-container label,
+#quick-settings-menu #container #title-container image {
+  padding: 4px;
+  font-weight: bold;
+  font-size: 20px;
+}
+
+#quick-settings-menu #container #title-container #icon-container {
+  margin: 4px;
+  padding: 4px;
+  background-color: #3584e4;
+  border-radius: 100px;
+}
+
+#quick-settings-menu #container #options-container {
+  margin: 2px;
+}
+
+#quick-settings-menu #container #options-container .confirm-button {
+  color: #ffffff;
+  background-color: @success;
+  margin: 8px;
+}
+
+#quick-settings-menu #container #options-container .confirm-button:hover {
+  background-color: @success;
+}
+
+#quick-settings-menu #container #options-container dropdown popover.background contents {
+  background-color: @quick-settings-menu-option;
+  color: @panel-button-color;
+}
+
+/*
+ * Quick Settings Menu Wifi Options
+ */
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container {
+  padding: 4px;
+  margin: 4px;
+}
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi-password-entry-container label {
+  padding: 10px;
+}
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi label {
+  padding-left: 7px;
+  padding-right: 4px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-wifi entry {
+  margin: 6px;
+}
+
+.failure-banner {
+  background-color: @failure;
+  font-size: 20px;
+  border-bottom-left-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+/*
+ * Quick Settings Menu Power Profiles Options
+ */
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-power-profiles label {
+  padding-left: 7px;
+  padding-right: 4px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+/*
+ * Quick Settings Menu Mixer Options
+ */
+
+#quick-settings-menu #container #options-container .quick-settings-menu-option-mixer image,
+#quick-settings-menu #container #options-container .quick-settings-menu-option-mixer label {
+  padding-left: 7px;
+  padding-right: 4px;
+  padding-top: 0px;
+  padding-bottom: 0px;
+}
+
+#quick-settings-menu #container #options-container .mixer-link {
+  margin-left: 38px;
+}
