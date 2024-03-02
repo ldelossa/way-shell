@@ -3,7 +3,6 @@
 #include <adwaita.h>
 #include <glib-2.0/glib-unix.h>
 
-#include "../window_manager_service.h"
 #include "ipc.h"
 #include "sway_client.h"
 
@@ -228,14 +227,14 @@ GPtrArray *wm_service_sway_get_workspaces(WMServiceSway *self) {
     return g_ptr_array_ref(self->workspaces);
 }
 
-int wm_service_sway_focus_workspace(WMServiceSway *self, gchar *name) {
+int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws) {
     if (!self->workspaces) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_focus_workspace() "
             "workspaces not initialized.");
         return NULL;
     }
-    return sway_client_ipc_focus_workspace(self->socket_fd, name);
+    return sway_client_ipc_focus_workspace(self->socket_fd, ws);
 }
 
 // Get the global wm service

@@ -77,7 +77,7 @@ int sway_client_ipc_subscribe_req(int socket_fd, int events[], guint len);
 gboolean sway_client_ipc_subscribe_resp(sway_client_ipc_msg *msg);
 
 // Focus the provided workspace.
-int sway_client_ipc_focus_workspace(int socket_fd, gchar *name);
+int sway_client_ipc_focus_workspace(int socket_fd, WMWorkspace *ws);
 
 // Events //
 

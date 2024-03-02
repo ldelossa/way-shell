@@ -25,7 +25,7 @@ static void on_button_clicked(GtkButton *button, PanelWorkspacesBar *self) {
     WMServiceSway *sway = wm_service_sway_get_global();
 
     g_debug("workspace_bar.c:on_button_clicked() called");
-    wm_service_sway_focus_workspace(sway, ws->name);
+    wm_service_sway_focus_workspace(sway, ws);
 }
 
 GtkButton *create_workspace_button(WMServiceSway *srv, WMWorkspace *ws,
