@@ -30,7 +30,7 @@
         </key>
         <key name="idle-inhibitor" type="b">
             <default>false</default>
-            <summary>Enable idle inhibitor</summary>
+            <summary>Enable light theme</summary>
             <description>
             Enable or disable the idle inhibitor. When enabled the system will not
             suspend or hibernate when the screen is locked.
