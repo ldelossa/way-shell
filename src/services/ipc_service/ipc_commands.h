@@ -12,7 +12,9 @@ enum IPCCommands : uint32_t {
     IPC_CMD_BRIGHTNESS_UP,
     IPC_CMD_BRIGHTNESS_DOWN,
 	IPC_CMD_THEME_DARK,
-	IPC_CMD_THEME_LIGHT
+	IPC_CMD_THEME_LIGHT,
+	IPC_CMD_DUMP_DARK_THEME,
+	IPC_CMD_DUMP_LIGHT_THEME
 };
 
 typedef struct _IPCHeader {
@@ -51,3 +53,11 @@ typedef struct _IPCThemeDark {
 typedef struct _IPCThemeLight {
 	IPCHeader header;
 } IPCThemeLight;
+
+typedef struct _IPCDumpDarkTheme {
+	IPCHeader header;
+} IPCDumpDarkTheme;
+
+typedef struct _IPCDumpLightTheme {
+	IPCHeader header;
+} IPCDumpLightTheme;
