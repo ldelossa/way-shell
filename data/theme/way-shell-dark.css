@@ -326,7 +326,7 @@ label.day-number.today:focus {
 #notifications-osd .notification-widget-button,
 #notifications-list .notification-widget-button {
   border-radius: 10px;
-  background-color: @notification-widget-background;
+  background-color: @notification-background;
 }
 
 #notifications-osd .notification-widget-button-critical,
@@ -418,7 +418,7 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button button:hover {
-  background-color: @quick-settings-button-active;
+  background-color: @quick-settings-button-hover;
 }
 
 #quick-settings .quick-settings-grid-button button:active {

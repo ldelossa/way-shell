@@ -6,6 +6,7 @@
 #include "./quick_settings_grid_idle_inhibitor.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
+#include "./quick_settings_grid_theme.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_ethernet.h"
 
@@ -184,5 +185,10 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
             quick_settings_grid_inhibitor_button_free(
                 (QuickSettingsGridIdleInhibitorButton *)self);
             break;
+        case QUICK_SETTINGS_BUTTON_THEME:
+            quick_settings_grid_theme_button_free(
+                (QuickSettingsGridOneThemeButton *)self);
+            break;
+
     }
 }

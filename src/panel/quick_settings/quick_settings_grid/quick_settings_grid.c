@@ -13,6 +13,7 @@
 #include "quick_settings_grid_ethernet.h"
 #include "quick_settings_grid_idle_inhibitor.h"
 #include "quick_settings_grid_oneshot_button.h"
+#include "quick_settings_grid_theme.h"
 
 enum signals { signals_n };
 
@@ -258,6 +259,12 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
         quick_settings_grid_add_button(
             self, (QuickSettingsGridButton *)inhibitor_button);
     }
+
+    // add theme button
+    QuickSettingsGridOneThemeButton *theme_button =
+        quick_settings_grid_theme_button_init();
+    quick_settings_grid_add_button(self,
+                                   (QuickSettingsGridButton *)theme_button);
 
     // setup change signal
     g_signal_connect(nm, "changed", G_CALLBACK(on_network_manager_change),

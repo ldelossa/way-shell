@@ -4,6 +4,7 @@
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/message_tray/message_tray_mediator.h"
 #include "./panel/panel.h"
+#include "./services/theme_service.h"
 #include "./services/brightness_service/brightness_service.h"
 #include "./services/clock_service.h"
 #include "./services/ipc_service/ipc_service.h"
@@ -36,15 +37,16 @@ static void activate(AdwApplication *app, gpointer user_data) {
     GResource *resource = gresources_get_resource();
     g_resources_register(resource);
 
-    GtkCssProvider *provider = gtk_css_provider_new();
-    gtk_css_provider_load_from_resource(
-        provider, "/org/ldelossa/way-shell/data/theme/way-shell-dark.css");
-
-    GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
-    GdkDisplay *display = gdk_seat_get_display(seat);
-    gtk_style_context_add_provider_for_display(
-        display, GTK_STYLE_PROVIDER(provider),
-        GTK_STYLE_PROVIDER_PRIORITY_THEME);
+    /* GtkCssProvider *provider = gtk_css_provider_new(); */
+    /* gtk_css_provider_load_from_resource( */
+    /*     provider, "/org/ldelossa/way-shell/data/theme/way-shell-dark.css"); */
+    /**/
+    /* GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default()); */
+    /* GdkDisplay *display = gdk_seat_get_display(seat); */
+    /* gtk_style_context_add_provider_for_display( */
+    /*     display, GTK_STYLE_PROVIDER(provider), */
+    /*     GTK_STYLE_PROVIDER_PRIORITY_THEME); */
+    /**/
 
     global = ADW_APPLICATION_WINDOW(
         adw_application_window_new(GTK_APPLICATION(app)));
@@ -57,6 +59,10 @@ static void activate(AdwApplication *app, gpointer user_data) {
     if (clock_service_global_init() != 0) {
         g_error("main.c: activate(): failed to initialize clock service.");
     }
+
+	if (theme_service_global_init() != 0) {
+		g_error("main.c: activate(): failed to initialize theme service.");
+	}
 
     if (network_manager_service_global_init() != 0) {
         g_error(
