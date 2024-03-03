@@ -5,6 +5,7 @@
 #include <errno.h>
 #include <glob.h>
 #include <json-glib/json-glib.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -448,24 +449,37 @@ gboolean sway_client_ipc_subscribe_resp(sway_client_ipc_msg *msg) {
 
 int sway_client_ipc_focus_workspace(int socket_fd, WMWorkspace *ws) {
     sway_client_ipc_msg msg = {.type = IPC_COMMAND};
-    char cmd[20];
+    char *cmd = NULL;
+    // sway will only convert numbers up to 2147483647 to "numbered" workspaces.
+    // this requires 10 chars to represent as a string plus null byte.
+    char itoa_buff[11];
 
     if (ws == NULL) {
         return -1;
     }
 
     if (ws->num == -1) {
-        strcpy(cmd, "workspace ");
+        cmd = "workspace ";
+
+        msg.size = strlen(cmd) + strlen(ws->name) + 1;
+        msg.payload = g_malloc0(msg.size);
+
+        strcpy(msg.payload, cmd);
+        strcat(msg.payload, ws->name);
     } else {
-        strcpy(cmd, "workspace number ");
+        cmd = "workspace number ";
+
+        snprintf(itoa_buff, sizeof(itoa_buff), "%d", ws->num);
+
+        msg.size = strlen(cmd) + strlen(itoa_buff) + 1;
+        msg.payload = g_malloc0(msg.size);
+
+        strcpy(msg.payload, cmd);
+        strcat(msg.payload, itoa_buff);
     }
-
-    msg.size = strlen(cmd) + strlen(ws->name) + 1;
-    msg.payload = g_malloc0(msg.size);
-
-    // concat cmd and name into payload buffer
-    strcpy(msg.payload, cmd);
-    strcat(msg.payload, ws->name);
+    g_debug(
+        "sway_client.c:sway_client_ipc_focus_workspace() sending command: %s",
+        msg.payload);
 
     // send off message
     return sway_client_ipc_send(socket_fd, &msg);
