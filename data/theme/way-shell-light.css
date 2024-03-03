@@ -21,7 +21,7 @@
 @define-color calendar-text-dirty-background rgba(35, 35, 35, 0.15);
 @define-color calendar-focus-background rgba(35, 35, 35, 0.05);
 @define-color calendar-focus-selected-background rgba(35, 35, 35, 0.15);
-@define-color notification-background #9a9996;
+@define-color notification-background #c0bfbc;
 @define-color notification-background-critical #f66151;
 @define-color quick-settings-button #99c1f1;
 @define-color quick-settings-button-hover #62a0ea;
