@@ -6,13 +6,14 @@
 
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
+#include "../../services/theme_service.h"
 #include "../../services/wireplumber_service.h"
 #include "glib-unix.h"
 #include "ipc_commands.h"
 
 #define IPC_SOCK "way-shell.sock"
 
-static IPCService *global = NULL;
+    static IPCService *global = NULL;
 
 enum signals { signals_n };
 
@@ -126,6 +127,30 @@ static gboolean ipc_cmd_brightness_down() {
     return true;
 }
 
+static gboolean ipc_cmd_theme_dark() {
+    g_debug("ipc_service.c:ipc_cmd_theme_dark()");
+    ThemeService *t = theme_service_get_global();
+    if (!t) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_theme_dark() failed to get theme service");
+        return false;
+    }
+    theme_service_set_dark_theme(t, true);
+    return true;
+}
+
+static gboolean ipc_cmd_theme_light() {
+    g_debug("ipc_service.c:ipc_cmd_theme_light()");
+    ThemeService *t = theme_service_get_global();
+    if (!t) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_theme_light() failed to get theme service");
+        return false;
+    }
+    theme_service_set_light_theme(t, true);
+    return true;
+}
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -184,6 +209,18 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_BRIGHTNESS_DOWN");
             ret = ipc_cmd_brightness_down();
+            break;
+        case IPC_CMD_THEME_DARK:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_THEME_DARK");
+            ret = ipc_cmd_theme_dark();
+            break;
+        case IPC_CMD_THEME_LIGHT:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_THEME_LIGHT");
+            ret = ipc_cmd_theme_light();
             break;
         default:
             goto skip_resp;

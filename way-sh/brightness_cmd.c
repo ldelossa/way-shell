@@ -18,11 +18,6 @@ static int brightness_exec(void *ctx, uint8_t argc, char **argv) {
     return 0;
 };
 
-// The root command for way-sh and is displayed when no other arguments are
-// provided to the CLI.
-//
-// A short help blurb is presented along with a list of all available root level
-// commands.
 cmd_tree_node_t brightness_root = {.name = "brightness",
                                    .exec = brightness_exec};
 

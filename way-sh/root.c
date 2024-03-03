@@ -9,7 +9,9 @@ static int root_exec(void *ctx, uint8_t argc, char **argv) {
         "Commands: \n"
         "\tmessage-tray\n"
         "\tvolume\n"
-        "\tbrightness\n");
+        "\tbrightness\n"
+        "\ttheme\n"
+	);
     return 0;
 };
 

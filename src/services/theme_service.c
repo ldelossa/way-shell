@@ -5,6 +5,14 @@
 #include "../gresources.h"
 #include "gtk/gtkcssprovider.h"
 
+#define CONFIG_DIR "way-shell"
+#define LIGHT_THEME_CSS "way-shell-light.css"
+#define DARK_THEME_CSS "way-shell-dark.css"
+#define LIGHT_THEME_RESOURCE \
+    "/org/ldelossa/way-shell/data/theme/way-shell-light.css"
+#define DARK_THEME_RESOURCE \
+    "/org/ldelossa/way-shell/data/theme/way-shell-dark.css"
+
 static ThemeService *global = NULL;
 
 enum signals { theme_changed, signals_n };
@@ -41,7 +49,7 @@ static void on_theme_switch(ThemeService *self) {
     // check if {config_dir}/way-shell/on_theme_changed.sh file exists
     // if it does, execute it with
     char *script_path =
-        g_build_filename(conf_dir, "way-shell", "on_theme_changed.sh", NULL);
+        g_build_filename(conf_dir, CONFIG_DIR, "on_theme_changed.sh", NULL);
     if (g_file_test(script_path,
                     G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE)) {
         char *cmd = g_strdup_printf("bash -c '%s %s'", script_path, arg);
@@ -64,16 +72,63 @@ static void theme_service_class_init(ThemeServiceClass *klass) {
         NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT);
 };
 
+static char *local_light_theme_present() {
+    const char *conf_dir = g_get_user_config_dir();
+    char *theme_path =
+        g_build_filename(conf_dir, CONFIG_DIR, LIGHT_THEME_CSS, NULL);
+    if (g_file_test(theme_path, G_FILE_TEST_EXISTS)) {
+        return true;
+    }
+    return false;
+}
+
+static gboolean local_dark_theme_present() {
+    const char *conf_dir = g_get_user_config_dir();
+    char *theme_path =
+        g_build_filename(conf_dir, CONFIG_DIR, DARK_THEME_CSS, NULL);
+    if (g_file_test(theme_path, G_FILE_TEST_EXISTS)) {
+        return true;
+    }
+    return false;
+}
+
+static void load_theme(ThemeService *self, enum ThemeServiceTheme theme) {
+    if (theme == THEME_LIGHT) {
+        if (local_light_theme_present()) {
+            const char *conf_dir = g_get_user_config_dir();
+            char *theme_path =
+                g_build_filename(conf_dir, CONFIG_DIR, LIGHT_THEME_CSS, NULL);
+            gtk_css_provider_load_from_file(self->provider,
+                                            g_file_new_for_path(theme_path));
+        } else {
+            GResource *resource = gresources_get_resource();
+            g_resources_register(resource);
+            gtk_css_provider_load_from_resource(self->provider,
+                                                LIGHT_THEME_RESOURCE);
+            g_signal_emit_by_name(self, "theme-changed", THEME_LIGHT);
+        }
+    } else {
+        if (local_dark_theme_present()) {
+            const char *conf_dir = g_get_user_config_dir();
+            char *theme_path =
+                g_build_filename(conf_dir, CONFIG_DIR, DARK_THEME_CSS, NULL);
+            gtk_css_provider_load_from_file(self->provider,
+                                            g_file_new_for_path(theme_path));
+        } else {
+            GResource *resource = gresources_get_resource();
+            g_resources_register(resource);
+            gtk_css_provider_load_from_resource(self->provider,
+                                                DARK_THEME_RESOURCE);
+            g_signal_emit_by_name(self, "theme-changed", THEME_DARK);
+        }
+    }
+}
+
 void theme_service_set_light_theme(ThemeService *self, gboolean light_theme) {
     g_debug(
         "theme_service.c:theme_service_set_light_theme(): setting light theme");
 
-    GResource *resource = gresources_get_resource();
-    g_resources_register(resource);
-    gtk_css_provider_load_from_resource(
-        self->provider,
-        "/org/ldelossa/way-shell/data/theme/way-shell-light.css");
-    g_signal_emit_by_name(self, "theme-changed", THEME_LIGHT);
+    load_theme(self, THEME_LIGHT);
 
     GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
     GdkDisplay *display = gdk_seat_get_display(seat);
@@ -89,12 +144,7 @@ void theme_service_set_dark_theme(ThemeService *self, gboolean dark_theme) {
     g_debug(
         "theme_service.c:theme_service_set_dark_theme(): setting dark theme");
 
-    GResource *resource = gresources_get_resource();
-    g_resources_register(resource);
-    gtk_css_provider_load_from_resource(
-        self->provider,
-        "/org/ldelossa/way-shell/data/theme/way-shell-dark.css");
-    g_signal_emit_by_name(self, "theme-changed", THEME_DARK);
+    load_theme(self, THEME_DARK);
 
     GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default());
     GdkDisplay *display = gdk_seat_get_display(seat);
