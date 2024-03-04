@@ -4,8 +4,10 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "../../gresources.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
+#include "../../services/theme_service.h"
 #include "../../services/wireplumber_service.h"
 #include "glib-unix.h"
 #include "ipc_commands.h"
@@ -126,6 +128,85 @@ static gboolean ipc_cmd_brightness_down() {
     return true;
 }
 
+static gboolean ipc_cmd_theme_dark() {
+    g_debug("ipc_service.c:ipc_cmd_theme_dark()");
+    ThemeService *t = theme_service_get_global();
+    if (!t) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_theme_dark() failed to get theme service");
+        return false;
+    }
+    theme_service_set_dark_theme(t, true);
+    return true;
+}
+
+static gboolean ipc_cmd_theme_light() {
+    g_debug("ipc_service.c:ipc_cmd_theme_light()");
+    ThemeService *t = theme_service_get_global();
+    if (!t) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_theme_light() failed to get theme service");
+        return false;
+    }
+    theme_service_set_light_theme(t, true);
+    return true;
+}
+
+static gboolean ipc_cmd_dump_dark_theme() {
+    // make config directory if it does not exist
+    gchar *config_dir =
+        g_build_filename(g_get_user_config_dir(), "way-shell", NULL);
+    g_mkdir_with_parents(config_dir, 0700);
+
+    // dump dark theme gresource back to file
+    gchar *dark_theme_path =
+        g_build_filename(config_dir, "way-shell-dark.css", NULL);
+    GResource *res = gresources_get_resource();
+    GBytes *dark_theme_bytes = g_resource_lookup_data(
+        res, "/org/ldelossa/way-shell/data/theme/way-shell-dark.css", 0, NULL);
+    gsize size;
+    const gchar *dark_theme = g_bytes_get_data(dark_theme_bytes, &size);
+
+    GError *error = NULL;
+    g_file_set_contents(dark_theme_path, dark_theme, size, &error);
+    if (error) {
+        g_debug(
+            "ipc_service.c:ipc_cmd_dump_dark_theme() failed to dump dark theme "
+            "%s",
+            error->message);
+        return false;
+    }
+    return true;
+};
+
+static gboolean ipc_cmd_dump_light_theme() {
+    // make config directory if it does not exist
+    gchar *config_dir =
+        g_build_filename(g_get_user_config_dir(), "way-shell", NULL);
+    g_mkdir_with_parents(config_dir, 0700);
+
+    // dump light theme gresource back to file
+    gchar *light_theme_path =
+        g_build_filename(config_dir, "way-shell-light.css", NULL);
+
+    GResource *res = gresources_get_resource();
+    GBytes *light_theme_bytes = g_resource_lookup_data(
+        res, "/org/ldelossa/way-shell/data/theme/way-shell-light.css", 0, NULL);
+    gsize size;
+    const gchar *light_theme = g_bytes_get_data(light_theme_bytes, &size);
+
+    GError *error = NULL;
+    g_file_set_contents(light_theme_path, light_theme, size, &error);
+    if (error) {
+		g_debug(
+			"ipc_service.c:ipc_cmd_dump_light_theme() failed to dump light "
+			"theme %s",
+			error->message);
+        return false;
+    }
+    return true;
+};
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -184,6 +265,30 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_BRIGHTNESS_DOWN");
             ret = ipc_cmd_brightness_down();
+            break;
+        case IPC_CMD_THEME_DARK:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_THEME_DARK");
+            ret = ipc_cmd_theme_dark();
+            break;
+        case IPC_CMD_THEME_LIGHT:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_THEME_LIGHT");
+            ret = ipc_cmd_theme_light();
+            break;
+        case IPC_CMD_DUMP_DARK_THEME:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_DUMP_DARK_THEME");
+            ret = ipc_cmd_dump_dark_theme();
+            break;
+        case IPC_CMD_DUMP_LIGHT_THEME:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_DUMP_LIGHT_THEME");
+            ret = ipc_cmd_dump_light_theme();
             break;
         default:
             goto skip_resp;

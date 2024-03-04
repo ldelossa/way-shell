@@ -1,53 +1,85 @@
+@define-color transparent rgba(0, 0, 0, 0.0);
+@define-color base-panel-background #353535;
+@define-color top-panel-background #404040;
+@define-color base-panel-border #424242;
+@define-color scale-trough #deddda;
+@define-color highlight #3584e4;
+@define-color scale-trough-highlight #3584e4;
+@define-color osd-icon-image #ffffff;
+@define-color underlay-background rgba(0, 0, 0, 0.1);
+@define-color box-shadow rgba(0, 0, 0, 0.2);
+@define-color panel-background #000000;
+@define-color panel-button-color #ffffff;
+@define-color panel-button-hover rgba(242, 242, 242, 0.25);
+@define-color panel-button-active rgba(242, 242, 242, 0.35);
+@define-color scrolled-window-undershoot rgba(35, 35, 35, .35);
+@define-color workspace-button-start-gradient #4299e1;
+@define-color workspace-button-end-gradient #2b6cb0;
+@define-color workspace-bar-urgent #f66151;
+@define-color calendar-text-color #b0b0b0b0;
+@define-color calendar-text-dirty-color #dddddd;
+@define-color calendar-text-dirty-background rgba(242, 242, 242, 0.15);
+@define-color calendar-focus-background rgba(242, 242, 242, 0.05);
+@define-color calendar-focus-selected-background rgba(242, 242, 242, 0.15);
+@define-color notification-background #555555;
+@define-color notification-background-critical #f66151;
+@define-color quick-settings-button #3584e4;
+@define-color quick-settings-button-hover #62a0ea;
+@define-color quick-settings-menu-option #555555;
+@define-color quick-settings-menu-option-hover #9a9996;
+@define-color success #26a269;
+@define-color failure #ed333b;
+
 .active-icon-activated {
-  color: #26a269;
+  color: @success;
 }
 
 /*
  * OSD
  */
 #osd {
-  background-color: rgba(0, 0, 0, 0.0);
+  background-color: @transparent;
 }
 
 #osd #osd-container {
-  background-color: #353535;
+  background-color: @base-panel-background;
   border-radius: 99px;
   padding: 15px;
 }
 
 #osd #osd-container scale trough slider {
-  background-color: rgba(0, 0, 0, 0.0);
+  background-color: @transparent;
 }
 
 #osd #osd-container scale trough {
-  background-color: #deddda;
+  background-color: @scale-trough;
 }
 
 #osd #osd-container scale trough highlight {
-  background-color: #3584e4;
+  background-color: @scale-trough-highlight;
 }
 
 #osd #osd-container image {
-  color: #FFFFFF;
+  color: @osd-icon-image;
 }
 
 /*
  * Underlay
  */
 .underlay {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: @underlay-background;
 }
 
 .underlay:hover,
 .underlay:active {
-  background-color: rgba(0, 0, 0, 0.1);
+  background-color: @underlay-background;
 }
 
 /*
  * Panel
  */
 #panel {
-  background-color: #000000;
+  background-color: @panel-background;
   font-weight: normal;
   transition-duration: 250ms;
 }
@@ -61,7 +93,7 @@
   transition-duration: 150ms;
   font-weight: bold;
   background-color: transparent;
-  color: #f2f2f2;
+  color: @panel-button-color;
   box-shadow: none;
   margin: 2px;
   padding: 2px;
@@ -69,15 +101,15 @@
 }
 
 #panel .panel-button:hover {
-  background-color: rgba(242, 242, 242, 0.25);
+  background-color: @panel-button-hover;
 }
 
 #panel .panel-button:active {
-  background-color: rgba(242, 242, 242, 0.35);
+  background-color: @panel-button-active;
 }
 
 #panel .panel-button-toggled {
-  background-color: rgba(242, 242, 242, 0.25);
+  background-color: @panel-button-hover;
 }
 
 #panel image {
@@ -98,11 +130,11 @@
 }
 
 #panel scrolledwindow undershoot.left {
-  background: linear-gradient(to right, rgba(35, 35, 35, .35), transparent);
+  background: linear-gradient(to right, @scrolled-window-undershoot, transparent);
 }
 
 #panel scrolledwindow undershoot.right {
-  background: linear-gradient(to left, rgba(35, 35, 35, .35), transparent);
+  background: linear-gradient(to left, @scrolled-window-undershoot, transparent);
 }
 
 #panel #workspaces-bar-list {
@@ -117,17 +149,17 @@
 }
 
 #panel #workspaces-bar-list .panel-button-toggled {
-  background: linear-gradient(to bottom, #4299e1, #2b6cb0);
+  background: linear-gradient(to bottom, @workspace-button-start-gradient, @workspace-button-end-gradient);
   animation: pulse 1s ease-in;
 }
 
 #panel #workspaces-bar-list .panel-button-urgent {
-  color: #f66151;
+  color: @workspace-bar-urgent;
   animation: pulse 1s ease-in;
 }
 
 #panel .panel-clock-notif {
-  color: #ffffff;
+  color: @panel-button-color;
 }
 
 @keyframes pulse {
@@ -149,10 +181,10 @@
 */
 #message-tray {
   padding: 6px;
-  background-color: #353535;
+  background-color: @base-panel-background;
   border-radius: 20px;
-  border: 1px solid #424242;
-  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
+  border: 1px solid @base-panel-border;
+  box-shadow: 0 2px 4px 0 @underlay-background;
   color: #f2f2f2;
 }
 
@@ -169,7 +201,7 @@
 #message-tray #calendar-month-selector label {
   font-size: 15px;
   font-weight: bold;
-  color: #f2f2f2;
+  color: @panel-button-color;
 }
 
 #message-tray #calendar-month-selector button {
@@ -177,23 +209,23 @@
 }
 
 #message-tray #calendar-month-selector button:hover {
-  background-color: rgba(242, 242, 242, 0.25);
+  background-color: @panel-button-hover;
 }
 
 #message-tray #calendar-today {
-  background-color: #353535;
+  background-color: @base-panel-background;
   padding-bottom: 15px;
-  color: #b0b0b0b0;
+  color: @calendar-text-color;
   transition: 250ms;
 }
 
 #message-tray #calendar-today.calendar-today-dirty {
-  color: #dddddd;
+  color: @calendar-text-dirty-color;
 }
 
 #message-tray #calendar-today.calendar-today-dirty:hover {
-  color: #ffffff;
-  background-color: rgba(242, 242, 242, 0.15);
+  color: @panel-button-color;
+  background-color: @calendar-text-dirty-background;
 }
 
 #message-tray #calendar-today row label.title {
@@ -211,22 +243,22 @@
  */
 
 #message-tray calendar {
-  background-color: #353535;
+  background-color: @base-panel-background;
 }
 
 #message-tray calendar.view {
-  background-color: #353535;
-  color: #353535;
+  background-color: @base-panel-background;
+  color: @base-panel-background;
 }
 
 #message-tray calendar.view grid {
-  background-color: #353535;
-  color: #353535;
+  background-color: @base-panel-background;
+  color: @base-panel-background;
 }
 
 #message-tray calendar.view grid label.day-number,
 label.day-name {
-  color: #f2f2f2;
+  color: @panel-button-color;
   padding: 0px;
   margin: 0px;
 }
@@ -237,37 +269,38 @@ label.day-name {
 
 #message-tray calendar.view grid label.day-number:focus {
   border-radius: 100%;
-  background-color: rgba(242, 242, 242, 0.05);
-  outline-color: #3584e4;
+  background-color: @calendar-focus-background;
+  outline-color: @highlight;
 }
 
 #message-tray calendar.view grid label.day-number:focus:selected {
   border-radius: 100%;
-  background-color: rgba(242, 242, 242, 0.15);
-  outline-color: #3584e4;
+  background-color: @calendar-focus-selected-background;
+  outline-color: @highlight;
 }
 
 #message-tray calendar.view grid label.day-number.today,
 label.day-number.today:focus {
   border-radius: 100%;
-  background-color: #3584e4;
+  outline-color: @highlight;
 }
 
 #message-tray calendar.view grid label.day-number.today:focus:selected {
-  background-color: #3584e4;
-  outline-color: #ffffff;
+  background-color: @highlight;
+  outline-color: @panel-button-color;
 }
 
 #message-tray calendar.view grid label:selected {
   border-radius: 100%;
+  background: @highlight;
 }
 
 #message-tray calendar.view grid label.other-month {
-  color: rgba(242, 242, 242, 0.25);
+  color: @panel-button-hover;
 }
 
 #message-tray separator {
-  color: #f2f2f2;
+  color: @pane-button-color;
 
 }
 
@@ -287,20 +320,20 @@ label.day-number.today:focus {
 }
 
 #notifications-osd {
-  background-color: rgba(0, 0, 0, 0.0);
-  color: #ffffff;
+  background-color: @transparent;
+  color: @panel-button-color;
 }
 
 #notifications-osd .notification-widget-button,
 #notifications-list .notification-widget-button {
   border-radius: 10px;
-  background-color: #555555;
+  background-color: @notification-background;
 }
 
 #notifications-osd .notification-widget-button-critical,
 #notifications-list .notification-widget-button-critical {
   border-radius: 10px;
-  background-color: #f66151;
+  background-color: @notification-background-critical;
 }
 
 #notifications-osd .notification-widget-icon,
@@ -340,11 +373,11 @@ label.day-number.today:focus {
 */
 #quick-settings {
   padding: 6px;
-  background-color: #353535;
+  background-color: @base-panel-background;
   border-radius: 20px;
-  border: 1px solid #424242;
-  box-shadow: 0 2px 4px 0 rgba(0, 0, 0, 0.2);
-  color: #f2f2f2;
+  border: 1px solid @base-panel-border;
+  box-shadow: 0 2px 4px 0 @box-shadow;
+  color: @panel-button-color;
 }
 
 /*
@@ -386,11 +419,11 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button button:hover {
-  background-color: #62a0ea;
+  background-color: @quick-settings-button-hover;
 }
 
 #quick-settings .quick-settings-grid-button button:active {
-  background-color: #3584e4;
+  background-color: @quick-settings-button;
 }
 
 #quick-settings .quick-settings-grid-button-icon {
@@ -401,7 +434,7 @@ label.day-number.today:focus {
 #quick-settings .quick-settings-grid-button-toggle {
   border-top-left-radius: 99px;
   border-bottom-left-radius: 99px;
-  background-color: #3584e4;
+  background-color: @quick-settings-button;
   padding: 2px;
 }
 
@@ -410,15 +443,15 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button-toggle.off {
-  background-color: rgba(242, 242, 242, 0.35);
+  background-color: @panel-button-active;
 }
 
 #quick-settings .quick-settings-grid-button-toggle.off:hover {
-  background-color: rgba(242, 242, 242, 0.25);
+  background-color: @pane-button-hover;
 }
 
 #quick-settings .quick-settings-grid-button-toggle.off:active {
-  background-color: rgba(242, 242, 242, 0.35);
+  background-color: @panel-button-active;
 }
 
 #quick-settings .quick-settings-grid-button-reveal-hidden {
@@ -426,9 +459,9 @@ label.day-number.today:focus {
   border-bottom-right-radius: 99px;
   border-top-left-radius: 0px;
   border-bottom-left-radius: 0px;
-  background-color: #3584e4;
+  background-color: @quick-settings-button;
   border-left: 0px solid black;
-  color: rgba(0, 0, 0, 0)
+  color: rgba(0, 0, 0, 0);
 }
 
 #quick-settings .quick-settings-grid-button-reveal-visible {
@@ -436,9 +469,9 @@ label.day-number.today:focus {
   border-bottom-right-radius: 99px;
   border-top-left-radius: 0px;
   border-bottom-left-radius: 0px;
-  background-color: #3584e4;
+  background-color: @quick-settings-button;
   border-left: 1px solid black;
-  color: #ffffff
+  color: #ffffff;
 }
 
 #quick-settings .quick-settings-grid-button-subtitle {
@@ -467,7 +500,7 @@ label.day-number.today:focus {
 #quick-settings-menu #container {
   padding: 5px;
   border-radius: 20px;
-  background: #404040;
+  background: @top-panel-background;
 
   transition-duration: 250ms;
 }
@@ -479,7 +512,7 @@ label.day-number.today:focus {
 }
 
 #quick-settings-menu #options-container button:hover {
-  background-color: #9a9996;
+  background-color: @quick-settings-menu-option-hover;
 }
 
 #quick-settings-menu #container #title-container {
@@ -496,7 +529,7 @@ label.day-number.today:focus {
 #quick-settings-menu #container #title-container #icon-container {
   margin: 4px;
   padding: 4px;
-  background-color: #3584e4;
+  background-color: @highlight;
   border-radius: 100px;
 }
 
@@ -506,17 +539,17 @@ label.day-number.today:focus {
 
 #quick-settings-menu #container #options-container .confirm-button {
   color: #ffffff;
-  background-color: #26a269;
+  background-color: @success;
   margin: 8px;
 }
 
 #quick-settings-menu #container #options-container .confirm-button:hover {
-  background-color: #33d17a;
+  background-color: @success;
 }
 
 #quick-settings-menu #container #options-container dropdown popover.background contents {
-  background-color: #555555;
-  color: #ffffff;
+  background-color: @quick-settings-menu-option;
+  color: @panel-button-color;
 }
 
 /*
@@ -546,7 +579,7 @@ label.day-number.today:focus {
 }
 
 .failure-banner {
-  background-color: #ed333b;
+  background-color: @failure;
   font-size: 20px;
   border-bottom-left-radius: 5px;
   border-bottom-right-radius: 5px;

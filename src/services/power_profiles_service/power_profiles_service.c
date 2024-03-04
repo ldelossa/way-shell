@@ -100,7 +100,7 @@ static void on_power_profiles_service_profiles_change(
 
     // extract profile strings from from 'aa{sv}'
     GVariant *profiles = dbus_power_profiles_get_profiles(dbus);
-	if (!profiles) 
+	if (!profiles)
 		return;
 
     if (!g_variant_is_of_type(profiles, G_VARIANT_TYPE("aa{sv}"))) {
@@ -189,6 +189,9 @@ const gchar *power_profiles_service_get_active_profile(
 }
 
 const char *power_profiles_service_profile_to_icon(const char *profile) {
+	if (!profile)
+        return "power-profile-balanced-symbolic";
+
     if (strcmp(profile, "performance") == 0) {
         return "power-profile-performance-symbolic";
     } else if (strcmp(profile, "balanced") == 0) {

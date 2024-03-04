@@ -30,13 +30,24 @@
         </key>
         <key name="idle-inhibitor" type="b">
             <default>false</default>
-            <summary>Enable idle inhibitor</summary>
+            <summary>Enable light theme</summary>
             <description>
             Enable or disable the idle inhibitor. When enabled the system will not
             suspend or hibernate when the screen is locked.
             The inhibitor lock is created via LoginD and way-shell expects the
             idle daemon to integrate with this service as well to understand
             ide locks.
+            </description>
+        </key>
+        <key name="light-theme" type="b">
+            <default>false</default>
+            <summary>Enable idle inhibitor</summary>
+            <description>
+			When enabled way-shell will switch to the its light them.
+			While disabled the dark theme is shown.
+			When the theme is changed way-shell will execute a bash script at
+			~/.config/way-shell/on_theme_change.sh will be invoked with the
+			argument "dark" or "light" depending on which theme was picked.
             </description>
         </key>
     </schema>

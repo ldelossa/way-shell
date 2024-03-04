@@ -9,6 +9,7 @@ enum QuickSettingsButtonType {
     QUICK_SETTINGS_BUTTON_WIFI,
     QUICK_SETTINGS_BUTTON_PERFORMANCE,
     QUICK_SETTINGS_BUTTON_IDLE_INHIBITOR,
+    QUICK_SETTINGS_BUTTON_THEME,
 };
 
 typedef struct _QuickSettingsGridCluster QuickSettingsGridCluster;

@@ -44,3 +44,8 @@ cmd_tree_node_t *volume_cmd();
 // Subcommands off this node deal with adjusting the default display's
 // brightness.
 cmd_tree_node_t *brightness_cmd();
+
+// The Theme command
+//
+// Subcommands off this node deal with adjusting Way-Shell' theme.
+cmd_tree_node_t *theme_cmd();

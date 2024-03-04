@@ -4,3 +4,8 @@
         <file>data/theme/way-shell-dark.css</file>
     </gresource>
 </gresources>
+<gresources>
+    <gresource prefix="/org/ldelossa/way-shell">
+        <file>data/theme/way-shell-light.css</file>
+    </gresource>
+</gresources>

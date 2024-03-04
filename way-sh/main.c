@@ -41,10 +41,12 @@ static void build_command_tree() {
     cmd_tree_node_t *message_tray = message_tray_cmd();
     cmd_tree_node_t *volume = volume_cmd();
     cmd_tree_node_t *brightness = brightness_cmd();
+	cmd_tree_node_t *theme = theme_cmd();
 
     cmd_tree_node_add_child(&root_cmd, message_tray);
     cmd_tree_node_add_child(&root_cmd, volume);
     cmd_tree_node_add_child(&root_cmd, brightness);
+	cmd_tree_node_add_child(&root_cmd, theme);
 }
 
 int main(int argc, char **argv) {
