@@ -292,6 +292,7 @@ label.day-number.today:focus {
 
 #message-tray calendar.view grid label:selected {
   border-radius: 100%;
+  background: @highlight;
 }
 
 #message-tray calendar.view grid label.other-month {
