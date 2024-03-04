@@ -12,11 +12,17 @@ static int theme_exec(void *ctx, uint8_t argc, char **argv) {
     printf(
         "Summary:\n"
         "\tAdjust aspects of Way-Shell's theme.\n"
+        "\n"
+        "\tThe dump commands will write the respective theme to\n"
+        "\t$HOME/.config/way-shell/way-shell-{light|dark}.css for editing.\n"
+		"\n"
+        "\tToggling the theme (light-to-dark or vice versa) will show the \n"
+        "\tresults of any edits.\n"
         "Commands:\n"
         "\tdark 		- set dark theme\n"
         "\tlight 		- set light theme\n"
-        "\tdump-dark 	- set dark theme\n"
-        "\tdump-light 	- set light theme\n");
+        "\tdump-dark 	- dump dark theme\n"
+        "\tdump-light 	- dump light theme\n");
     return 0;
 };
 

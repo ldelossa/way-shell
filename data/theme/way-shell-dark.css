@@ -528,7 +528,7 @@ label.day-number.today:focus {
 #quick-settings-menu #container #title-container #icon-container {
   margin: 4px;
   padding: 4px;
-  background-color: #3584e4;
+  background-color: @highlight;
   border-radius: 100px;
 }
 
