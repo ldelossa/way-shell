@@ -105,7 +105,6 @@ static void load_theme(ThemeService *self, enum ThemeServiceTheme theme) {
             g_resources_register(resource);
             gtk_css_provider_load_from_resource(self->provider,
                                                 LIGHT_THEME_RESOURCE);
-            g_signal_emit_by_name(self, "theme-changed", THEME_LIGHT);
         }
     } else {
         if (local_dark_theme_present()) {
@@ -119,7 +118,6 @@ static void load_theme(ThemeService *self, enum ThemeServiceTheme theme) {
             g_resources_register(resource);
             gtk_css_provider_load_from_resource(self->provider,
                                                 DARK_THEME_RESOURCE);
-            g_signal_emit_by_name(self, "theme-changed", THEME_DARK);
         }
     }
 }
@@ -137,6 +135,7 @@ void theme_service_set_light_theme(ThemeService *self, gboolean light_theme) {
         GTK_STYLE_PROVIDER_PRIORITY_THEME);
 
     g_settings_set_boolean(self->setting, "light-theme", true);
+    g_signal_emit_by_name(self, "theme-changed", THEME_LIGHT);
     on_theme_switch(self);
 };
 
@@ -153,6 +152,7 @@ void theme_service_set_dark_theme(ThemeService *self, gboolean dark_theme) {
         GTK_STYLE_PROVIDER_PRIORITY_THEME);
 
     g_settings_set_boolean(self->setting, "light-theme", false);
+    g_signal_emit_by_name(self, "theme-changed", THEME_DARK);
     on_theme_switch(self);
 };
 
