@@ -241,10 +241,9 @@ static gboolean on_handle_notify(DbusNotifications *dbus,
     g_dbus_method_invocation_return_value(invocation, ret);
 
     // emit notifications change signal
-    g_signal_emit(self, signals[notification_added], 0,
-                  self->notifications, n->id, (self->notifications->len - 1));
-    g_signal_emit(self, signals[notification_changed], 0,
-                  self->notifications);
+    g_signal_emit(self, signals[notification_added], 0, self->notifications,
+                  n->id, (self->notifications->len - 1));
+    g_signal_emit(self, signals[notification_changed], 0, self->notifications);
 
     return TRUE;
 }
@@ -270,11 +269,10 @@ gboolean on_handle_get_capabilities(DbusNotifications *dbus,
     return TRUE;
 }
 
-gboolean on_handle_notification_closed(DbusNotifications *dbus,
-                                       GDBusMethodInvocation *invocation,
-                                       guint32 id, NotificationsService *self) {
-    g_debug("notifications_service.c:on_handle_notification_closed() called");
-
+gboolean on_handle_close_notification(DbusNotifications *dbus,
+                                      GDBusMethodInvocation *invocation,
+                                      guint32 id, NotificationsService *self) {
+    g_debug("notifications_service.c:on_handle_close_notification() called");
     notifications_service_closed_notification(
         self, id, NOTIFICATIONS_CLOSED_REASON_REQUESTED);
 
@@ -308,6 +306,8 @@ void connect_handlers(NotificationsService *self) {
                      self);
     g_signal_connect(self->dbus, "handle-get-server-information",
                      G_CALLBACK(on_handle_get_server_information), self);
+    g_signal_connect(self->dbus, "handle-close-notification",
+					 G_CALLBACK(on_handle_close_notification), self);
 }
 
 static void notifications_service_init(NotificationsService *self) {
@@ -359,10 +359,9 @@ int notifications_service_closed_notification(
     dbus_notifications_emit_notification_closed(self->dbus, id, reason);
 
     // emit our own close signal
-    g_signal_emit(self, signals[notification_closed], 0,
-                  self->notifications, n->id, index);
-    g_signal_emit(self, signals[notification_changed], 0,
-                  self->notifications);
+    g_signal_emit(self, signals[notification_closed], 0, self->notifications,
+                  n->id, index);
+    g_signal_emit(self, signals[notification_changed], 0, self->notifications);
 
     return 0;
 }
