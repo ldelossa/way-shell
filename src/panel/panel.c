@@ -79,18 +79,17 @@ static void panel_init_status_bar(Panel *self) {
                    GTK_WIDGET(panel_status_bar_get_widget(self->status_bar)));
 }
 
-void on_monitor_invalidate(GdkMonitor *monitor, Panel *self) {
-    g_debug("panel.c:on_monitor_invalidate() called.");
-    // will start to unref the entire tree of depedencies.
+void on_win_destroyed(GtkWindow *win, Panel *self) {
+    g_debug("panel.c:on_win_destroyed() called.");
     g_object_unref(self);
-    g_hash_table_remove(panels, monitor);
+    g_hash_table_remove(panels, self->monitor);
 }
 
 static void panel_init_layout(Panel *self) {
     // NOTE:
-    // We do not initialize any of the Panel's dependecies until
-    // 'panel_attach_to_monitor' since the depedencies expect the panel to
-    // always have a valid monitor.
+    // We do not initialize any of the Panel's dependecies (panel clock,
+    // workspaces bar, etc...) until 'panel_attach_to_monitor' since the
+    // depedencies expect the panel to always have a valid monitor.
     self->win = ADW_WINDOW(adw_window_new());
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
@@ -112,6 +111,9 @@ static void panel_init_layout(Panel *self) {
     gtk_center_box_set_end_widget(self->container, GTK_WIDGET(self->right));
 
     adw_window_set_content(ADW_WINDOW(self->win), GTK_WIDGET(self->container));
+
+    // attach to window destroy event
+    g_signal_connect(self->win, "destroy", G_CALLBACK(on_win_destroyed), self);
 }
 
 static void panel_init(Panel *self) { panel_init_layout(self); };
@@ -144,6 +146,16 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
         "panel.c:panel_on_monitor_change(): received monitor change event.");
     g_debug("panel.c:panel_on_monitor_change(): new number of monitors %d", n);
 
+    // the least buggiest thing I found to do was simply kill all the panels and
+    // reinitialize them with the latest set of monitors.
+    GHashTableIter iter;
+    gpointer key, value;
+    g_hash_table_iter_init(&iter, panels);
+    while (g_hash_table_iter_next(&iter, &key, &value)) {
+        Panel *panel = PANEL_PANEL(value);
+        gtk_window_destroy(GTK_WINDOW(panel->win));
+    }
+
     for (uint8_t i = 0; i < n; i++) {
         GdkMonitor *mon = g_list_model_get_item(monitors, i);
         if (!gdk_monitor_is_valid(mon)) {
@@ -158,6 +170,10 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
         model = gdk_monitor_get_model(mon);
         connector = gdk_monitor_get_connector(mon);
 
+		// in testing there seems to be duplicate and/or stale monitors in this
+		// array. If a monitor is removed or added we always get a new pointer
+		// from Gdk, so filter out any seen pointers since this may create
+		// duplicate bars.
         if (g_hash_table_contains(panels, mon)) {
             g_debug(
                 "panel.c:panel_on_monitor_change(): bar already exists for "
@@ -167,8 +183,6 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
         }
 
         Panel *panel = g_object_new(PANEL_TYPE, NULL);
-        g_signal_connect(mon, "invalidate", G_CALLBACK(on_monitor_invalidate),
-                         panel);
         panel_attach_to_monitor(panel, mon);
 
         g_debug(
