@@ -1,6 +1,7 @@
 #include "panel.h"
 
 #include <adwaita.h>
+#include <gdk/wayland/gdkwayland.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
 #include "./panel_status_bar/panel_status_bar.h"
@@ -79,12 +80,6 @@ static void panel_init_status_bar(Panel *self) {
                    GTK_WIDGET(panel_status_bar_get_widget(self->status_bar)));
 }
 
-void on_win_destroyed(GtkWindow *win, Panel *self) {
-    g_debug("panel.c:on_win_destroyed() called.");
-    g_object_unref(self);
-    g_hash_table_remove(panels, self->monitor);
-}
-
 static void panel_init_layout(Panel *self) {
     // NOTE:
     // We do not initialize any of the Panel's dependecies (panel clock,
@@ -111,9 +106,6 @@ static void panel_init_layout(Panel *self) {
     gtk_center_box_set_end_widget(self->container, GTK_WIDGET(self->right));
 
     adw_window_set_content(ADW_WINDOW(self->win), GTK_WIDGET(self->container));
-
-    // attach to window destroy event
-    g_signal_connect(self->win, "destroy", G_CALLBACK(on_win_destroyed), self);
 }
 
 static void panel_init(Panel *self) { panel_init_layout(self); };
@@ -153,8 +145,10 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
     g_hash_table_iter_init(&iter, panels);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         Panel *panel = PANEL_PANEL(value);
+    	g_object_unref(panel);
         gtk_window_destroy(GTK_WINDOW(panel->win));
     }
+	g_hash_table_remove_all(panels);
 
     for (uint8_t i = 0; i < n; i++) {
         GdkMonitor *mon = g_list_model_get_item(monitors, i);
@@ -169,18 +163,6 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
         desc = gdk_monitor_get_description(mon);
         model = gdk_monitor_get_model(mon);
         connector = gdk_monitor_get_connector(mon);
-
-		// in testing there seems to be duplicate and/or stale monitors in this
-		// array. If a monitor is removed or added we always get a new pointer
-		// from Gdk, so filter out any seen pointers since this may create
-		// duplicate bars.
-        if (g_hash_table_contains(panels, mon)) {
-            g_debug(
-                "panel.c:panel_on_monitor_change(): bar already exists for "
-                "monitor [%s] [%s] [%s]",
-                desc, model, connector);
-            continue;
-        }
 
         Panel *panel = g_object_new(PANEL_TYPE, NULL);
         panel_attach_to_monitor(panel, mon);
