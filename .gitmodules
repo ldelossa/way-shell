@@ -1,3 +1,6 @@
 [submodule "lib/cmd_tree"]
 	path = lib/cmd_tree
 	url = https://github.com/ldelossa/cmd_tree.git
+[submodule "lib/wlr-protocols"]
+	path = lib/wlr-protocols
+	url = https://gitlab.freedesktop.org/wlroots/wlr-protocols.git

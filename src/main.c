@@ -15,6 +15,7 @@
 #include "./services/upower_service.h"
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
+#include "./services/wayland_service/wayland_service.h"
 #include "gresources.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
@@ -59,6 +60,10 @@ static void activate(AdwApplication *app, gpointer user_data) {
     if (clock_service_global_init() != 0) {
         g_error("main.c: activate(): failed to initialize clock service.");
     }
+
+	if (wayland_service_global_init() != 0) {
+		g_error("main.c: activate(): failed to initialize wayland service.");
+	}
 
 	if (theme_service_global_init() != 0) {
 		g_error("main.c: activate(): failed to initialize theme service.");

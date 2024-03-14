@@ -6,10 +6,14 @@ DEPS := libadwaita-1 \
 		libnm \
 		libpulse \
 		libpulse-simple \
-		libpulse-mainloop-glib
+		libpulse-mainloop-glib \
+		wayland-client \
+		wayland-protocols
 CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
-LIBS := $(shell pkg-config --libs $(DEPS))
-LIBS += "-lgtk4-layer-shell" "-lm"
+# order is important here, if libwayland is linked before gtk4 layer shell
+# bad things happen.
+LIBS := "-lgtk4-layer-shell" "-lm"
+LIBS += $(shell pkg-config --libs $(DEPS))
 SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
@@ -68,6 +72,11 @@ dbus-codegen:
 	--interface-prefix net.hadess. \
 	--output-directory ./src/services/power_profiles_service \
 	./data/dbus-interfaces/net.hadess.PowerProfiles.xml
+
+.PHONY:
+wayland-protocols:
+	wayland-scanner client-header ./lib/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.h
+	wayland-scanner private-code ./lib/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.c
 
 .PHONY:
 install:
