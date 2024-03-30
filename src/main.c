@@ -16,6 +16,7 @@
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
 #include "./services/wayland_service/wayland_service.h"
+#include "./services/media_player_service/media_player_service.h"
 #include "gresources.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
@@ -112,6 +113,10 @@ static void activate(AdwApplication *app, gpointer user_data) {
     if (brightness_service_global_init() != 0) {
         g_error("main.c: activate(): failed to initialize brightness service.");
     }
+
+	if (media_player_service_global_init() != 0) {
+		g_error("main.c: activate(): failed to initialize media player service.");
+	}
 
     // Subsystem activation //
 

@@ -73,6 +73,13 @@ dbus-codegen:
 	--output-directory ./src/services/power_profiles_service \
 	./data/dbus-interfaces/net.hadess.PowerProfiles.xml
 
+	# media player
+	gdbus-codegen --generate-c-code media_player_dbus \
+	--c-namespace Dbus \
+	--interface-prefix org.mpris. \
+	--output-directory ./src/services/media_player_service \
+	./data/dbus-interfaces/org.mpris.MediaPlayer2.xml
+
 .PHONY:
 wayland-protocols:
 	wayland-scanner client-header ./lib/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.h
