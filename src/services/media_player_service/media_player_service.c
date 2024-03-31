@@ -61,11 +61,18 @@ static void media_player_fill_metadata(GVariant *metadata,
         }
         if (g_strcmp0(key, "xesam:artist") == 0) {
             GVariantIter *artist_iter = g_variant_iter_new(value);
-            gchar *artist_value;
-            while (g_variant_iter_next(artist_iter, "s", &artist_value)) {
-                player->artist = g_strdup(artist_value);
+            gchar *value;
+			gchar *artist;
+
+			g_variant_iter_next(artist_iter, "s", &artist);
+
+            while (g_variant_iter_next(artist_iter, "s", &value)) {
+				artist = g_strconcat(artist, ", ", value, NULL);
             }
+
             g_variant_iter_free(artist_iter);
+
+			player->artist = artist;
         }
         if (g_strcmp0(key, "mpris:artUrl") == 0) {
             player->art_url = g_strdup(g_variant_get_string(value, NULL));

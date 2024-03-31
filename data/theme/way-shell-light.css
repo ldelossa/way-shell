@@ -255,11 +255,16 @@
   color: @base-panel-background;
 }
 
-#message-tray calendar.view grid label.day-number,
-label.day-name {
+#message-tray calendar.view grid label.day-number {
   color: @panel-button-color;
   padding: 0px;
   margin: 0px;
+  font-size: 16px;
+}
+
+#message-tray calendar.view grid label.day-name {
+  color: @panel-button-color;
+  font-size: 14px;
 }
 
 #message-tray calendar.view grid label.day-number:active {

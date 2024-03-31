@@ -278,7 +278,7 @@ void message_tray_set_visible(MessageTray *self, GdkMonitor *monitor) {
     message_tray_mediator_emit_will_show(mediator, self, monitor);
 
     // present underlay
-    // gtk_window_present(GTK_WINDOW(self->underlay));
+    gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
