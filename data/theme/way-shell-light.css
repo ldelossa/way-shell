@@ -190,7 +190,6 @@
 
 #message-tray .calendar-area {
   padding: 15px;
-  margin-bottom: 12em;
 }
 
 #message-tray #calendar-month-selector {
@@ -229,12 +228,12 @@
 }
 
 #message-tray #calendar-today row label.title {
-  font-size: 16px;
+  font-size: 20px;
   font-weight: bold;
 }
 
 #message-tray #calendar-today row label.subtitle {
-  font-size: 20px;
+  font-size: 24px;
   font-weight: bold;
 }
 
@@ -371,6 +370,49 @@ statuspage {
   margin: 6px;
 }
 
+/*
+ * Message Tray Media Players
+ */
+
+#message-tray #media-players .media-player {
+       background: @notification-background;
+       border-radius: 10px;
+       margin: 4px;
+}
+
+#message-tray #media-players button {
+       background: transparent;
+}
+
+#message-tray #media-players button:hover {
+       background: @success;
+}
+
+#message-tray #media-players .media-player-title {
+       font-size: 15px;
+       font-weight: bold;
+}
+
+#message-tray #media-players .media-player-artist {
+       font-size: 14px;
+}
+
+#message-tray #media-players image {
+       margin: 2px;
+}
+
+#message-tray #media-players image {
+       margin: 4px;
+}
+
+#message-tray #media-players .media-player-labels {
+       padding-left: 6px;
+}
+
+#message-tray #media-players scrollbar {
+  opacity: 1;
+  margin-right: -18px;
+}
 
 /*
 / Quick Settings

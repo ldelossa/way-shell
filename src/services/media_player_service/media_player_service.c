@@ -38,12 +38,12 @@ static void media_player_service_class_init(MediaPlayerServiceClass *klass) {
 
     // Sent when a player is added or an existing player's property is changed.
     signals[player_changed] = g_signal_new(
-        "player-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, NULL,
+        "media-player-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0,
         NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
     // Sent with a player is removed
     signals[player_removed] = g_signal_new(
-        "player-removed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, NULL,
+        "media-player-removed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0,
         NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 };
 
@@ -58,6 +58,14 @@ static void media_player_fill_metadata(GVariant *metadata,
         }
         if (g_strcmp0(key, "xesam:title") == 0) {
             player->title = g_strdup(g_variant_get_string(value, NULL));
+        }
+        if (g_strcmp0(key, "xesam:artist") == 0) {
+            GVariantIter *artist_iter = g_variant_iter_new(value);
+            gchar *artist_value;
+            while (g_variant_iter_next(artist_iter, "s", &artist_value)) {
+                player->artist = g_strdup(artist_value);
+            }
+            g_variant_iter_free(artist_iter);
         }
         if (g_strcmp0(key, "mpris:artUrl") == 0) {
             player->art_url = g_strdup(g_variant_get_string(value, NULL));
@@ -118,12 +126,12 @@ static void media_player_added(gchar *name, const gchar *object_path,
         name);
 
     GError *err = NULL;
-    DbusMediaPlayer2 *proxy = NULL;
-    DbusMediaPlayer2Player *player_proxy = NULL;
+    DbusMediaPlayer2 *mediaplayer2 = NULL;
+    DbusMediaPlayer2Player *mediaplayer2_player = NULL;
     MediaPlayer *media_player = g_malloc0(sizeof(MediaPlayer));
 
-    // get proxy
-    proxy =
+    // instantiate interface org.mpris.MediaPlayer2 proxy
+    mediaplayer2 =
         dbus_media_player2_proxy_new_sync(self->conn, G_DBUS_PROXY_FLAGS_NONE,
                                           name, player_object_path, NULL, &err);
     if (err) {
@@ -133,8 +141,8 @@ static void media_player_added(gchar *name, const gchar *object_path,
         return;
     }
 
-    // get player
-    player_proxy = dbus_media_player2_player_proxy_new_sync(
+    // instantiate interface org.mpris.MediaPlayer2.Player proxy
+    mediaplayer2_player = dbus_media_player2_player_proxy_new_sync(
         self->conn, G_DBUS_PROXY_FLAGS_NONE, name, player_object_path, NULL,
         &err);
     if (err) {
@@ -144,33 +152,38 @@ static void media_player_added(gchar *name, const gchar *object_path,
         return;
     }
 
-    // extract MediaPlayer fields from player proxy
-    media_player->proxy = proxy;
-    media_player->player = player_proxy;
+    // fill in our domain MediaPlayer object
+    media_player->proxy = mediaplayer2;
+    media_player->player = mediaplayer2_player;
     media_player->name = g_strdup(name);
-    media_player->playback_status =
-        g_strdup(dbus_media_player2_player_get_playback_status(player_proxy));
+
+    media_player->playback_status = g_strdup(
+        dbus_media_player2_player_get_playback_status(mediaplayer2_player));
+
     media_player_fill_metadata(
-        dbus_media_player2_player_get_metadata(player_proxy), media_player);
+        dbus_media_player2_player_get_metadata(mediaplayer2_player),
+        media_player);
 
-	// debug newly added media player fields
-	g_debug(
-		"media_player_service.c:media_player_added(): media player added: "
-		"name: %s, playback_status: %s, album: %s, title: %s, art_url: %s",
-		media_player->name, media_player->playback_status, media_player->album,
-		media_player->title, media_player->art_url);
+    g_debug(
+        "media_player_service.c:media_player_added(): media player added: "
+        "name: %s, playback_status: %s, album: %s, title: %s, art_url: %s",
+        media_player->name, media_player->playback_status, media_player->album,
+        media_player->title, media_player->art_url);
 
-    g_hash_table_insert(self->players_by_proxy, player_proxy, media_player);
+    // inventory new MediaPlayer both by MediaPlayer2.Player proxy pointer and
+    // the owning service's name.
+    g_hash_table_insert(self->players_by_proxy, mediaplayer2_player,
+                        media_player);
     g_hash_table_insert(self->players_by_name, media_player->name,
                         media_player);
 
-	// send event
-	g_signal_emit(self, signals[player_changed], 0, media_player);
+    // notify subscribers that new media player is available.
+    g_signal_emit(self, signals[player_changed], 0, media_player);
 
-    // attach to proxy's notify for changes
-    g_signal_connect(player_proxy, "notify::playback-status",
+    // watch for MediaPlayer2.Player property changes.
+    g_signal_connect(mediaplayer2_player, "notify::playback-status",
                      G_CALLBACK(on_media_player_property_changed), self);
-    g_signal_connect(player_proxy, "notify::metadata",
+    g_signal_connect(mediaplayer2_player, "notify::metadata",
                      G_CALLBACK(on_media_player_property_changed), self);
 }
 
@@ -255,13 +268,11 @@ static void media_player_service_dbus_connect(MediaPlayerService *self) {
             "connect to dbus: %s",
             error->message);
 
-    // we need to listen for
+    // we need to listen for NameOwnerChanged to determine if we see
+    // service own or release name that starts with org.mpris.MediaPlayer2.
     g_dbus_connection_signal_subscribe(
-        self->conn, "org.freedesktop.DBus", /* sender */
-        "org.freedesktop.DBus",             /* interface */
-        "NameOwnerChanged",                 /* member */
-        "/org/freedesktop/DBus",            /* object path */
-        NULL,                               /* arg0 */
+        self->conn, "org.freedesktop.DBus", "org.freedesktop.DBus",
+        "NameOwnerChanged", "/org/freedesktop/DBus", NULL,
         G_DBUS_SIGNAL_FLAGS_NONE, media_player_service_on_name_owner_changed,
         self, NULL);
 }
@@ -286,3 +297,123 @@ int media_player_service_global_init(void) {
 }
 
 MediaPlayerService *media_player_service_get_global() { return global; }
+
+void media_player_service_player_play_finish(GObject *source_object,
+                                             GAsyncResult *res, gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_player_call_play_finish(
+        (DbusMediaPlayer2Player *)source_object, res, &err);
+}
+
+void media_player_service_player_play(MediaPlayerService *self, gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_player_call_play(
+        player->player, NULL, media_player_service_player_play_finish, self);
+}
+
+void media_player_service_player_pause_finish(GObject *source_object,
+                                              GAsyncResult *res,
+                                              gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_player_call_pause_finish(
+        (DbusMediaPlayer2Player *)source_object, res, &err);
+}
+
+void media_player_service_player_pause(MediaPlayerService *self, gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_player_call_pause(
+        player->player, NULL, media_player_service_player_pause_finish, self);
+}
+
+void media_player_service_player_playpause_finish(GObject *source_object,
+                                                  GAsyncResult *res,
+                                                  gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_player_call_play_pause_finish(
+        (DbusMediaPlayer2Player *)source_object, res, &err);
+}
+
+void media_player_service_player_playpause(MediaPlayerService *self,
+                                           gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_player_call_play_pause(
+        player->player, NULL, media_player_service_player_playpause_finish,
+        self);
+}
+
+void media_player_service_player_stop_finish(GObject *source_object,
+                                             GAsyncResult *res, gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_player_call_stop_finish(
+        (DbusMediaPlayer2Player *)source_object, res, &err);
+}
+
+void media_player_service_player_stop(MediaPlayerService *self, gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_player_call_stop(
+        player->player, NULL, media_player_service_player_stop_finish, self);
+}
+
+void media_player_service_player_next_finish(GObject *source_object,
+                                             GAsyncResult *res, gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_player_call_next_finish(
+        (DbusMediaPlayer2Player *)source_object, res, &err);
+}
+
+void media_player_service_player_next(MediaPlayerService *self, gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_player_call_next(
+        player->player, NULL, media_player_service_player_next_finish, self);
+}
+
+void media_player_service_player_previous_finish(GObject *source_object,
+                                                 GAsyncResult *res,
+                                                 gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_player_call_previous_finish(
+        (DbusMediaPlayer2Player *)source_object, res, &err);
+}
+
+void media_player_service_player_previous(MediaPlayerService *self,
+                                          gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_player_call_previous(
+        player->player, NULL, media_player_service_player_previous_finish,
+        self);
+}
+
+void media_player_service_player_raise_finish(GObject *source_object,
+                                              GAsyncResult *res,
+                                              gpointer data) {
+    GError *err = NULL;
+
+    dbus_media_player2_call_raise_finish((DbusMediaPlayer2 *)source_object, res,
+                                         &err);
+}
+
+void media_player_service_player_raise(MediaPlayerService *self, gchar *name) {
+    MediaPlayer *player = g_hash_table_lookup(self->players_by_name, name);
+    if (!player) return;
+
+    dbus_media_player2_call_raise(
+        player->proxy, NULL, media_player_service_player_raise_finish, NULL);
+}
