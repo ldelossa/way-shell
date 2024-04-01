@@ -4,6 +4,7 @@
 
 #include "gio/gdbusinterfaceskeleton.h"
 #include "notifications_dbus.h"
+#include "../dbus_service.h"
 
 void print_notification(const Notification *n) {
     g_debug("Notification:");
@@ -125,13 +126,8 @@ static void on_name_lost(GDBusConnection *conn, const gchar *name,
 };
 
 static void notifications_service_dbus_connect(NotificationsService *self) {
-    GError *error = NULL;
-    self->conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
-    if (!self->conn)
-        g_error(
-            "notifications_service.c:notifications_service_init() "
-            "failed to get dbus connection: %s",
-            error->message);
+	DBUSService *dbus = dbus_service_get_global();
+	self->conn = dbus_service_get_session_bus(dbus);
 }
 
 static gboolean on_handle_get_server_information(

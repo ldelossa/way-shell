@@ -3,6 +3,7 @@
 #include <adwaita.h>
 
 #include "media_player_dbus.h"
+#include "../../services/dbus_service.h"
 
 static MediaPlayerService *global = NULL;
 
@@ -267,13 +268,8 @@ static void media_player_service_dbus_connect(MediaPlayerService *self) {
         "media_player_service.c:media_player_service_dbus_connect(): "
         "connecting to dbus");
 
-    self->conn = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, &error);
-    if (!self->conn)
-        g_error(
-            "media_player_service.c:media_player_service_dbus_connect(): "
-            "error:"
-            "connect to dbus: %s",
-            error->message);
+	DBUSService *dbus = dbus_service_get_global();
+	self->conn = dbus_service_get_session_bus(dbus);
 
     // we need to listen for NameOwnerChanged to determine if we see
     // service own or release name that starts with org.mpris.MediaPlayer2.

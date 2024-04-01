@@ -4,6 +4,7 @@
 
 #include "logind_manager_dbus.h"
 #include "logind_session_dbus.h"
+#include "../../services/dbus_service.h"
 
 static LogindService *global = NULL;
 
@@ -111,12 +112,8 @@ static void logind_service_manager_dbus_connect(LogindService *self) {
 
     GError *error = NULL;
 
-    self->conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
-    if (!self->conn)
-        g_error(
-            "logind_service.c:logind_service_manager_dbus_connect(): "
-            "error: connect to dbus: %s",
-            error->message);
+	DBUSService *dbus = dbus_service_get_global();
+	self->conn = dbus_service_get_system_bus(dbus);
 
     self->manager = dbus_login1_manager_proxy_new_sync(
         self->conn, G_DBUS_PROXY_FLAGS_NONE, "org.freedesktop.login1",

@@ -3,6 +3,7 @@
 #include <adwaita.h>
 
 #include "power_profiles_dbus.h"
+#include "../../services/dbus_service.h"
 
 static PowerProfilesService *global = NULL;
 
@@ -49,13 +50,8 @@ static void power_profiles_service_class_init(
 static void power_profiles_service_dbus_connect(PowerProfilesService *self) {
     GError *error = NULL;
 
-    self->conn = g_bus_get_sync(G_BUS_TYPE_SYSTEM, NULL, &error);
-    if (!self->conn)
-        g_error(
-            "power_profiles_service.c:power_profiles_service_dbus_connect(): "
-            "error:"
-            "connect to dbus: %s",
-            error->message);
+	DBUSService *dbus = dbus_service_get_global();
+	self->conn = dbus_service_get_system_bus(dbus);
 
     self->dbus = dbus_power_profiles_proxy_new_sync(
         self->conn, G_DBUS_PROXY_FLAGS_NONE, "net.hadess.PowerProfiles",
