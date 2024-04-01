@@ -19,6 +19,7 @@ typedef struct _QuickSettingsGridWifiMenu {
     GCancellable *cancel_scan;
     gint64 last_scan;
     GtkSpinner *spinner;
+    GtkButton *refresh;
     GtkBox *failure_banner_container;
     GtkLabel *failure_banner_label;
     GtkButton *failure_banner_dismiss_button;
@@ -154,6 +155,8 @@ static void on_failure_banner_clicked(GtkButton *button,
     quick_settings_mediator_req_shrink(m);
 }
 
+static void do_scan(GtkButton *_, QuickSettingsGridWifiMenu *self);
+
 static void quick_settings_grid_wifi_menu_init_layout(
     QuickSettingsGridWifiMenu *self) {
     quick_settings_menu_widget_init(&self->menu, true);
@@ -161,7 +164,6 @@ static void quick_settings_grid_wifi_menu_init_layout(
         &self->menu, "network-wireless-signal-excellent-symbolic");
     quick_settings_menu_widget_set_title(&self->menu, "Wi-Fi");
     gtk_widget_set_size_request(GTK_WIDGET(self->menu.container), -1, 420);
-
 
     // create failure banner
     self->failure_banner_container =
@@ -187,7 +189,14 @@ static void quick_settings_grid_wifi_menu_init_layout(
     // add spinner to title_container
     self->spinner = GTK_SPINNER(gtk_spinner_new());
     gtk_box_append(self->menu.title_container, GTK_WIDGET(self->spinner));
-    gtk_widget_set_halign(GTK_WIDGET(self->spinner), GTK_ALIGN_END);
+    gtk_widget_set_visible(GTK_WIDGET(self->spinner), false);
+
+    self->refresh =
+        GTK_BUTTON(gtk_button_new_from_icon_name("view-refresh-symbolic"));
+    gtk_box_append(self->menu.title_container, GTK_WIDGET(self->refresh));
+    gtk_widget_set_hexpand(GTK_WIDGET(self->refresh), TRUE);
+    gtk_widget_set_halign(GTK_WIDGET(self->refresh), GTK_ALIGN_END);
+    g_signal_connect(self->refresh, "clicked", G_CALLBACK(do_scan), self);
 }
 
 static void quick_settings_grid_wifi_menu_init(
@@ -224,6 +233,20 @@ void quick_settings_grid_wifi_menu_on_scan_done(GObject *object,
     }
     wifi_device_get_aps(dev, NULL, self);
     gtk_spinner_stop(self->spinner);
+    gtk_widget_set_visible(GTK_WIDGET(self->spinner), false);
+}
+
+static void do_scan(GtkButton *button, QuickSettingsGridWifiMenu *self) {
+    g_debug(
+        "quick_settings_grid_wifi_menu.c:do_scan() scanning wifi network...");
+
+    gtk_widget_set_visible(GTK_WIDGET(self->spinner), true);
+    gtk_spinner_start(self->spinner);
+
+    // start an async scan
+    nm_device_wifi_request_scan_async(
+        self->dev, self->cancel_scan,
+        quick_settings_grid_wifi_menu_on_scan_done, self);
 }
 
 void quick_settings_grid_wifi_menu_on_reveal(QuickSettingsGridButton *button_,
@@ -239,14 +262,7 @@ void quick_settings_grid_wifi_menu_on_reveal(QuickSettingsGridButton *button_,
 
     if (!self->dev) return;
 
-    g_debug(
-        "quick_settings_grid_wifi_menu.c:on_reveal() scanning wifi network...");
-    gtk_spinner_start(self->spinner);
-
-    // start an async scan
-    nm_device_wifi_request_scan_async(
-        self->dev, self->cancel_scan,
-        quick_settings_grid_wifi_menu_on_scan_done, self);
+    do_scan(NULL, self);
 }
 
 GtkWidget *quick_settings_grid_wifi_menu_get_widget(

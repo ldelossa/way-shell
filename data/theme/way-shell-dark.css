@@ -554,6 +554,10 @@ label.day-number.today:focus {
   font-size: 16px;
 }
 
+#quick-settings-menu #container button:hover {
+  background-color: @quick-settings-menu-option-hover;
+}
+
 #quick-settings-menu #options-container button:hover {
   background-color: @quick-settings-menu-option-hover;
 }

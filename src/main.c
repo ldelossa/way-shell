@@ -39,17 +39,6 @@ static void activate(AdwApplication *app, gpointer user_data) {
     GResource *resource = gresources_get_resource();
     g_resources_register(resource);
 
-    /* GtkCssProvider *provider = gtk_css_provider_new(); */
-    /* gtk_css_provider_load_from_resource( */
-    /*     provider, "/org/ldelossa/way-shell/data/theme/way-shell-dark.css"); */
-    /**/
-    /* GdkSeat *seat = gdk_display_get_default_seat(gdk_display_get_default()); */
-    /* GdkDisplay *display = gdk_seat_get_display(seat); */
-    /* gtk_style_context_add_provider_for_display( */
-    /*     display, GTK_STYLE_PROVIDER(provider), */
-    /*     GTK_STYLE_PROVIDER_PRIORITY_THEME); */
-    /**/
-
     global = ADW_APPLICATION_WINDOW(
         adw_application_window_new(GTK_APPLICATION(app)));
     gtk_application_add_window(GTK_APPLICATION(app), GTK_WINDOW(global));
