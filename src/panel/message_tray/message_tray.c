@@ -190,8 +190,8 @@ static void message_tray_init_layout(MessageTray *self) {
                    GTK_WIDGET(media_players_get_widget(self->media_players)));
 
     // set 800x600 size request and adjust left box
-    gtk_widget_set_size_request(GTK_WIDGET(self->container), 840, 600);
-    gtk_widget_set_size_request(GTK_WIDGET(left_box), 840 * 0.56, 600);
+    gtk_widget_set_size_request(GTK_WIDGET(self->container), 800, 600);
+    gtk_widget_set_size_request(GTK_WIDGET(left_box), 800 * 0.60, 600);
 
     // animation controller
     AdwAnimationTarget *target = adw_callback_animation_target_new(

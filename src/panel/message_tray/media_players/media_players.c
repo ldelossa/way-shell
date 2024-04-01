@@ -51,7 +51,7 @@ MediaPlayerWidget *media_player_widget_new() {
     gtk_widget_add_css_class(GTK_WIDGET(self->container), "media-player");
     gtk_widget_set_hexpand(GTK_WIDGET(self->container), TRUE);
     gtk_widget_set_vexpand(GTK_WIDGET(self->container), TRUE);
-    gtk_widget_set_valign(GTK_WIDGET(self->container), GTK_ALIGN_CENTER);
+    gtk_widget_set_valign(GTK_WIDGET(self->container), GTK_ALIGN_END);
 
     self->icon = GTK_BUTTON(
         gtk_button_new_from_icon_name("applications-multimedia-symbolic"));
@@ -94,14 +94,14 @@ MediaPlayerWidget *media_player_widget_new() {
     gtk_widget_add_css_class(GTK_WIDGET(self->artist), "media-player-artist");
     gtk_label_set_ellipsize(self->artist, PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(self->artist, 15);
-    gtk_label_set_width_chars(self->artist, 15);
+    gtk_label_set_width_chars(self->artist, 12);
     gtk_label_set_xalign(self->artist, 0);
 
     self->title = GTK_LABEL(gtk_label_new(""));
     gtk_widget_add_css_class(GTK_WIDGET(self->title), "media-player-title");
     gtk_label_set_ellipsize(self->title, PANGO_ELLIPSIZE_END);
     gtk_label_set_max_width_chars(self->title, 15);
-    gtk_label_set_width_chars(self->title, 15);
+    gtk_label_set_width_chars(self->title, 12);
     gtk_label_set_xalign(self->title, 0);
     gtk_box_append(label_container, GTK_WIDGET(self->title));
     gtk_box_append(label_container, GTK_WIDGET(self->artist));
@@ -289,7 +289,7 @@ static void media_players_init_layout(MediaPlayers *self) {
     gtk_widget_set_size_request(GTK_WIDGET(self->scrolled_win), -1, 140);
     gtk_widget_set_hexpand(GTK_WIDGET(self->scrolled_win), TRUE);
     gtk_scrolled_window_set_policy(self->scrolled_win, GTK_POLICY_NEVER,
-                                   GTK_POLICY_ALWAYS);
+                                   GTK_POLICY_AUTOMATIC);
 
     self->media_player_list = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_hexpand(GTK_WIDGET(self->media_player_list), TRUE);
