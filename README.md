@@ -103,7 +103,7 @@ bindsym XF86MonBrightnessUp exec way-sh brightness up
 - [x] Brightness and Audio sliders
 - [x] DConf integration (configuration is driven via dconf)
 - [x] CLI interface (way-sh)
-- [ ] Media Player integration (control DBus announced media players)
+- [x] Media Player integration (control DBus announced media players)
 - [ ] Bluetooth integration (pair with discoverable bluetooth devices)
 - [x] Themeing (provide CSS override directory, light/dark theme switch button, and allow a script to be ran after the theme is switched)
 
