@@ -17,7 +17,8 @@ static int volume_root_exec(void *ctx, uint8_t argc, char **argv) {
         "Commands: \n"
         "\tup   - increase the volume by a step (.05)\n"
         "\tdown - decreate the volume by a step (.05)\n"
-        "\tset  - set the volume to a given value (0.0-1.0)");
+        "\tset  - set the volume to a given value (0.0-1.0)\n"
+        "\tmute - toggle the mute state of the default audio sink\n");
     return 0;
 };
 
@@ -107,10 +108,34 @@ static int volume_set_exec(void *ctx, uint8_t argc, char **argv) {
 };
 cmd_tree_node_t volume_cmd_set = {.name = "set", .exec = volume_set_exec};
 
+static int volume_mute_exec(void *ctx, uint8_t argc, char **argv) {
+    int ret = 0;
+    way_sh_ctx *way_ctx = ctx;
+
+    IPCVolumeMute msg = {
+        .header = {.type = IPC_CMD_VOLUME_MUTE},
+    };
+
+    IPC_SEND_MSG(way_ctx, msg);
+
+    if (ret == -1) {
+        perror("[Error] Failed to send IPCVolumeMute");
+        return -1;
+    }
+
+    bool response = false;
+    IPC_RECV_MSG(way_ctx, addr, &response);
+
+    return response;
+};
+
+cmd_tree_node_t volume_cmd_mute = {.name = "mute", .exec = volume_mute_exec};
+
 cmd_tree_node_t *volume_cmd() {
     cmd_tree_node_add_child(&volume_cmd_root, &volume_cmd_up);
     cmd_tree_node_add_child(&volume_cmd_root, &volume_cmd_down);
     cmd_tree_node_add_child(&volume_cmd_root, &volume_cmd_set);
+    cmd_tree_node_add_child(&volume_cmd_root, &volume_cmd_mute);
 
     return &volume_cmd_root;
 };

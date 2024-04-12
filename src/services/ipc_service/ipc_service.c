@@ -102,6 +102,23 @@ static gboolean ipc_cmd_volume_set(IPCVolumeSet *msg) {
     return false;
 }
 
+static gboolean ipc_cmd_volume_mute(IPCVolumeMute *msg) {
+    g_debug("ipc_service.c:ipc_cmd_volume_mute()");
+    WirePlumberService *wp = wire_plumber_service_get_global();
+    if (!wp) {
+        g_critical(
+            "ipc_service.c:ipc_cmd_volume_up() failed to get wireplumber "
+            "service");
+        return false;
+    }
+    WirePlumberServiceNode *sink = wire_plumber_service_get_default_sink(wp);
+    if (sink->mute)
+        wire_plumber_service_volume_unmute(wp, sink);
+    else
+        wire_plumber_service_volume_mute(wp, sink);
+    return true;
+}
+
 static gboolean ipc_cmd_brightness_up() {
     g_debug("ipc_service.c:ipc_cmd_brightness_up()");
     BrightnessService *b = brightness_service_get_global();
@@ -253,6 +270,12 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_VOLUME_SET");
             ret = ipc_cmd_volume_set((IPCVolumeSet *)hdr);
+            break;
+        case IPC_CMD_VOLUME_MUTE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_VOLUME_MUTE");
+            ret = ipc_cmd_volume_mute((IPCVolumeMute *)hdr);
             break;
         case IPC_CMD_BRIGHTNESS_UP:
             g_debug(

@@ -17,16 +17,19 @@ typedef struct _QuickSettingsScales {
     GtkEventControllerMotion *default_sink_ctlr;
     GtkBox *default_sink_container;
     GtkImage *default_sink_icon;
+    GtkButton *default_sink_button;
     GtkScale *default_sink_scale;
     // default source scales
     GtkEventControllerMotion *default_source_ctlr;
     GtkBox *default_source_container;
     GtkImage *default_source_icon;
+    GtkButton *default_source_button;
     GtkScale *default_source_scale;
     // brightness scales
     GtkEventControllerMotion *brightness_ctlr;
     GtkBox *brightness_container;
     GtkImage *brightness_icon;
+    GtkButton *brightness_button;
     GtkScale *brightness_scale;
     // wirepumber nodes
     WirePlumberServiceNode *active_source_node;
@@ -269,6 +272,31 @@ static void on_brightness_leave(GtkEventControllerMotion *ctlr, double x,
                                       self);
 }
 
+static void on_default_sink_button_clicked(GtkButton *button,
+                                           QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_default_sink_button_clicked() called.");
+
+    WirePlumberService *wp = wire_plumber_service_get_global();
+    if (!self->default_sink_node) return;
+    if (!self->default_sink_node->mute)
+        wire_plumber_service_volume_mute(wp, self->default_sink_node);
+    else
+        wire_plumber_service_volume_unmute(wp, self->default_sink_node);
+}
+
+static void on_active_source_button_clicked(GtkButton *button,
+                                            QuickSettingsScales *self) {
+    g_debug(
+        "quick_settings_scales.c:on_active_source_button_clicked() called.");
+
+    WirePlumberService *wp = wire_plumber_service_get_global();
+    if (!self->active_source_node) return;
+    if (!self->active_source_node->mute)
+        wire_plumber_service_volume_mute(wp, self->active_source_node);
+    else
+        wire_plumber_service_volume_unmute(wp, self->active_source_node);
+}
+
 static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     // create container
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -303,18 +331,24 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     gtk_widget_set_name(GTK_WIDGET(self->default_sink_container),
                         "default-sink-container");
 
-    gtk_widget_add_controller(GTK_WIDGET(self->default_sink_container),
+    gtk_widget_add_controller(GTK_WIDGET(self->default_sink_scale),
                               GTK_EVENT_CONTROLLER(self->default_sink_ctlr));
 
-    self->default_sink_icon =
-        GTK_IMAGE(gtk_image_new_from_icon_name("audio-volume-muted-symbolic"));
+    self->default_sink_button = GTK_BUTTON(
+        gtk_button_new_from_icon_name("audio-volume-muted-symbolic"));
+
+    g_signal_connect(self->default_sink_button, "clicked",
+                     G_CALLBACK(on_default_sink_button_clicked), self);
+
+    self->default_sink_icon = GTK_IMAGE(
+        gtk_widget_get_first_child(GTK_WIDGET(self->default_sink_button)));
 
     self->default_sink_scale = GTK_SCALE(
         gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1, 0.05));
     gtk_widget_set_hexpand(GTK_WIDGET(self->default_sink_scale), true);
 
     gtk_box_append(self->default_sink_container,
-                   GTK_WIDGET(self->default_sink_icon));
+                   GTK_WIDGET(self->default_sink_button));
     gtk_box_append(self->default_sink_container,
                    GTK_WIDGET(self->default_sink_scale));
 
@@ -338,18 +372,24 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     // start source as hidden
     gtk_widget_set_visible(GTK_WIDGET(self->default_source_container), false);
 
-    gtk_widget_add_controller(GTK_WIDGET(self->default_source_container),
+    gtk_widget_add_controller(GTK_WIDGET(self->default_source_scale),
                               GTK_EVENT_CONTROLLER(self->default_source_ctlr));
 
     self->default_source_scale = GTK_SCALE(
         gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1, 0.05));
     gtk_widget_set_hexpand(GTK_WIDGET(self->default_source_scale), true);
 
+    self->default_source_button = GTK_BUTTON(
+        gtk_button_new_from_icon_name("microphone-muted-high-symbolic"));
+
+    g_signal_connect(self->default_source_button, "clicked",
+                     G_CALLBACK(on_active_source_button_clicked), self);
+
     self->default_source_icon = GTK_IMAGE(
-        gtk_image_new_from_icon_name("microphone-muted-high-symbolic"));
+        gtk_widget_get_first_child(GTK_WIDGET(self->default_source_button)));
 
     gtk_box_append(self->default_source_container,
-                   GTK_WIDGET(self->default_source_icon));
+                   GTK_WIDGET(self->default_source_button));
     gtk_box_append(self->default_source_container,
                    GTK_WIDGET(self->default_source_scale));
 
@@ -394,11 +434,14 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
         gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1, 0.05));
     gtk_widget_set_hexpand(GTK_WIDGET(self->brightness_scale), true);
 
+    self->brightness_button = GTK_BUTTON(
+        gtk_button_new_from_icon_name(brightness_service_map_icon(bs)));
+
     self->brightness_icon = GTK_IMAGE(
-        gtk_image_new_from_icon_name(brightness_service_map_icon(bs)));
+        gtk_widget_get_first_child(GTK_WIDGET(self->brightness_button)));
 
     gtk_box_append(self->brightness_container,
-                   GTK_WIDGET(self->brightness_icon));
+                   GTK_WIDGET(self->brightness_button));
     gtk_box_append(self->brightness_container,
                    GTK_WIDGET(self->brightness_scale));
 

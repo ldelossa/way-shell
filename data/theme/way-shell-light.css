@@ -449,6 +449,16 @@ statuspage {
   padding: 10px;
 }
 
+#quick-settings #quick-settings-scales button {
+    margin: 2px;
+    background-color: @transparent;
+}
+
+#quick-settings #quick-settings-scales button:hover {
+    margin: 2px;
+    background-color: @panel-button-hover;
+}
+
 #quick-settings #quick-settings-grid {
   margin: 20px;
 }
