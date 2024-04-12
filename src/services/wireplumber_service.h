@@ -125,6 +125,7 @@ typedef struct WirePlumberServiceNode {
     gdouble step;
     gdouble base;
     WpNodeState state;
+    gdouble last_volume;
 } WirePlumberServiceNode;
 
 // A Pipewire Node inventoried by the WirePlumberService.
@@ -183,7 +184,7 @@ void wire_plumber_service_volume_down(WirePlumberService *self,
                                       const WirePlumberServiceNode *node);
 
 void wire_plumber_service_volume_mute(WirePlumberService *self,
-                                      const WirePlumberServiceNode *node);
+                                      WirePlumberServiceNode *node);
 
 void wire_plumber_service_volume_unmute(WirePlumberService *self,
                                         const WirePlumberServiceNode *node);
