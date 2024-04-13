@@ -11,6 +11,7 @@ static int root_exec(void *ctx, uint8_t argc, char **argv) {
         "\tvolume\n"
         "\tbrightness\n"
         "\ttheme\n"
+        "\tactivities\n"
 	);
     return 0;
 };

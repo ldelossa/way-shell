@@ -8,7 +8,8 @@ DEPS := libadwaita-1 \
 		libpulse-simple \
 		libpulse-mainloop-glib \
 		wayland-client \
-		wayland-protocols
+		wayland-protocols \
+		gio-unix-2.0
 CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
 # order is important here, if libwayland is linked before gtk4 layer shell
 # bad things happen.

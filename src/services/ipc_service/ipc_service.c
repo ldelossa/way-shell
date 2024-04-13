@@ -4,6 +4,7 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "../../activities/activities.h"
 #include "../../gresources.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
@@ -215,14 +216,53 @@ static gboolean ipc_cmd_dump_light_theme() {
     GError *error = NULL;
     g_file_set_contents(light_theme_path, light_theme, size, &error);
     if (error) {
-		g_debug(
-			"ipc_service.c:ipc_cmd_dump_light_theme() failed to dump light "
-			"theme %s",
-			error->message);
+        g_debug(
+            "ipc_service.c:ipc_cmd_dump_light_theme() failed to dump light "
+            "theme %s",
+            error->message);
         return false;
     }
     return true;
 };
+
+static gboolean ip_cmd_activities_show() {
+    g_debug("ipc_service.c:ip_cmd_activities_show()");
+
+    Activities *a = activities_get_global();
+    if (!a) {
+        return false;
+    }
+
+    activities_show(a);
+
+    return true;
+}
+
+static gboolean ip_cmd_activities_hide() {
+    g_debug("ipc_service.c:ip_cmd_activities_hide()");
+
+    Activities *a = activities_get_global();
+    if (!a) {
+        return false;
+    }
+
+    activities_hide(a);
+
+    return true;
+}
+
+static gboolean ip_cmd_activities_toggle() {
+    g_debug("ipc_service.c:ip_cmd_activities_toggle()");
+
+    Activities *a = activities_get_global();
+    if (!a) {
+        return false;
+    }
+
+    activities_toggle(a);
+
+    return true;
+}
 
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
@@ -313,6 +353,24 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "IPC_CMD_DUMP_LIGHT_THEME");
             ret = ipc_cmd_dump_light_theme();
             break;
+        case IPC_CMD_ACTIVITIES_SHOW:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_ACTIVITIES_SHOW");
+            ret = ip_cmd_activities_show();
+            break;
+        case IPC_CMD_ACTIVITIES_HIDE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_ACTIVITIES_HIDE");
+            ret = ip_cmd_activities_hide();
+            break;
+        case IPC_CMD_ACTIVITIES_TOGGLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_ACTIVITIES_TOGGLE");
+            ret = ip_cmd_activities_toggle();
+            break;
         default:
             goto skip_resp;
             break;
@@ -326,6 +384,8 @@ skip_resp:
 }
 
 static int ipc_service_setup_ipc_sock(IPCService *self) {
+    g_debug("ipc_service.c:ipc_service_setup_ipc_sock() called");
+
     // we need to find an "XDG_RUNTIME_DIR" for the current user
     char *xdg_runtime_dir = g_strdup(g_getenv("XDG_RUNTIME_DIR"));
     if (!xdg_runtime_dir) {

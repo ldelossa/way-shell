@@ -161,7 +161,7 @@ static void quick_settings_init_layout(QuickSettings *self) {
     // setup ADW window
     self->win = ADW_WINDOW(adw_window_new());
     g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);
-    gtk_widget_set_size_request(GTK_WIDGET(self->win), 400, 200);
+    gtk_widget_set_size_request(GTK_WIDGET(self->win), 400, 280);
 
     // configure layer shell properties of window.
     gtk_layer_init_for_window(GTK_WINDOW(self->win));

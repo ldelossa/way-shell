@@ -27,6 +27,7 @@
 @define-color quick-settings-button-hover #62a0ea;
 @define-color quick-settings-menu-option #555555;
 @define-color quick-settings-menu-option-hover #9a9996;
+@define-color text-general #ffffff;
 @define-color success #26a269;
 @define-color failure #ed333b;
 
@@ -82,6 +83,10 @@
   background-color: @panel-background;
   font-weight: normal;
   transition-duration: 250ms;
+}
+
+#panel.activities-visible {
+  background-color: @base-panel-background;
 }
 
 #panel .panel-button label {
@@ -480,8 +485,8 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button-icon {
-  padding: 4px;
-  margin: 3px;
+  padding: 8px;
+  margin: 4px;
 }
 
 #quick-settings .quick-settings-grid-button-toggle {
@@ -529,7 +534,7 @@ label.day-number.today:focus {
 
 #quick-settings .quick-settings-grid-button-subtitle {
   font-weight: normal;
-  font-size: 12px;
+  font-size: 14px;
 }
 
 #quick-settings #quick-settings-grid .quick-settings-grid-button-transparent * {
@@ -668,4 +673,46 @@ label.day-number.today:focus {
 
 #quick-settings-menu #container #options-container .mixer-link {
   margin-left: 38px;
+}
+
+/*
+ * Activities Widget
+ */
+#activities {
+  background: @transparent;
+}
+
+#activities button {
+  background: @base-panel-background;
+}
+
+#activities #activities-container {
+  background: @base-panel-background;
+  color: @text-general;
+}
+
+#activities #activities-container #search-container #search-entry {
+    border-radius: 99px;
+    color: @text-general;
+    margin: 40px;
+}
+
+#activities .activities-app-widget button:hover {
+    background: @panel-button-hover;
+    border-radius: 40px;
+}
+
+#activities .activities-workspace-overlay label {
+    font-weight: bold;
+    color: @text-general;
+}
+
+#activities .activities-workspace-button {
+    background: @top-panel-background;
+    padding: 12px;
+	margin: 4px;
+}
+
+#activities .activities-workspace-button:hover {
+    background: @panel-button-hover;
 }

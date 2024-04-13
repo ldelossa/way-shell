@@ -5,8 +5,8 @@
 #include "../quick_settings.h"
 #include "./quick_settings_grid_idle_inhibitor.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
-#include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "./quick_settings_grid_theme.h"
+#include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_ethernet.h"
 
@@ -42,7 +42,7 @@ void quick_settings_grid_button_init(
 
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_hexpand(GTK_WIDGET(self->container), TRUE);
-    gtk_widget_set_size_request(GTK_WIDGET(self->container), 100, 50);
+    gtk_widget_set_size_request(GTK_WIDGET(self->container), 100, 60);
     gtk_widget_add_css_class(GTK_WIDGET(self->container),
                              "quick-settings-grid-button");
 
@@ -63,6 +63,7 @@ void quick_settings_grid_button_init(
     // create and append icon
     if (icon_name) {
         self->icon = GTK_IMAGE(gtk_image_new_from_icon_name(icon_name));
+        gtk_image_set_pixel_size(self->icon, 20);
         gtk_widget_add_css_class(GTK_WIDGET(self->icon),
                                  "quick-settings-grid-button-icon");
         // left align
@@ -189,6 +190,5 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
             quick_settings_grid_theme_button_free(
                 (QuickSettingsGridOneThemeButton *)self);
             break;
-
     }
 }

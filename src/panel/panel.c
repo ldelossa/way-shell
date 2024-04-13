@@ -4,6 +4,7 @@
 #include <gdk/wayland/gdkwayland.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
+#include "../activities/activities.h"
 #include "./panel_status_bar/panel_status_bar.h"
 #include "message_tray/message_tray_mediator.h"
 #include "panel_clock.h"
@@ -35,8 +36,24 @@ struct _Panel {
 };
 G_DEFINE_TYPE(Panel, panel, G_TYPE_OBJECT)
 
+static void on_overlay_visible(Activities *a, Panel *self) {
+    g_debug("panel.c:on_activites_visible() called.");
+    gtk_widget_add_css_class(GTK_WIDGET(self->container), "activities-visible");
+}
+
+static void on_overlay_hidden(Activities *a, Panel *self) {
+    g_debug("panel.c:on_activites_hidden() called.");
+    gtk_widget_remove_css_class(GTK_WIDGET(self->container),
+                                "activities-visible");
+}
+
 static void panel_dispose(GObject *gobject) {
     Panel *self = PANEL_PANEL(gobject);
+
+    // kill signals
+    Activities *a = activities_get_global();
+    g_signal_handlers_disconnect_by_func(a, on_overlay_visible, self);
+    g_signal_handlers_disconnect_by_func(a, on_overlay_hidden, self);
 
     g_object_unref(self->status_bar);
     g_object_unref(self->ws_bar);
@@ -121,6 +138,15 @@ void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
     panel_init_workspaces_bar(self);
     panel_init_panel_clock(self);
     panel_init_status_bar(self);
+
+    Activities *a = activities_get_global();
+
+    // listen for activities-visible
+    g_signal_connect(a, "activities-will-show", G_CALLBACK(on_overlay_visible),
+                     self);
+    // listen for activities-hidden
+    g_signal_connect(a, "activities-will-hide", G_CALLBACK(on_overlay_hidden),
+                     self);
 }
 
 // Iterates over the monitors GListModel, creating panels for any new monitors.
@@ -145,10 +171,10 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
     g_hash_table_iter_init(&iter, panels);
     while (g_hash_table_iter_next(&iter, &key, &value)) {
         Panel *panel = PANEL_PANEL(value);
-    	g_object_unref(panel);
+        g_object_unref(panel);
         gtk_window_destroy(GTK_WINDOW(panel->win));
     }
-	g_hash_table_remove_all(panels);
+    g_hash_table_remove_all(panels);
 
     for (uint8_t i = 0; i < n; i++) {
         GdkMonitor *mon = g_list_model_get_item(monitors, i);

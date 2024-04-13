@@ -15,7 +15,10 @@ enum IPCCommands : uint32_t {
 	IPC_CMD_THEME_DARK,
 	IPC_CMD_THEME_LIGHT,
 	IPC_CMD_DUMP_DARK_THEME,
-	IPC_CMD_DUMP_LIGHT_THEME
+	IPC_CMD_DUMP_LIGHT_THEME,
+    IPC_CMD_ACTIVITIES_SHOW,
+    IPC_CMD_ACTIVITIES_HIDE,
+    IPC_CMD_ACTIVITIES_TOGGLE,
 };
 
 typedef struct _IPCHeader {
@@ -66,3 +69,15 @@ typedef struct _IPCDumpDarkTheme {
 typedef struct _IPCDumpLightTheme {
 	IPCHeader header;
 } IPCDumpLightTheme;
+
+typedef struct _IPCActivitiesShow {
+    IPCHeader header;
+} IPCActivitiesShow;
+
+typedef struct _IPCActivitiesHide {
+    IPCHeader header;
+} IPCActivitiesHide;
+
+typedef struct _IPCActivitiesToggle {
+    IPCHeader header;
+} IPCActivitiesToggle;

@@ -49,3 +49,8 @@ cmd_tree_node_t *brightness_cmd();
 //
 // Subcommands off this node deal with adjusting Way-Shell' theme.
 cmd_tree_node_t *theme_cmd();
+
+// The Activities command
+//
+// Subcommands off this node deal with showing and hiding the Activities widget.
+cmd_tree_node_t *activities_cmd();
