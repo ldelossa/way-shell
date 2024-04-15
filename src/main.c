@@ -1,6 +1,7 @@
 #include <adwaita.h>
 
 #include "./activities/activities.h"
+#include "./dialog_overlay/dialog_overlay.h"
 #include "./osd/osd.h"
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/message_tray/message_tray_mediator.h"
@@ -115,6 +116,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
     // Subsystem activation //
 
     g_debug("main.c: activate(): activating subsystems");
+
+    dialog_overlay_activate(app, user_data);
+    g_debug("main.c: activate(): dialog_overlay subsystems activated");
 
     activities_activate(app, user_data);
     g_debug("main.c: activate(): activities subsystems activated");

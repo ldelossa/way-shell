@@ -7,6 +7,7 @@
 @define-color scale-trough-highlight #3584e4;
 @define-color osd-icon-image #303030;
 @define-color underlay-background rgba(0, 0, 0, 0.1);
+@define-color underlay-background-heavy rgba(0, 0, 0, 0.5);
 @define-color box-shadow rgba(0, 0, 0, 0.2);
 @define-color panel-background #ffffff;
 @define-color panel-button-color #3d3846;
@@ -715,4 +716,50 @@ statuspage {
 
 #activities .activities-workspace-button:hover {
     background: @panel-button-hover;
+}
+
+/*
+ * Dialog Overlay
+ */
+#dialog-overlay {
+    background: @underlay-background-heavy
+}
+
+#dialog-overlay #dialog-overlay-container {
+    background: @base-panel-background;
+    color: @text-general;
+    border-radius: 10px;
+}
+
+#dialog-overlay #dialog-overlay-container .dialog-overlay-heading {
+    font-size: 24px;
+    font-weight: bold;
+    padding: 14px;
+    margin: 4px;
+    margin-top: 12px;
+}
+
+#dialog-overlay #dialog-overlay-container .dialog-overlay-body {
+    font-size: 16px;
+    padding: 8px;
+    margin: 4px;
+}
+
+#dialog-overlay #dialog-overlay-container button:hover {
+    background: @panel-button-hover;
+}
+
+#dialog-overlay #dialog-overlay-container .dialog-overlay-confirm, .dialog-overlay-cancel {
+    padding: 0px;
+    margin-top: 14px;
+    border-radius: 0px;
+    background: @transparent;
+    border-top: 1px solid @top-panel-background;
+}
+
+#dialog-overlay #dialog-overlay-container .dialog-overlay-cancel {
+    border-right: 1px solid @top-panel-background;
+}
+#dialog-overlay #dialog-overlay-container .dialog-overlay-confirm {
+	color: @success;
 }

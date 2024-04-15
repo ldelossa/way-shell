@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 
+#include "../../../dialog_overlay/dialog_overlay.h"
 #include "../../../services/logind_service/logind_service.h"
 #include "../quick_settings.h"
 #include "../quick_settings_mediator.h"
@@ -44,18 +45,13 @@ static void quick_settings_power_menu_class_init(
     object_class->finalize = quick_settings_power_menu_finalize;
 };
 
-static void on_suspend_clicked(GtkButton *button,
-                               QuickSettingsPowerMenu *self) {
-    g_debug("quick_settings_power_menu.c:on_suspend_clicked():");
-
+static void suspend_callback() {
     gchar *suspend_method = NULL;
     GSettings *setting = g_settings_new("org.ldelossa.way-shell.system");
 
     suspend_method = g_settings_get_string(setting, "suspend-method");
 
     LogindService *logind = logind_service_get_global();
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    quick_settings_mediator_req_close(qs);
 
     // check if suspention method is actually available from logind
     if (strcmp(suspend_method, "suspend") == 0) {
@@ -97,16 +93,55 @@ static void on_suspend_clicked(GtkButton *button,
     }
 }
 
+static void on_suspend_clicked(GtkButton *button,
+                               QuickSettingsPowerMenu *self) {
+    g_debug("quick_settings_power_menu.c:on_suspend_clicked():");
+
+    DialogOverlay *dialog = dialog_overlay_get_global();
+    if (!dialog) {
+        g_error(
+            "quick_settings_power_menu.c:on_suspend_clicked(): "
+            "dialog_overlay_get_global() returned NULL.");
+    }
+
+    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    quick_settings_mediator_req_close(qs);
+
+    dialog_overlay_present(dialog, "Suspend?",
+                           "Are you sure you want to suspend?",
+                           G_CALLBACK(suspend_callback));
+}
+
+static void restart_callback() {
+    LogindService *logind = logind_service_get_global();
+    if (logind_service_can_reboot(logind)) {
+        logind_service_reboot(logind);
+    }
+}
+
 static void on_restart_clicked(GtkButton *button,
                                QuickSettingsPowerMenu *self) {
     g_debug("quick_settings_power_menu.c:on_restart_clicked():");
 
-    LogindService *logind = logind_service_get_global();
+    DialogOverlay *dialog = dialog_overlay_get_global();
+    if (!dialog) {
+        g_error(
+            "quick_settings_power_menu.c:on_restart_clicked(): "
+            "dialog_overlay_get_global() returned NULL.");
+    }
+
     QuickSettingsMediator *qs = quick_settings_get_global_mediator();
     quick_settings_mediator_req_close(qs);
 
-    if (logind_service_can_reboot(logind)) {
-        logind_service_reboot(logind);
+    dialog_overlay_present(dialog, "Restart?",
+                           "Are you sure you want to restart?",
+                           G_CALLBACK(restart_callback));
+}
+
+static void poweroff_callback() {
+    LogindService *logind = logind_service_get_global();
+    if (logind_service_can_power_off(logind)) {
+        logind_service_power_off(logind);
     }
 }
 
@@ -114,23 +149,42 @@ static void on_poweroff_clicked(GtkButton *button,
                                 QuickSettingsPowerMenu *self) {
     g_debug("quick_settings_power_menu.c:on_poweroff_clicked():");
 
-    LogindService *logind = logind_service_get_global();
     QuickSettingsMediator *qs = quick_settings_get_global_mediator();
     quick_settings_mediator_req_close(qs);
 
-    if (logind_service_can_power_off(logind)) {
-        logind_service_power_off(logind);
+    DialogOverlay *dialog = dialog_overlay_get_global();
+    if (!dialog) {
+        g_error(
+            "quick_settings_power_menu.c:on_poweroff_clicked(): "
+            "dialog_overlay_get_global() returned NULL.");
     }
+
+    dialog_overlay_present(dialog, "Power Off?",
+                           "Are you sure you want to power off?",
+                           G_CALLBACK(poweroff_callback));
+}
+
+static void logout_callback() {
+    LogindService *logind = logind_service_get_global();
+    logind_service_kill_session(logind);
 }
 
 static void on_logout_clicked(GtkButton *button, QuickSettingsPowerMenu *self) {
     g_debug("quick_settings_power_menu.c:on_logout_clicked():");
 
-    LogindService *logind = logind_service_get_global();
     QuickSettingsMediator *qs = quick_settings_get_global_mediator();
     quick_settings_mediator_req_close(qs);
 
-    logind_service_kill_session(logind);
+    DialogOverlay *dialog = dialog_overlay_get_global();
+    if (!dialog) {
+        g_error(
+            "quick_settings_power_menu.c:on_logout_clicked(): "
+            "dialog_overlay_get_global() returned NULL.");
+    }
+
+    dialog_overlay_present(dialog, "Log Out?",
+                           "Are you sure you want to log out?",
+                           G_CALLBACK(logout_callback));
 }
 
 static void on_power_button_clicked(GtkButton *button, GtkRevealer *revealer) {
