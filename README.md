@@ -106,11 +106,8 @@ bindsym XF86MonBrightnessUp exec way-sh brightness up
 - [x] Media Player integration (control DBus announced media players)
 - [ ] Bluetooth integration (pair with discoverable bluetooth devices)
 - [x] Themeing (provide CSS override directory, light/dark theme switch button, and allow a script to be ran after the theme is switched)
-
-## Road to v2.0
-
 - [ ] Figure out proper rpm and deb packaging
 - [ ] Lock Screen (Wayland protocol based) implementation
 - [ ] App/Workspace switcher (alt+tab replacement)
-- [ ] Workspace Overview/Application launcher overlay widget
+- [x] Workspace Overview/Application launcher overlay widget
 - [ ] Option to turn on idle inhibitor when video/audio sources are detected.
