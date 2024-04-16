@@ -74,11 +74,27 @@ static void handle_ipc_get_workspaces(WMServiceSway *self,
 
     // check 'sort-alphabetical' setting and if true sort
     if (g_settings_get_boolean(self->settings, "sort-workspaces-alphabetical"))
-        g_ptr_array_sort(self->workspaces, (GCompareFunc)compare_workspace_name);
+        g_ptr_array_sort(self->workspaces,
+                         (GCompareFunc)compare_workspace_name);
 
     // emit signal
     g_signal_emit(self, service_signals[workspaces_changed], 0,
                   self->workspaces);
+}
+
+static void launch_on_workspace_new_script(gchar *name) {
+    // determine if XDG_CONFIG_DIR/way-shell/on_workspace_new.sh file exists
+    // if it does, execute it with the workspace name as the first argument.
+    gchar *path = g_build_filename(g_get_user_config_dir(), "way-shell",
+                                   "on_workspace_new.sh", NULL);
+    if (!g_file_test(path,
+                     G_FILE_TEST_IS_REGULAR | G_FILE_TEST_IS_EXECUTABLE)) {
+        g_free(path);
+        return;
+    }
+
+    g_spawn_command_line_async(g_strdup_printf("%s %s", path, name), NULL);
+    g_free(path);
 }
 
 static void handle_ipc_event_workspaces(WMServiceSway *self,
@@ -89,6 +105,14 @@ static void handle_ipc_event_workspaces(WMServiceSway *self,
     g_debug(
         "window_manager_service_sway.c:handle_ipc_event_workspaces() "
         "received workspace event, getting latest workspace listing.");
+
+    // we still want to determine if this is a new workspace and if it is
+    // run our "on_workspace_new.sh" script.
+    WMWorkspaceEvent *event = sway_client_ipc_event_workspace_resp(msg);
+    if (event->type == WMWORKSPACE_EVENT_CREATED) {
+        launch_on_workspace_new_script(event->workspace.name);
+    }
+
     sway_client_ipc_get_workspaces_req(self->socket_fd);
 };
 
@@ -161,7 +185,6 @@ static void on_sort_alphabetical_changed(GSettings *settings, gchar *key,
     // perform workspaces request
     sway_client_ipc_get_workspaces_req(self->socket_fd);
 }
-
 
 static void wm_service_sway_init(WMServiceSway *self) {
     self->socket_path = sway_client_find_socket_path();
