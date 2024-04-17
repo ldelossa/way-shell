@@ -533,6 +533,10 @@ label.day-number.today:focus {
   color: #ffffff;
 }
 
+#quick-settings .with-subtitle .quick-settings-grid-button-title {
+    margin-top: 2px;
+}
+
 #quick-settings .quick-settings-grid-button-subtitle {
   font-weight: normal;
   font-size: 14px;
