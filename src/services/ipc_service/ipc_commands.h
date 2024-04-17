@@ -19,6 +19,10 @@ enum IPCCommands : uint32_t {
     IPC_CMD_ACTIVITIES_SHOW,
     IPC_CMD_ACTIVITIES_HIDE,
     IPC_CMD_ACTIVITIES_TOGGLE,
+    IPC_CMD_APP_SWITCHER_SHOW,
+    IPC_CMD_APP_SWITCHER_HIDE,
+    IPC_CMD_APP_SWITCHER_TOGGLE,
+
 };
 
 typedef struct _IPCHeader {
@@ -81,3 +85,15 @@ typedef struct _IPCActivitiesHide {
 typedef struct _IPCActivitiesToggle {
     IPCHeader header;
 } IPCActivitiesToggle;
+
+typedef struct _IPCAppSwitcherShow {
+    IPCHeader header;
+} IPCAppSwitcherShow;
+
+typedef struct _IPCAppSwitcherHide {
+    IPCHeader header;
+} IPCAppSwitcherHide;
+
+typedef struct _IPCAppSwitcherToggle {
+    IPCHeader header;
+} IPCAppSwitcherToggle;

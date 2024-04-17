@@ -19,7 +19,7 @@ SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
 
-all: gresources way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
+all: wlr-protocols gschema gresources way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
 
 install: all gschema
 
@@ -40,6 +40,13 @@ gresources:
 gschema: ./data/org.ldelossa.way-shell.gschema.xml
 	sudo cp data/org.ldelossa.way-shell.gschema.xml /usr/share/glib-2.0/schemas/
 	sudo glib-compile-schemas /usr/share/glib-2.0/schemas/
+
+.PHONY:
+wlr-protocols:
+	wayland-scanner client-header < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland_service/wlr-foreign-toplevel-management-unstable-v1.h
+	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland_service/wlr-foreign-toplevel-management-unstable-v1.c
+	wayland-scanner client-header < ./data/wlr-protocols/unstable/wlr-input-inhibitor-unstable-v1.xml > ./src/services/wayland_service/wlr-input-inhibitor-unstable-v1.h
+	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-input-inhibitor-unstable-v1.xml > ./src/services/wayland_service/wlr-input-inhibitor-unstable-v1.c
 
 .PHONY:
 way-sh/way-sh:

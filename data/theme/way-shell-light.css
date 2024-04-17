@@ -12,6 +12,7 @@
 @define-color panel-background #ffffff;
 @define-color panel-button-color #3d3846;
 @define-color panel-button-hover rgba(35, 35, 35, 0.25);
+@define-color panel-button-hover2 rgba(45, 45, 45, 0.45);
 @define-color panel-button-active rgba(35, 35, 35, 0.35);
 @define-color scrolled-window-undershoot rgba(35, 35, 35, .35);
 @define-color workspace-button-start-gradient #7dafe8;
@@ -537,6 +538,10 @@ statuspage {
   color: #ffffff;
 }
 
+#quick-settings .with-subtitle .quick-settings-grid-button-title {
+    margin-top: 2px;
+}
+
 #quick-settings .quick-settings-grid-button-subtitle {
   font-weight: normal;
   font-size: 14px;
@@ -762,4 +767,46 @@ statuspage {
 }
 #dialog-overlay #dialog-overlay-container .dialog-overlay-confirm {
 	color: @success;
+}
+
+/*
+ * App Switcher
+ */
+
+#app-switcher {
+    color: @text-general;
+    background: @base-panel-background;
+}
+
+#app-switcher #app-switcher-list {
+    margin: 10px;
+}
+
+#app-switcher, .app-switcher-app-widget-instances-win {
+    border-radius: 20px;
+}
+
+#app-switcher .app-switcher-app-widget-button {
+    background: @base-panel-background;
+    border-radius: 20px;
+    padding: 6px;
+    margin: 6px;
+}
+
+#app-switcher .app-switcher-app-widget-button.selected {
+    background: @panel-button-hover;
+}
+
+#app-switcher .app-switcher-app-widget-button.selected:hover {
+    background: @panel-button-hover2;
+}
+
+#app-switcher button:hover {
+    background: @top-panel-background;
+}
+
+#app-switcher .app-switcher-app-widget label {
+    margin: 2px;
+    padding: 2px;
+    font-size: 12px;
 }

@@ -71,6 +71,7 @@ void quick_settings_grid_button_init(
         gtk_box_append(button_contents, GTK_WIDGET(self->icon));
     }
     GtkBox *text_area = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
+    gtk_widget_add_css_class(GTK_WIDGET(self->toggle), "with-subtitle");
     if (title) {
         self->title = GTK_LABEL(gtk_label_new(title));
         gtk_label_set_ellipsize(self->title, PANGO_ELLIPSIZE_END);
@@ -99,6 +100,7 @@ void quick_settings_grid_button_init(
     if (!subtitle) {
         gtk_widget_set_vexpand(GTK_WIDGET(self->title), TRUE);
         gtk_widget_set_valign(GTK_WIDGET(self->title), GTK_ALIGN_CENTER);
+        gtk_widget_remove_css_class(GTK_WIDGET(self->toggle), "with-subtitle");
     }
     gtk_box_append(button_contents, GTK_WIDGET(text_area));
     gtk_button_set_child(self->toggle, GTK_WIDGET(button_contents));
@@ -114,6 +116,7 @@ void quick_settings_grid_button_init(
                              "quick-settings-grid-button-revealer");
 
     if (self->reveal_widget) {
+        gtk_widget_add_css_class(GTK_WIDGET(self->toggle), "with-revealer");
         self->reveal_button =
             GTK_BUTTON(gtk_button_new_from_icon_name("go-next-symbolic"));
         gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),

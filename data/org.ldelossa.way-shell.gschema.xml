@@ -70,6 +70,37 @@
             desktop wallpaper image is desired.
             </description>
         </key>
+        <key name="ignored-toplevels-app-ids" type="s">
+            <default>""</default>
+            <summary>A colon separated list of app-ids to ignore.</summary>
+            <description>
+            Way-Shell will ignore any Wayland toplevel with an app-id field
+            matching any string in this list.
+            Way-Shell will not be informed about the creation or closing of
+            these toplevels.
+            The app-id should be the string provided by
+            the zwlr_foreign_toplevel_handle_v1 Wayland object.
+
+            Request restart to take effect.
+            </description>
+        </key>
+        <key name="ignored-toplevels-titles" type="s">
+            <default>"scratchpad"</default>
+            <summary>A colon separated list of title to ignore.</summary>
+            <description>
+            Way-Shell will ignore any Wayland toplevel with a title field
+            matching any string in this list.
+            Way-Shell will not be informed about the creation or closing of
+            these toplevels.
+            The title should be the string provided by the
+            zwlr_foreign_toplevel_handle_v1 Wayland object.
+
+            By default any window with a permanent title of "scratchpad" is
+            ignored.
+
+            Request restart to take effect.
+            </description>
+        </key>
     </schema>
 
     <!--notification related settings-->
@@ -80,6 +111,5 @@
             <description>Enable or disable on-screen notifications.</description>
         </key>
     </schema>
-
 
 </schemalist>

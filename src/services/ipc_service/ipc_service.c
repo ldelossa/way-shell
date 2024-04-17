@@ -5,6 +5,7 @@
 #include <sys/un.h>
 
 #include "../../activities/activities.h"
+#include "../../app_switcher/app_switcher.h"
 #include "../../gresources.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
@@ -264,6 +265,45 @@ static gboolean ip_cmd_activities_toggle() {
     return true;
 }
 
+static gboolean ip_cmd_app_switcher_show() {
+    g_debug("ipc_service.c:ip_cmd_app_switcher_show()");
+
+    AppSwitcher *a = app_switcher_get_global();
+    if (!a) {
+        return false;
+    }
+
+    app_switcher_show(a);
+
+    return true;
+}
+
+static gboolean ip_cmd_app_switcher_hide() {
+    g_debug("ipc_service.c:ip_cmd_app_switcher_hide()");
+
+    AppSwitcher *a = app_switcher_get_global();
+    if (!a) {
+        return false;
+    }
+
+    app_switcher_hide(a);
+
+    return true;
+}
+
+static gboolean ip_cmd_app_switcher_toggle() {
+    g_debug("ipc_service.c:ip_cmd_app_switcher_toggle()");
+
+    AppSwitcher *a = app_switcher_get_global();
+    if (!a) {
+        return false;
+    }
+
+    app_switcher_toggle(a);
+
+    return true;
+}
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -370,6 +410,24 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_ACTIVITIES_TOGGLE");
             ret = ip_cmd_activities_toggle();
+            break;
+        case IPC_CMD_APP_SWITCHER_SHOW:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_APP_SWITCHER_SHOW");
+            ret = ip_cmd_app_switcher_show();
+            break;
+        case IPC_CMD_APP_SWITCHER_HIDE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_APP_SWITCHER_HIDE");
+            ret = ip_cmd_app_switcher_hide();
+            break;
+        case IPC_CMD_APP_SWITCHER_TOGGLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_APP_SWITCHER_TOGGLE");
+            ret = ip_cmd_app_switcher_toggle();
             break;
         default:
             goto skip_resp;

@@ -54,3 +54,8 @@ cmd_tree_node_t *theme_cmd();
 //
 // Subcommands off this node deal with showing and hiding the Activities widget.
 cmd_tree_node_t *activities_cmd();
+
+// The App Switcher command
+//
+// Subcommands off this node deal with showing and hiding the App Switcher widget.
+cmd_tree_node_t *app_switcher_cmd();
