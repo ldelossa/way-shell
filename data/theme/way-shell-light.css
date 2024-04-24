@@ -147,7 +147,7 @@
 #panel #workspaces-bar-list {
   font-weight: normal;
   font-size: 12px;
-  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset -1px -1px 3px rgba(255, 255, 255, 0.04);
+  box-shadow: inset 1px 1px 3px rgba(0, 0, 0, 0.3), inset 0px 0px 0px rgba(255, 255, 255, 0.04);
 }
 
 #panel #workspaces-bar-list .panel-button {
@@ -809,4 +809,35 @@ statuspage {
     margin: 2px;
     padding: 2px;
     font-size: 12px;
+}
+
+/*
+ * Workspace Switcher
+ */
+
+#workspace-switcher {
+    color: @text-general;
+    background: @base-panel-background;
+    font-size: 24px;
+    border-radius: 20px;
+}
+
+#workspace-switcher .workspace-entry {
+    color: @text-general;
+    padding: 4px;
+    margin: 4px;
+}
+
+#workspace-switcher #search-entry {
+    margin: 20px;
+    margin-bottom: 0px;
+    padding: 8px;
+    border-radius: 10px;
+    font-size: 24px;
+}
+
+#workspace-switcher #workspace-list {
+    background: @top-panel-background;
+    margin: 20px;
+    border-radius: 8px;
 }

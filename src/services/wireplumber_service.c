@@ -6,7 +6,8 @@
 #include <pulse/glib-mainloop.h>
 #include <pulse/introspect.h>
 #include <pulse/pulseaudio.h>
-#include <wireplumber-0.4/wp/wp.h>
+#include <wireplumber-0.5/wp/component-loader.h>
+#include <wireplumber-0.5/wp/wp.h>
 
 #include "wp/core.h"
 #include "wp/global-proxy.h"
@@ -720,10 +721,60 @@ static void on_core_disconnect(WpCore *core, WirePlumberService *self) {
     g_timeout_add_seconds(5, wire_plumber_service_connect_retry, self);
 }
 
+void on_default_nodes_api(GObject *source_object, GAsyncResult *res,
+                          gpointer data) {
+    // check res and if failure g_error
+
+    GError *error = NULL;
+    if (!wp_core_load_component_finish(WP_CORE(source_object), res, &error)) {
+        g_error(
+            "wireplumber_service.c:on_default_nodes_api() failed to load "
+            "default-nodes-api plugin: %s",
+            error->message);
+    }
+
+    WirePlumberService *self = (WirePlumberService *)data;
+    // get the default nodes api plugin
+    self->default_nodes_api = wp_plugin_find(self->core, "default-nodes-api");
+    if (self->default_nodes_api == NULL) {
+        g_error(
+            "wireplumber_service.c:wire_plumber_service_init() failed to find "
+            "default-nodes-api plugin");
+    }
+
+    // activate plugins
+    wp_object_activate(WP_OBJECT(self->default_nodes_api),
+                       WP_PLUGIN_FEATURE_ENABLED, NULL,
+                       (GAsyncReadyCallback)on_plugin_activate, self);
+}
+
+void on_mixer_api_nodes_api(GObject *source_object, GAsyncResult *res,
+                            gpointer data) {
+    // check res and if failure g_error
+    GError *error = NULL;
+    if (!wp_core_load_component_finish(WP_CORE(source_object), res, &error)) {
+        g_error(
+            "wireplumber_service.c:on_mixer_api_nodes_api() failed to load "
+            "mixer-api plugin: %s",
+            error->message);
+    }
+
+    WirePlumberService *self = (WirePlumberService *)data;
+    // get the mixer api plugin
+    self->mixer_api = wp_plugin_find(self->core, "mixer-api");
+    if (self->mixer_api == NULL) {
+        g_error(
+            "wireplumber_service.c:wire_plumber_service_init() failed to find "
+            "mixer-api plugin");
+    }
+
+    wp_object_activate(WP_OBJECT(self->mixer_api), WP_PLUGIN_FEATURE_ENABLED,
+                       NULL, (GAsyncReadyCallback)on_plugin_activate, self);
+
+}
+
 gboolean wire_plumber_service_connect(WirePlumberService *self) {
     g_debug("wireplumber_service.c:wire_plumber_service_connect() called");
-
-    GError *error;
 
     wp_init(WP_INIT_PIPEWIRE);
 
@@ -742,7 +793,7 @@ gboolean wire_plumber_service_connect(WirePlumberService *self) {
     self->streams = g_ptr_array_new();
     self->links = g_ptr_array_new();
 
-    self->core = wp_core_new(NULL, NULL);
+    self->core = wp_core_new(NULL, NULL, NULL);
     self->om = wp_object_manager_new();
     self->pending_plugins = 2;
 
@@ -764,23 +815,13 @@ gboolean wire_plumber_service_connect(WirePlumberService *self) {
     wp_object_manager_add_interest_full(self->om, all_links);
 
     // load the mixer and default nodes apis.
-    if (!wp_core_load_component(self->core,
-                                "libwireplumber-module-default-nodes-api",
-                                "module", NULL, &error)) {
-        g_critical(
-            "wireplumber_service.c:wire_plumber_service_init() failed to load "
-            "default-nodes-api module: %s",
-            error->message);
-        return false;
-    }
-    if (!wp_core_load_component(self->core, "libwireplumber-module-mixer-api",
-                                "module", NULL, &error)) {
-        g_critical(
-            "wireplumber_service.c:wire_plumber_service_init() failed to load "
-            "mixer-api module: %s",
-            error->message);
-        return false;
-    }
+    wp_core_load_component(self->core,
+                           "libwireplumber-module-default-nodes-api", "module",
+                           NULL, NULL, NULL, on_default_nodes_api, self);
+
+    wp_core_load_component(self->core, "libwireplumber-module-mixer-api",
+                           "module", NULL, NULL, NULL, on_mixer_api_nodes_api,
+                           self);
 
     // make a connection to PipeWire
     if (!wp_core_connect(self->core)) {
@@ -790,34 +831,11 @@ gboolean wire_plumber_service_connect(WirePlumberService *self) {
         return false;
     }
 
-    // get the default nodes api plugin
-    self->default_nodes_api = wp_plugin_find(self->core, "default-nodes-api");
-    if (self->default_nodes_api == NULL) {
-        g_error(
-            "wireplumber_service.c:wire_plumber_service_init() failed to find "
-            "default-nodes-api plugin");
-    }
-
-    // get the mixer api plugin
-    self->mixer_api = wp_plugin_find(self->core, "mixer-api");
-    if (self->mixer_api == NULL) {
-        g_error(
-            "wireplumber_service.c:wire_plumber_service_init() failed to find "
-            "mixer-api plugin");
-    }
-
     // signal which runs after object manager is installed on core (after plugin
     // activation)
     g_signal_connect_swapped(self->om, "installed", G_CALLBACK(on_installed),
                              self);
 
-    // activate plugins
-    wp_object_activate(WP_OBJECT(self->default_nodes_api),
-                       WP_PLUGIN_FEATURE_ENABLED, NULL,
-                       (GAsyncReadyCallback)on_plugin_activate, self);
-
-    wp_object_activate(WP_OBJECT(self->mixer_api), WP_PLUGIN_FEATURE_ENABLED,
-                       NULL, (GAsyncReadyCallback)on_plugin_activate, self);
 
     wire_plumber_service_init_pulseaudio(self);
 

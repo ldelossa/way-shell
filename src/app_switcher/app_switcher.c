@@ -351,7 +351,7 @@ static void select_prev_instance(AppSwitcher *self) {
     app_switcher_app_widget_set_focused_prev_instance(widget);
 }
 
-gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
+static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
                      guint keycode, GdkModifierType state, AppSwitcher *self) {
     g_debug("app_switcher.c:key_pressed called");
 
@@ -387,7 +387,7 @@ gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
     return false;
 }
 
-gboolean key_released(GtkEventControllerKey *controller, guint keyval,
+static gboolean key_released(GtkEventControllerKey *controller, guint keyval,
                       guint keycode, GdkModifierType state, AppSwitcher *self) {
     g_debug("app_switcher.c:key_released called");
     if (keyval == GDK_KEY_Super_L || keyval == GDK_KEY_Super_R) {

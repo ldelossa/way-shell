@@ -12,17 +12,19 @@ enum IPCCommands : uint32_t {
     IPC_CMD_VOLUME_MUTE,
     IPC_CMD_BRIGHTNESS_UP,
     IPC_CMD_BRIGHTNESS_DOWN,
-	IPC_CMD_THEME_DARK,
-	IPC_CMD_THEME_LIGHT,
-	IPC_CMD_DUMP_DARK_THEME,
-	IPC_CMD_DUMP_LIGHT_THEME,
+    IPC_CMD_THEME_DARK,
+    IPC_CMD_THEME_LIGHT,
+    IPC_CMD_DUMP_DARK_THEME,
+    IPC_CMD_DUMP_LIGHT_THEME,
     IPC_CMD_ACTIVITIES_SHOW,
     IPC_CMD_ACTIVITIES_HIDE,
     IPC_CMD_ACTIVITIES_TOGGLE,
     IPC_CMD_APP_SWITCHER_SHOW,
     IPC_CMD_APP_SWITCHER_HIDE,
     IPC_CMD_APP_SWITCHER_TOGGLE,
-
+    IPC_CMD_WORKSPACE_SWITCHER_SHOW,
+    IPC_CMD_WORKSPACE_SWITCHER_HIDE,
+    IPC_CMD_WORKSPACE_SWITCHER_TOGGLE,
 };
 
 typedef struct _IPCHeader {
@@ -59,19 +61,19 @@ typedef struct _IPCBrightnessDown {
 } IPCBrightnessDown;
 
 typedef struct _IPCThemeDark {
-	IPCHeader header;
+    IPCHeader header;
 } IPCThemeDark;
 
 typedef struct _IPCThemeLight {
-	IPCHeader header;
+    IPCHeader header;
 } IPCThemeLight;
 
 typedef struct _IPCDumpDarkTheme {
-	IPCHeader header;
+    IPCHeader header;
 } IPCDumpDarkTheme;
 
 typedef struct _IPCDumpLightTheme {
-	IPCHeader header;
+    IPCHeader header;
 } IPCDumpLightTheme;
 
 typedef struct _IPCActivitiesShow {
@@ -97,3 +99,15 @@ typedef struct _IPCAppSwitcherHide {
 typedef struct _IPCAppSwitcherToggle {
     IPCHeader header;
 } IPCAppSwitcherToggle;
+
+typedef struct _IPCWorkspaceSwitcherShow {
+    IPCHeader header;
+} IPCWorkspaceSwitcherShow;
+
+typedef struct _IPCWorkspaceSwitcherHide {
+    IPCHeader header;
+} IPCWorkspaceSwitcherHide;
+
+typedef struct _IPCWorkspaceSwitcherToggle {
+    IPCHeader header;
+} IPCWorkspaceSwitcherToggle;

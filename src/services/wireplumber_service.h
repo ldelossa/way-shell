@@ -1,7 +1,7 @@
 #pragma once
 #include <adwaita.h>
 #include <sys/cdefs.h>
-#include <wireplumber-0.4/wp/wp.h>
+#include <wireplumber-0.5/wp/wp.h>
 
 enum {
     SCALE_LINEAR,

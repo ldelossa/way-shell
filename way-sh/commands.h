@@ -59,3 +59,8 @@ cmd_tree_node_t *activities_cmd();
 //
 // Subcommands off this node deal with showing and hiding the App Switcher widget.
 cmd_tree_node_t *app_switcher_cmd();
+
+// The Workspace Switcher command
+//
+// Subcommands off this node deal with showing and hiding the Workspace Switcher widget.
+cmd_tree_node_t *workspace_switcher_cmd();

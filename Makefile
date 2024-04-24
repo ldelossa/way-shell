@@ -1,7 +1,7 @@
 CC := gcc
 DEPS := libadwaita-1 \
 		upower-glib \
-		wireplumber-0.4 \
+		wireplumber-0.5 \
 		json-glib-1.0 \
 		libnm \
 		libpulse \

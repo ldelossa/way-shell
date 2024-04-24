@@ -255,7 +255,7 @@ int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_focus_workspace() "
             "workspaces not initialized.");
-        return NULL;
+        return -1;
     }
     return sway_client_ipc_focus_workspace(self->socket_fd, ws);
 }

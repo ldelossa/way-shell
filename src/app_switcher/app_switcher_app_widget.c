@@ -300,7 +300,11 @@ void app_switcher_app_widget_preview(AppSwitcherAppWidget *self) {
     // the 'unfocused border' color and the user cannot understand which window
     // is being previewed.
     gtk_widget_set_visible(GTK_WIDGET(app_switcher_win), false);
+    if (self->parent && self->parent->win)
+        gtk_widget_set_visible(GTK_WIDGET(self->parent->win), false);
     gtk_widget_set_visible(GTK_WIDGET(app_switcher_win), true);
+    if (self->parent && self->parent->win)
+        gtk_widget_set_visible(GTK_WIDGET(self->parent->win), true);
 }
 
 static void on_button_enter(GtkEventControllerMotion *ctlr, double x, double y,
@@ -331,7 +335,13 @@ static void on_button_enter_instance(GtkEventControllerMotion *ctlr, double x,
                                      double y, AppSwitcherAppWidget *self) {
     g_debug("app_switcher_app_widget:on_button_enter called");
 
+    // see comments in on_button_enter
+    if (self->mouse.x == x && self->mouse.y == y) return;
+
     app_switcher_app_widget_preview(self);
+
+    self->mouse.x = x;
+    self->mouse.y = y;
 }
 
 static void app_switcher_app_widget_sync_display_widgets(
@@ -373,12 +383,6 @@ void app_switcher_app_widget_add_toplevel(AppSwitcherAppWidget *self,
         self->wl_toplevel = toplevel->toplevel;
         set_icon(self, toplevel);
 
-        // we only connect the controller on high level instances
-        gtk_widget_add_controller(GTK_WIDGET(self->button),
-                                  GTK_EVENT_CONTROLLER(self->ctrl));
-        g_signal_connect(self->ctrl, "enter", G_CALLBACK(on_button_enter),
-                         self);
-
         self->app_id = strdup(toplevel->app_id);
         gtk_label_set_text(self->id_or_title, self->app_id);
         if (toplevel->activated) {
@@ -396,11 +400,6 @@ void app_switcher_app_widget_add_toplevel(AppSwitcherAppWidget *self,
         instance->wl_toplevel = toplevel->toplevel;
         instance->parent = self;
         self->app_id = strdup(toplevel->app_id);
-
-        gtk_widget_add_controller(GTK_WIDGET(instance->button),
-                                  GTK_EVENT_CONTROLLER(instance->ctrl));
-        g_signal_connect(instance->ctrl, "enter",
-                         G_CALLBACK(on_button_enter_instance), instance);
 
         app_switcher_app_widget_set_layout_instance(instance);
         set_icon(instance, toplevel);
