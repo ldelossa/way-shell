@@ -13,6 +13,7 @@ typedef struct _ActivitiesAppWidget {
     GtkLabel *display_name;
     GtkButton *button;
     GtkBox *button_contents;
+    guint parent_index;
 } ActivitiesAppWidget;
 G_DEFINE_TYPE(ActivitiesAppWidget, activities_app_widget, G_TYPE_OBJECT);
 

@@ -72,7 +72,7 @@ static void theme_service_class_init(ThemeServiceClass *klass) {
         NULL, NULL, G_TYPE_NONE, 1, G_TYPE_INT);
 };
 
-static char *local_light_theme_present() {
+static bool local_light_theme_present() {
     const char *conf_dir = g_get_user_config_dir();
     char *theme_path =
         g_build_filename(conf_dir, CONFIG_DIR, LIGHT_THEME_CSS, NULL);

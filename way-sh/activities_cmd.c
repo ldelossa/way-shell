@@ -26,7 +26,7 @@ static int activities_show_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
     way_sh_ctx *way_ctx = ctx;
 
-    IPCMessageTrayOpen msg = {.header.type = IPC_CMD_ACTIVITIES_SHOW};
+    IPCActivitiesShow msg = {.header.type = IPC_CMD_ACTIVITIES_SHOW};
 
     IPC_SEND_MSG(way_ctx, msg);
 
@@ -48,7 +48,7 @@ static int activities_hide_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
     way_sh_ctx *way_ctx = ctx;
 
-    IPCMessageTrayOpen msg = {.header.type = IPC_CMD_ACTIVITIES_HIDE};
+    IPCActivitiesHide msg = {.header.type = IPC_CMD_ACTIVITIES_HIDE};
 
     IPC_SEND_MSG(way_ctx, msg);
 
@@ -70,7 +70,7 @@ static int activities_toggle_exec(void *ctx, uint8_t argc, char **argv) {
     int ret = 0;
     way_sh_ctx *way_ctx = ctx;
 
-    IPCMessageTrayOpen msg = {.header.type = IPC_CMD_ACTIVITIES_TOGGLE};
+    IPCActivitiesToggle msg = {.header.type = IPC_CMD_ACTIVITIES_TOGGLE};
 
     IPC_SEND_MSG(way_ctx, msg);
 

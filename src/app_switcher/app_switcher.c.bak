@@ -1,0 +1,346 @@
+j#include "./app_switcher.h"
+
+#include <adwaita.h>
+#include <gio/gdesktopappinfo.h>
+#include <gio/gio.h>
+#include <gtk4-layer-shell/gtk4-layer-shell.h>
+
+#include "./../services/wayland_service/wayland_service.h"
+#include "./app_switcher_app_widget.h"
+#include "gdk/gdkkeysyms.h"
+
+static AppSwitcher *global = NULL;
+
+enum signals { signals_n };
+
+typedef struct _AppSwitcher {
+    GObject parent_instance;
+    AdwWindow *win;
+    GHashTable *app_widgets;
+    GtkBox *app_widget_list;
+    // selected_index keeps track of which widget is currently selected as
+    // the user moves through the app switcher.
+    guint selected_index;
+    // previous_index tracks the penultimate accessed app, such that when we
+    // open the app-switch it is opened to the previously accessed app to
+    // support fast app switching.
+    guint previous_index;
+    GtkEventController *key_controller;
+} AppSwitcher;
+
+static guint app_switcher_signals[signals_n] = {0};
+G_DEFINE_TYPE(AppSwitcher, app_switcher, G_TYPE_OBJECT);
+
+// stub out dispose, finalize, class_init and init methods.
+static void app_switcher_dispose(GObject *object) {
+    G_OBJECT_CLASS(app_switcher_parent_class)->dispose(object);
+}
+
+static void app_switcher_finalize(GObject *object) {
+    G_OBJECT_CLASS(app_switcher_parent_class)->finalize(object);
+}
+
+static void app_switcher_class_init(AppSwitcherClass *klass) {
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+    object_class->dispose = app_switcher_dispose;
+    object_class->finalize = app_switcher_finalize;
+}
+
+static void app_switcher_init_layout(AppSwitcher *self);
+
+static void on_top_level_changed(WaylandService *wayland, GPtrArray *toplevels,
+                                 WaylandWLRForeignTopLevel *toplevel,
+                                 AppSwitcher *self) {
+    g_debug("app_switcher.c:on_top_level_changed called");
+
+    if (toplevel->app_id == NULL) {
+        return;
+    }
+
+    AppSwitcherAppWidget *app_widget;
+
+    if (g_hash_table_contains(self->app_widgets, toplevel->app_id)) {
+        app_widget = g_hash_table_lookup(self->app_widgets, toplevel->app_id);
+        app_switcher_app_widget_add_toplevel(app_widget, toplevel);
+        goto check_activated;
+    }
+
+    app_widget = g_object_new(APP_SWITCHER_APP_WIDGET_TYPE, NULL);
+    app_switcher_app_widget_add_toplevel(app_widget, toplevel);
+    g_hash_table_insert(self->app_widgets, toplevel->app_id, app_widget);
+    gtk_box_append(self->app_widget_list,
+                   app_switcher_app_widget_get_widget(app_widget));
+
+check_activated:
+    if (toplevel->activated) {
+        int i = 0;
+        int res = -1;
+        GtkWidget *target = app_switcher_app_widget_get_widget(app_widget);
+        GtkWidget *search =
+            gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+        while (search) {
+            if (search == target) {
+                res = i;
+                break;
+            }
+            i++;
+            search = gtk_widget_get_next_sibling(search);
+        }
+        if (res >= 0) {
+            self->previous_index = self->selected_index;
+            self->selected_index = res;
+            app_switcher_app_widget_set_last_activated(app_widget, toplevel);
+        }
+    }
+}
+
+static void on_top_level_removed(WaylandService *wayland,
+                                 WaylandWLRForeignTopLevel *toplevel,
+                                 AppSwitcher *self) {
+    g_debug("app_switcher.c:on_top_level_removed called");
+
+    if (toplevel->app_id == NULL) {
+        return;
+    }
+
+    if (!g_hash_table_contains(self->app_widgets, toplevel->app_id)) {
+        return;
+    }
+
+    AppSwitcherAppWidget *app_widget =
+        g_hash_table_lookup(self->app_widgets, toplevel->app_id);
+
+    gboolean purge =
+        app_switcher_app_widget_remove_toplevel(app_widget, toplevel);
+
+    if (purge) {
+        g_hash_table_remove(self->app_widgets, toplevel->app_id);
+        gtk_widget_unparent(app_switcher_app_widget_get_widget(app_widget));
+        self->selected_index = self->previous_index;
+    }
+}
+
+static void on_window_destroy(GtkWindow *win, AppSwitcher *self) {
+    g_debug("activities.c:on_window_destroy called");
+
+    // empty app_widgets hash table
+    g_hash_table_remove_all(self->app_widgets);
+
+    WaylandService *wayland = wayland_service_get_global();
+    wayland_wlr_shortcuts_inhibitor_destroy(wayland);
+
+    gtk_widget_remove_controller(GTK_WIDGET(self->win), self->key_controller);
+
+    app_switcher_init_layout(self);
+}
+
+static void app_switcher_init_layout(AppSwitcher *self) {
+    self->win = ADW_WINDOW(adw_window_new());
+    gtk_widget_set_hexpand(GTK_WIDGET(self->win), true);
+    gtk_widget_set_vexpand(GTK_WIDGET(self->win), true);
+    gtk_widget_set_name(GTK_WIDGET(self->win), "app-switcher");
+    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
+    gtk_widget_add_controller(GTK_WIDGET(self->win), self->key_controller);
+
+    // width zero to expand with content.
+    gtk_window_set_default_size(GTK_WINDOW(self->win), 0, 0);
+
+    g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);
+
+    // configure layershell, no anchors will place window in center.
+    gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
+    gtk_layer_set_anchor((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_EDGE_TOP,
+                         true);
+    gtk_layer_set_margin((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_EDGE_TOP,
+                         500);
+    gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
+                                GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
+
+    self->app_widget_list = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_set_name(GTK_WIDGET(self->app_widget_list), "app-switcher-list");
+
+    adw_window_set_content(self->win, GTK_WIDGET(self->app_widget_list));
+
+    // listen for toplevels from wayland service
+    WaylandService *wayland = wayland_service_get_global();
+
+    g_signal_connect(wayland, "top-level-changed",
+                     G_CALLBACK(on_top_level_changed), self);
+
+    g_signal_connect(wayland, "top-level-removed",
+                     G_CALLBACK(on_top_level_removed), self);
+}
+
+static void unset_selected_widget(AppSwitcher *self) {
+    GtkWidget *child =
+        gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+    while (child) {
+        AppSwitcherAppWidget *app_widget =
+            g_object_get_data(G_OBJECT(child), "app-widget");
+        app_switcher_app_widget_unset_focus(app_widget);
+        child = gtk_widget_get_next_sibling(child);
+    }
+}
+
+static void set_selected_at_index(AppSwitcher *self, guint index) {
+    g_debug("app_switcher.c:set_selected_at_index called: index: %d",
+            self->selected_index);
+
+    int i = 0;
+    GtkWidget *child =
+        gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+    while (child && i != index) {
+        child = gtk_widget_get_next_sibling(child);
+        i++;
+    }
+
+    AppSwitcherAppWidget *app_widget =
+        g_object_get_data(G_OBJECT(child), "app-widget");
+    app_switcher_app_widget_set_focused(app_widget);
+}
+
+static void activate_at_index(AppSwitcher *self, guint index) {
+    g_debug("app_switcher.c:activate_at_index called: index: %d", index);
+
+    int i = 0;
+    GtkWidget *child =
+        gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+    while (child && i != index) {
+        child = gtk_widget_get_next_sibling(child);
+        i++;
+    }
+
+    AppSwitcherAppWidget *app_widget =
+        g_object_get_data(G_OBJECT(child), "app-widget");
+    app_switcher_app_widget_activate(app_widget);
+}
+
+static void select_next(AppSwitcher *self) {
+    g_debug("app_switcher.c:select_next called");
+
+    unset_selected_widget(self);
+
+    self->selected_index++;
+    if (self->selected_index >= g_hash_table_size(self->app_widgets)) {
+        self->selected_index = 0;
+    }
+
+    set_selected_at_index(self, self->selected_index);
+}
+
+void app_switcher_focus_by_app_widget(AppSwitcher *self,
+                                       AppSwitcherAppWidget *widget) {
+    g_debug("app_switcher.c:app_switcher_select_by_app_widget called");
+
+    unset_selected_widget(self);
+
+    // find index of matching widget
+    int i = 0;
+    GtkWidget *child =
+        gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+
+    while (child) {
+        AppSwitcherAppWidget *app_widget =
+            g_object_get_data(G_OBJECT(child), "app-widget");
+
+        WaylandWLRForeignTopLevel *toplevel =
+            app_switcher_app_widget_get_toplevel(app_widget);
+
+        WaylandWLRForeignTopLevel *widget_toplevel =
+            app_switcher_app_widget_get_toplevel(widget);
+
+        if (toplevel->toplevel == widget_toplevel->toplevel) {
+            g_debug("found matching widget: %s %s", toplevel->app_id,
+                    toplevel->title);
+            self->selected_index = i;
+            set_selected_at_index(self, self->selected_index);
+            break;
+        }
+
+        child = gtk_widget_get_next_sibling(child);
+        i++;
+    }
+}
+
+gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
+                     guint keycode, GdkModifierType state, AppSwitcher *self) {
+    g_debug("app_switcher.c:key_pressed called");
+    if (keyval == GDK_KEY_Tab && (state & GDK_SUPER_MASK)) {
+        select_next(self);
+        return true;
+    }
+    if (keyval == GDK_KEY_Escape && (state & GDK_SUPER_MASK)) {
+        app_switcher_hide(self);
+        return true;
+    }
+    return false;
+}
+
+gboolean key_released(GtkEventControllerKey *controller, guint keyval,
+                      guint keycode, GdkModifierType state, AppSwitcher *self) {
+    g_debug("app_switcher.c:key_released called");
+    if (keyval == GDK_KEY_Super_L || keyval == GDK_KEY_Super_R) {
+        app_switcher_hide(self);
+        activate_at_index(self, self->selected_index);
+        return true;
+    }
+    return false;
+}
+
+static void app_switcher_init(AppSwitcher *self) {
+    self->app_widgets =
+        g_hash_table_new_full(g_str_hash, g_str_equal, NULL, g_object_unref);
+    self->key_controller = gtk_event_controller_key_new();
+    self->selected_index = 0;
+    self->previous_index = 0;
+
+    g_signal_connect(self->key_controller, "key-pressed",
+                     G_CALLBACK(key_pressed), self);
+    g_signal_connect(self->key_controller, "key-released",
+                     G_CALLBACK(key_released), self);
+
+    app_switcher_init_layout(self);
+}
+
+AppSwitcher *app_switcher_get_global() {
+    if (!global) {
+        global = g_object_new(APP_SWITCHER_TYPE, NULL);
+    }
+    return global;
+}
+
+void app_switcher_activate(AdwApplication *app, gpointer user_data) {
+    global = g_object_new(APP_SWITCHER_TYPE, NULL);
+}
+
+void app_switcher_show(AppSwitcher *self) {
+    set_selected_at_index(self, self->previous_index);
+
+    // when we open the app switch, our selected widget becomes our previously
+    // accessed one, since the app-switch starts such that the user can swap
+    // to the previous accessed app quickly.
+    self->selected_index = self->previous_index;
+
+    gtk_window_present(GTK_WINDOW(self->win));
+
+    WaylandService *wayland = wayland_service_get_global();
+    wayland_wlr_shortcuts_inhibitor_create(wayland, GTK_WIDGET(self->win));
+}
+
+void app_switcher_hide(AppSwitcher *self) {
+    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
+
+    WaylandService *wayland = wayland_service_get_global();
+    wayland_wlr_shortcuts_inhibitor_destroy(wayland);
+
+    unset_selected_widget(self);
+}
+
+void app_switcher_toggle(AppSwitcher *self) {
+    if (gtk_widget_get_visible(GTK_WIDGET(self->win))) {
+        app_switcher_hide(self);
+    } else {
+        app_switcher_show(self);
+    }
+}

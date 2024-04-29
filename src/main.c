@@ -1,6 +1,8 @@
 #include <adwaita.h>
 
 #include "./activities/activities.h"
+#include "./app_switcher/app_switcher.h"
+#include "./workspace_switcher/workspace_switcher.h"
 #include "./dialog_overlay/dialog_overlay.h"
 #include "./osd/osd.h"
 #include "./panel/message_tray/message_tray.h"
@@ -122,6 +124,12 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
     activities_activate(app, user_data);
     g_debug("main.c: activate(): activities subsystems activated");
+
+    app_switcher_activate(app, user_data);
+    g_debug("main.c: activate(): app_switcher subsystems activated");
+
+    workspace_switcher_activate(app, user_data);
+    g_debug("main.c: activate(): workspace_switcher subsystems activated");
 
     panel_activate(app, user_data);
     g_debug("main.c: activate(): panel subsystems activated");

@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <sys/un.h>
 #include <unistd.h>
 
@@ -13,9 +14,12 @@
 #define CLIENT_SOCK_PREFIX "way-shell-"
 
 int client_socket_create(way_sh_ctx *ctx) {
+    struct timeval time;
     struct sockaddr_un addr = {.sun_family = AF_UNIX, .sun_path = {0}};
     char *p = &addr.sun_path[1];
-    int r = rand();
+
+    gettimeofday(&time, NULL);
+    int r = time.tv_sec;
 
     memcpy(p, CLIENT_SOCK_PREFIX, sizeof(CLIENT_SOCK_PREFIX) - 1);
     p += sizeof(CLIENT_SOCK_PREFIX) - 1;
@@ -43,12 +47,16 @@ static void build_command_tree() {
     cmd_tree_node_t *brightness = brightness_cmd();
     cmd_tree_node_t *theme = theme_cmd();
     cmd_tree_node_t *activities = activities_cmd();
+    cmd_tree_node_t *app_switcher = app_switcher_cmd();
+    cmd_tree_node_t *workspace_switcher = workspace_switcher_cmd();
 
     cmd_tree_node_add_child(&root_cmd, message_tray);
     cmd_tree_node_add_child(&root_cmd, volume);
     cmd_tree_node_add_child(&root_cmd, brightness);
     cmd_tree_node_add_child(&root_cmd, theme);
     cmd_tree_node_add_child(&root_cmd, activities);
+    cmd_tree_node_add_child(&root_cmd, app_switcher);
+    cmd_tree_node_add_child(&root_cmd, workspace_switcher);
 }
 
 int main(int argc, char **argv) {

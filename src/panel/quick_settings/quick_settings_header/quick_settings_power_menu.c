@@ -209,7 +209,7 @@ static void on_revealer_reveal_child(GtkRevealer *revealer, GParamSpec *pspec,
 
 GtkWidget *make_power_button(QuickSettingsPowerMenu *self, gchar *title,
                              GCallback cb) {
-    GtkBox *container = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    GtkBox *container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
 
     // make a gtk revealer
     GtkWidget *revealer = gtk_revealer_new();

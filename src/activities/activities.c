@@ -508,7 +508,7 @@ static void activities_init_layout(Activities *self) {
     gtk_box_append(GTK_BOX(self->container), GTK_WIDGET(search_container));
 
     // wrap search_result_flbox in a vertical scroll window
-    self->search_result_scrolled = gtk_scrolled_window_new();
+    self->search_result_scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
     gtk_scrolled_window_set_child(
         GTK_SCROLLED_WINDOW(self->search_result_scrolled),
         GTK_WIDGET(self->search_result_flbox));

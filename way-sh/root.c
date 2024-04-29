@@ -12,6 +12,8 @@ static int root_exec(void *ctx, uint8_t argc, char **argv) {
         "\tbrightness\n"
         "\ttheme\n"
         "\tactivities\n"
+        "\tapp-switcher\n"
+        "\tworkspace-switcher\n"
 	);
     return 0;
 };

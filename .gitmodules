@@ -4,3 +4,9 @@
 [submodule "lib/wlr-protocols"]
 	path = lib/wlr-protocols
 	url = https://gitlab.freedesktop.org/wlroots/wlr-protocols.git
+[submodule "data/wlr-protocols"]
+	path = data/wlr-protocols
+	url = https://gitlab.freedesktop.org/wlroots/wlr-protocols.git
+[submodule "data/wayland-protocols"]
+	path = data/wayland-protocols
+	url = https://gitlab.freedesktop.org/wayland/wayland-protocols.git
