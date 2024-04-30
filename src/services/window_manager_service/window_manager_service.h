@@ -50,3 +50,14 @@ typedef struct _WMWorkspaceEvent {
     WMWorkspaceEventType type;
     WMWorkspace workspace;
 } WMWorkspaceEvent;
+
+typedef struct _WMOutputEvent {
+} WMOutputEvent;
+
+typedef struct _WMOutput {
+    gchar *name;
+    gchar *make;
+    gchar *model;
+    gchar *serial;
+    gchar *current_workspace;
+} WMOutput;

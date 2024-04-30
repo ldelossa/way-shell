@@ -201,6 +201,145 @@ int sway_client_ipc_recv(int socket_fd, sway_client_ipc_msg *msg) {
     return 0;
 }
 
+int sway_client_ipc_get_outputs_req(int socket_fd) {
+    sway_client_ipc_msg msg = {0};
+    msg.type = IPC_GET_OUTPUTS;
+
+    return sway_client_ipc_send(socket_fd, &msg);
+}
+
+int sway_client_parse_output_json(JsonObject *obj, WMOutput *o) {
+    JsonNode *node = NULL;
+
+    // parse name -> o.name string
+    node = json_object_get_member(obj, "name");
+    if (!node) {
+        g_error(
+            "sway_client.c:sway_client_parse_output() "
+            "failed to read member 'name'.");
+    }
+    o->name = g_strdup(json_node_get_string(node));
+
+    // parse make -> o.make string
+    node = json_object_get_member(obj, "make");
+    if (!node) {
+        g_error(
+            "sway_client.c:sway_client_parse_output() "
+            "failed to read member 'make'.");
+    }
+    o->make = g_strdup(json_node_get_string(node));
+
+    // parse model -> o.model string
+    node = json_object_get_member(obj, "model");
+    if (!node) {
+        g_error(
+            "sway_client.c:sway_client_parse_output() "
+            "failed to read member 'model'.");
+    }
+    o->model = g_strdup(json_node_get_string(node));
+
+    // parse serial -> o.serial
+    node = json_object_get_member(obj, "serial");
+    if (!node) {
+        g_error(
+            "sway_client.c:sway_client_parse_output() "
+            "failed to read member 'serial'.");
+    }
+    o->serial = g_strdup(json_node_get_string(node));
+
+    // parse current_workspace -> o.current_workspace
+    node = json_object_get_member(obj, "current_workspace");
+    if (!node) {
+        g_error(
+            "sway_client.c:sway_client_parse_output() "
+            "failed to read member 'current_workspace'.");
+    }
+    o->current_workspace = g_strdup(json_node_get_string(node));
+
+    return 0;
+};
+
+static void free_output(gpointer data) {
+    WMOutput *o = (WMOutput *)data;
+    g_free(o->name);
+    g_free(o->make);
+    g_free(o->model);
+    g_free(o->serial);
+    g_free(o->current_workspace);
+    g_free(o);
+}
+
+GPtrArray *sway_client_ipc_get_outputs_resp(sway_client_ipc_msg *msg) {
+    GPtrArray *out = g_ptr_array_new_full(0, free_output);
+    JsonParser *parser = NULL;
+    JsonReader *reader = NULL;
+    GError *error = NULL;
+    guint outputs_n = 0;
+
+    g_debug("sway_client.c:sway_client_ipc_get_outputs_resp() called");
+
+    if (msg->size == 0) return NULL;
+
+    parser = json_parser_new();
+    if (!json_parser_load_from_data(parser, msg->payload, msg->size, &error)) {
+        g_warning(
+            "sway_client.c:sway_client_ipc_get_outputs_resp() "
+            "failed to parse json.");
+        return NULL;
+    }
+    reader = json_reader_new(json_parser_get_root(parser));
+
+    if (!json_reader_is_array(reader))
+        g_error(
+            "sway_client.c:sway_client_ipc_get_outputs_resp() "
+            "received non-array response.");
+
+    outputs_n = json_reader_count_elements(reader);
+    g_debug(
+        "sway_client.c:sway_client_ipc_get_outputs_resp() "
+        "received response with %d outputs.",
+        outputs_n);
+
+    for (int i = 0; i < outputs_n; i++) {
+        JsonNode *node = NULL;
+        WMOutput *o = g_malloc0(sizeof(WMOutput));
+
+        if (!json_reader_read_element(reader, i))
+            g_error(
+                "sway_client.c:sway_client_ipc_get_outputs_resp() "
+                "failed to read element %d.",
+                i);
+
+        node = json_reader_get_current_node(reader);
+
+        if (sway_client_parse_output_json(json_node_get_object(node), o) != 0) {
+            json_reader_end_element(reader);
+            g_warning(
+                "sway_client.c:sway_client_ipc_get_outputs_resp() "
+                "failed to parse output %d.",
+                i);
+            g_free(o);
+            continue;
+        }
+
+        g_debug(
+            "sway_client.c:sway_client_ipc_get_outputs_resp() "
+            "parsed output [%s] [%s] [%s] [%s] [%s].",
+            o->name, o->make, o->model, o->serial, o->current_workspace);
+
+        json_reader_end_element(reader);
+
+        // add to output array
+        g_ptr_array_add(out, o);
+    }
+
+    g_object_unref(reader);
+    g_object_unref(parser);
+    g_free(msg->payload);
+
+    return out;
+}
+
 int sway_client_ipc_get_workspaces_req(int socket_fd) {
     sway_client_ipc_msg msg = {0};
     msg.type = IPC_GET_WORKSPACES;
@@ -366,6 +505,9 @@ int sway_client_ipc_subscribe_req(int socket_fd, int events[], guint len) {
                 break;
             case IPC_EVENT_MODE:
                 json_builder_add_string_value(builder, "mode");
+                break;
+            case IPC_EVENT_OUTPUT:
+                json_builder_add_string_value(builder, "output");
                 break;
             case IPC_EVENT_WINDOW:
                 json_builder_add_string_value(builder, "window");

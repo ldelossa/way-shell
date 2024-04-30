@@ -70,6 +70,15 @@ int sway_client_ipc_get_workspaces_req(int socket_fd);
 // Unref GPtrArray when finished.
 GPtrArray *sway_client_ipc_get_workspaces_resp(sway_client_ipc_msg *msg);
 
+// Send a 'get_outputs' request.
+// Msg details are handled internally.
+int sway_client_ipc_get_outputs_req(int socket_fd);
+
+// Parses a response for a 'get_outputs' request.
+// Returns a GPtrArray of WMOutput structures with ref of 1.
+// Unref GPtrArray when finished.
+GPtrArray *sway_client_ipc_get_outputs_resp(sway_client_ipc_msg *msg);
+
 // Subscribes specific Sway events.
 int sway_client_ipc_subscribe_req(int socket_fd, int events[], guint len);
 

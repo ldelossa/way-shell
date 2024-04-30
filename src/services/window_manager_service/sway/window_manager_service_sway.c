@@ -8,11 +8,12 @@
 
 static WMServiceSway *global = NULL;
 
-enum signals { workspaces_changed, signals_n };
+enum signals { workspaces_changed, outputs_changed, signals_n };
 
 struct _WMServiceSway {
     GObject parent_instance;
     GPtrArray *workspaces;
+    GPtrArray *outputs;
     char *socket_path;
     int socket_fd;
     guint poll_id;
@@ -51,6 +52,10 @@ static void wm_service_sway_class_init(WMServiceSwayClass *klass) {
     service_signals[workspaces_changed] = g_signal_new(
         "workspaces-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
         NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_PTR_ARRAY);
+
+    service_signals[outputs_changed] = g_signal_new(
+        "outputs-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL,
+        NULL, NULL, G_TYPE_NONE, 1, G_TYPE_PTR_ARRAY);
 };
 
 static gint compare_workspace_name(WMWorkspace **a, WMWorkspace **b) {
@@ -80,6 +85,25 @@ static void handle_ipc_get_workspaces(WMServiceSway *self,
     // emit signal
     g_signal_emit(self, service_signals[workspaces_changed], 0,
                   self->workspaces);
+}
+
+static void handle_ipc_get_outputs(WMServiceSway *self,
+                                   sway_client_ipc_msg *msg) {
+    GPtrArray *tmp = sway_client_ipc_get_outputs_resp(msg);
+
+    g_debug(
+        "window_manager_service_sway.c:handle_ipc_get_workspaces() "
+        "called");
+
+    if (!tmp) return;
+
+    if (self->outputs) {
+        g_ptr_array_unref(self->outputs);
+    }
+    self->outputs = tmp;
+
+    // emit signal
+    g_signal_emit(self, service_signals[outputs_changed], 0, self->outputs);
 }
 
 static void launch_on_workspace_new_script(gchar *name) {
@@ -116,6 +140,14 @@ static void handle_ipc_event_workspaces(WMServiceSway *self,
     sway_client_ipc_get_workspaces_req(self->socket_fd);
 };
 
+static void handle_ipc_event_outputs(WMServiceSway *self,
+                                     sway_client_ipc_msg *msg) {
+    g_debug(
+        "window_manager_service_sway.c:handle_ipc_event_outputs() "
+        "received output event, getting latest output listing.");
+    sway_client_ipc_get_outputs_req(self->socket_fd);
+};
+
 static void on_ipc_recv_dispatch(WMServiceSway *self,
                                  sway_client_ipc_msg *msg) {
     g_debug(
@@ -126,8 +158,17 @@ static void on_ipc_recv_dispatch(WMServiceSway *self,
             handle_ipc_get_workspaces(self, msg);
             break;
         }
+        case IPC_GET_OUTPUTS: {
+            handle_ipc_get_outputs(self, msg);
+            break;
+        }
         case IPC_SUBSCRIBE: {
             self->subscribed = sway_client_ipc_subscribe_resp(msg);
+            if (!self->subscribed) {
+                g_error(
+                    "window_manager_service_sway.c:on_ipc_recv_dispatch() "
+                    "failed to subscribe to events.");
+            }
             g_info(
                 "window_manager_service_sway.c:on_ipc_recv_dispatch() "
                 "sway_client_ipc_subscribe_resp received subscribed: %s",
@@ -142,6 +183,16 @@ static void on_ipc_recv_dispatch(WMServiceSway *self,
                 break;
             }
             handle_ipc_event_workspaces(self, msg);
+            break;
+        }
+        case IPC_EVENT_OUTPUT: {
+            if (!self->outputs) {
+                g_debug(
+                    "window_manager_service_sway.c:on_ipc_recv_dispatch() "
+                    "ignoring event until initial sync.");
+                break;
+            }
+            handle_ipc_event_outputs(self, msg);
             break;
         }
     }
@@ -230,11 +281,14 @@ int wm_service_sway_global_init(void) {
     global = g_object_new(WM_SERVICE_SWAY_TYPE, NULL);
 
     // subscribe to desired events
-    sway_client_ipc_subscribe_req(global->socket_fd,
-                                  (int[]){IPC_EVENT_WORKSPACE}, 1);
+    sway_client_ipc_subscribe_req(
+        global->socket_fd, (int[]){IPC_EVENT_WORKSPACE, IPC_EVENT_OUTPUT}, 2);
 
     // get initial listing of workspaces
     sway_client_ipc_get_workspaces_req(global->socket_fd);
+
+    // get initial listing of outputs
+    sway_client_ipc_get_outputs_req(global->socket_fd);
 
     return 0;
 };
