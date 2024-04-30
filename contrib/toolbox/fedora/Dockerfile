@@ -1,4 +1,4 @@
-FROM quay.io/toolbx-images/fedora-toolbox:39
+FROM quay.io/toolbx-images/fedora-toolbox:40
 
 RUN sudo dnf install -y \
     libadwaita-devel \
