@@ -23,7 +23,7 @@ issues.
 
 <https://private-user-images.githubusercontent.com/5642902/307428681-94a67342-7d9d-4491-a92d-6b38f021431e.mp4?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MDg3MTYyMTQsIm5iZiI6MTcwODcxNTkxNCwicGF0aCI6Ii81NjQyOTAyLzMwNzQyODY4MS05NGE2NzM0Mi03ZDlkLTQ0OTEtYTkyZC02YjM4ZjAyMTQzMWUubXA0P1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI0MDIyMyUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNDAyMjNUMTkxODM0WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9ZmI1ZWU4ODk2YjUzMjg1NzRlNzY3OGU2ZGQ0Mjc5MzVlYmFmZDk2Y2Y2OGRmMmI4MWM1MTY2NjliMWY1ZjMyMiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmYWN0b3JfaWQ9MCZrZXlfaWQ9MCZyZXBvX2lkPTAifQ.eweT2hIGTyrOMeKVdMkux8L9EAI-Kvs7l4aeLGVejB0>
 
-The demo above is using [SwayFX](https://github.com/WillPower3309/swayfx) which I really enjoy. 
+The demo above is using [SwayFX](https://github.com/WillPower3309/swayfx) which I really enjoy.
 
 ## Installing and Running Way-Shell
 
@@ -77,16 +77,23 @@ Contributions welcome!
 
 ## Configuring Sway
 
-Here is an example of how I configure Sway once way-shell is installed and its
-binaries are in $PATH
+Sway is the ultimate controller of keybinds and must be configured to
+specifically work with Way-Shell.
+
+Sway integrates with Way-Shell via its CLI `way-sh`.
+
+Below is the expected Sway config which Way-Shell supports.
 
 ```shell
 # way-shell configuration
 exec way-shell
 bindsym XF86AudioRaiseVolume exec way-sh volume up
+bindsym XF86AudioMute exec way-sh volume mute
 bindsym XF86AudioLowerVolume exec way-sh volume down
 bindsym XF86MonBrightnessDown exec way-sh brightness down
 bindsym XF86MonBrightnessUp exec way-sh brightness up
+bindcode --release 133 exec way-sh activities toggle
+bindsym Mod4+Tab exec way-sh app-switcher toggle
 ```
 
 ## Road to v1.0
@@ -108,6 +115,6 @@ bindsym XF86MonBrightnessUp exec way-sh brightness up
 - [x] Themeing (provide CSS override directory, light/dark theme switch button, and allow a script to be ran after the theme is switched)
 - [ ] Figure out proper rpm and deb packaging
 - [ ] Lock Screen (Wayland protocol based) implementation
-- [ ] App/Workspace switcher (alt+tab replacement)
+- [x] App/Workspace switcher (alt+tab)
 - [x] Workspace Overview/Application launcher overlay widget
 - [ ] Option to turn on idle inhibitor when video/audio sources are detected.
