@@ -99,6 +99,34 @@ bindsym $mod+w exec way-sh workspace-switcher toggle
 bindsym $mod+a exec way-sh workspace-app-switcher toggle
 ```
 
+## Using Way-Shell
+
+Way-Shell aims to feel like a "natural" desktop environment.
+
+The below table lists useful keymaps to keep in mind.
+
+| Keybinding | Action |
+|------------|--------|
+| Super + Tab | Open the app switcher (release Super to close) |
+| Super + g  | (In app switcher) move to next instance of an application if it exists |
+| Super + Shift + g  | (In app switcher) move to previous instance of an application if it exists |
+| Super + w | Open the workspace switcher (repeat to toggle close) |
+| Super + a | Open the workspace app switcher (repeat to toggle close) |
+| Super + o | Open the output switcher (repeat to toggle close) |
+
+All widgets which provide a list of selections (workspace switcher, app switcher, output switcher)
+support the following keybinds.
+
+| Keybinding | Action |
+|------------|--------|
+| Tab | next item |
+| Shift + Tab  | previous item |
+| Ctrl + n | next item |
+| Ctrl + p  | previous item |
+| UpArrow | next item |
+| DownArrow  | previous item |
+| Esc | Clear search, close widget if search is empty |
+
 ## Road to v1.0
 
 - [x] Multi-monitor support
