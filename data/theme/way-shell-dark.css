@@ -701,6 +701,8 @@ label.day-number.today:focus {
     border-radius: 99px;
     color: @text-general;
     margin: 40px;
+    margin-bottom: 80px;
+    margin-top: 80px;
 }
 
 #activities .activities-app-widget button:hover {

@@ -31,10 +31,6 @@ typedef struct _Activities {
     GtkScrolledWindow *search_result_scrolled;
     GtkFlowBox *search_result_flbox;
 
-    // Workspaces
-    GtkScrolledWindow *workspaces_list_scrolled;
-    GtkBox *workspaces_list;
-
     // App Carousel
     AdwCarousel *app_carousel;
     AdwCarouselIndicatorDots *app_carousel_dots;
@@ -170,17 +166,10 @@ static void fill_app_infos(Activities *self) {
     }
 }
 
-static void on_workspaces_changes(WMServiceSway *sway, GPtrArray *workspaces,
-                                  Activities *self);
-
 static void activities_init_layout(Activities *self);
 
 static void on_window_destroy(GtkWindow *win, Activities *self) {
     g_debug("activities.c:on_window_destroy called");
-
-    // kill signal to sway
-    WMServiceSway *sway = wm_service_sway_get_global();
-    g_signal_handlers_disconnect_by_func(sway, on_workspaces_changes, self);
 
     activities_init_layout(self);
 }
@@ -256,13 +245,11 @@ static void on_search_previous_match(GtkSearchEntry *entry, Activities *self) {
 static void on_search_stop(GtkSearchEntry *entry, Activities *self) {
     // hide search results and show apps
     gtk_widget_set_visible(GTK_WIDGET(self->search_result_scrolled), false);
-    gtk_widget_set_visible(GTK_WIDGET(self->workspaces_list_scrolled), true);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel), true);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel_dots), true);
 }
 
 static void on_search_changed(GtkSearchEntry *entry, Activities *self) {
-    gtk_widget_set_visible(GTK_WIDGET(self->workspaces_list_scrolled), false);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel), false);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel_dots), false);
 
@@ -325,67 +312,6 @@ static void on_workspace_button_clicked(GtkButton *button, Activities *self) {
     wm_service_sway_focus_workspace(sway, ws);
 
     activities_hide(self);
-}
-
-static void on_workspaces_changes(WMServiceSway *sway, GPtrArray *workspaces,
-                                  Activities *self) {
-    if (!workspaces) return;
-
-    GtkWidget *child =
-        gtk_widget_get_first_child(GTK_WIDGET(self->workspaces_list));
-    while (child) {
-        GtkWidget *next = gtk_widget_get_next_sibling(child);
-        gtk_widget_unparent(child);
-        child = next;
-    }
-
-    // iterate over workspaces and create a button with a label of the
-    // workspace name
-    for (guint i = 0; i < workspaces->len; i++) {
-        WMWorkspace *ws = g_ptr_array_index(workspaces, i);
-
-        GtkOverlay *overlay = GTK_OVERLAY(gtk_overlay_new());
-        gtk_widget_add_css_class(GTK_WIDGET(overlay),
-                                 "activities-workspace-overlay");
-        gtk_widget_set_size_request(GTK_WIDGET(overlay), 160, 90);
-
-        // set tooltop with workspace name
-        gtk_widget_set_tooltip_text(GTK_WIDGET(overlay), ws->name);
-
-        // create GtkButton with pixbuf as image in it
-        GtkWidget *button = gtk_button_new();
-        gtk_widget_add_css_class(button, "activities-workspace-button");
-        gtk_widget_set_margin_start(button, 0);
-        gtk_widget_set_margin_end(button, 0);
-        gtk_widget_set_margin_top(button, 0);
-        gtk_widget_set_margin_bottom(button, 0);
-        g_object_set_data(G_OBJECT(button), "workspace", ws);
-        g_signal_connect(button, "clicked",
-                         G_CALLBACK(on_workspace_button_clicked), self);
-
-        GtkWidget *image = gtk_image_new();
-        if (self->desktop_wallpaper) {
-            gtk_image_set_from_pixbuf(GTK_IMAGE(image),
-                                      self->desktop_wallpaper);
-            gtk_widget_set_can_target(image, false);
-            gtk_widget_set_can_focus(image, false);
-            gtk_widget_set_size_request(GTK_WIDGET(button), 160, 90);
-        }
-
-        // create label with workspace name
-        GtkWidget *label = gtk_label_new(ws->name);
-        gtk_widget_set_can_target(label, false);
-        gtk_widget_set_can_focus(label, false);
-        gtk_label_set_ellipsize(GTK_LABEL(label), PANGO_ELLIPSIZE_END);
-        gtk_label_set_max_width_chars(GTK_LABEL(label), 12);
-
-        // wire up overlay
-        gtk_overlay_add_overlay(overlay, button);
-        gtk_overlay_add_overlay(overlay, image);
-        gtk_overlay_add_overlay(overlay, label);
-
-        gtk_box_append(self->workspaces_list, GTK_WIDGET(overlay));
-    }
 }
 
 static void activities_init_layout(Activities *self) {
@@ -465,28 +391,6 @@ static void activities_init_layout(Activities *self) {
 
     gtk_box_append(search_container, GTK_WIDGET(self->search_entry));
 
-    // setup workspaces list
-    self->workspaces_list = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-
-    self->workspaces_list_scrolled =
-        GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
-
-    gtk_widget_set_size_request(GTK_WIDGET(self->workspaces_list_scrolled),
-                                1400, 120);
-    gtk_widget_set_halign(GTK_WIDGET(self->workspaces_list_scrolled),
-                          GTK_ALIGN_CENTER);
-    gtk_scrolled_window_set_policy(self->workspaces_list_scrolled,
-                                   GTK_POLICY_AUTOMATIC, GTK_POLICY_NEVER);
-
-    gtk_scrolled_window_set_child(self->workspaces_list_scrolled,
-                                  GTK_WIDGET(self->workspaces_list));
-
-    // get workspaces
-    WMServiceSway *sway = wm_service_sway_get_global();
-    // wire into workspaces-changed event
-    g_signal_connect(sway, "workspaces-changed",
-                     G_CALLBACK(on_workspaces_changes), self);
-
     // setup search result area bindings.
     self->search_result_flbox = GTK_FLOW_BOX(gtk_flow_box_new());
     gtk_flow_box_set_column_spacing(self->search_result_flbox, 20);
@@ -508,7 +412,8 @@ static void activities_init_layout(Activities *self) {
     gtk_box_append(GTK_BOX(self->container), GTK_WIDGET(search_container));
 
     // wrap search_result_flbox in a vertical scroll window
-    self->search_result_scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
+    self->search_result_scrolled =
+        GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
     gtk_scrolled_window_set_child(
         GTK_SCROLLED_WINDOW(self->search_result_scrolled),
         GTK_WIDGET(self->search_result_flbox));
@@ -516,8 +421,6 @@ static void activities_init_layout(Activities *self) {
     // starts hiden until a search takes place
     gtk_widget_set_visible(GTK_WIDGET(self->search_result_scrolled), false);
 
-    gtk_box_append(GTK_BOX(self->container),
-                   GTK_WIDGET(self->workspaces_list_scrolled));
     gtk_box_append(GTK_BOX(self->container),
                    GTK_WIDGET(self->search_result_scrolled));
     gtk_box_append(GTK_BOX(self->container), GTK_WIDGET(self->app_carousel));
@@ -529,48 +432,10 @@ static void activities_init_layout(Activities *self) {
     adw_window_set_content(self->win, GTK_WIDGET(self->revealer));
 }
 
-static void on_desktop_wallpaper_changed(GSettings *settings, gchar *key,
-                                         Activities *self) {
-    g_debug("activities.c:on_desktop_wallpaper_changed called");
-
-    const char *wallpaper_path =
-        g_settings_get_string(self->settings, "desktop-wallpaper");
-
-    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(wallpaper_path, NULL);
-    if (!pixbuf) {
-        g_warning(
-            "activities.c:on_desktop_wallpaper_changed: failed to load "
-            "desktop wallpaper from path: %s",
-            wallpaper_path);
-        return;
-    }
-
-    if (self->desktop_wallpaper) g_object_unref(self->desktop_wallpaper);
-    self->desktop_wallpaper = pixbuf;
-
-    // update all workspace buttons with new wallpaper
-    GtkWidget *child =
-        gtk_widget_get_first_child(GTK_WIDGET(self->workspaces_list));
-    while (child) {
-        GtkWidget *image = gtk_widget_get_first_child(child);
-        image = gtk_widget_get_next_sibling(image);
-
-        gtk_image_set_from_pixbuf(GTK_IMAGE(image), pixbuf);
-        child = gtk_widget_get_next_sibling(child);
-    }
-}
-
 static void activities_init(Activities *self) {
     self->app_carousel_pages = g_ptr_array_new();
 
     self->settings = g_settings_new("org.ldelossa.way-shell.window-manager");
-
-    // wire into sort-alphabetical value
-    g_signal_connect(self->settings, "changed::desktop-wallpaper",
-                     G_CALLBACK(on_desktop_wallpaper_changed), self);
-
-    // set initial desktop backgrond
-    on_desktop_wallpaper_changed(self->settings, "desktop-wallpaper", self);
 
     activities_init_layout(self);
 }
