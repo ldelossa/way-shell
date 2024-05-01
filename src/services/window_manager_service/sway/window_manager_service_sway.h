@@ -32,3 +32,7 @@ int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws);
 // Moves the currently focused workspace to WMOutput.
 // WMServiceSway tracks the currently focused workspace internally.
 int wm_service_sway_current_ws_to_output(WMServiceSway *self, WMOutput *o);
+
+// Moves the currently focused app to the provided workspace.
+// WMServiceSway tracks the currently focused app internally.
+int wm_service_sway_current_app_to_workspace(WMServiceSway *self, WMWorkspace *ws);

@@ -72,3 +72,9 @@ cmd_tree_node_t *workspace_switcher_cmd();
 // Subcommands off this node deal with showing and hiding the Output Switcher
 // widget.
 cmd_tree_node_t *output_switcher_cmd();
+
+// The Workspace App Switcher command
+//
+// Subcommands off this node deal with showing and hiding the Workspace App
+// Switcher widget.
+cmd_tree_node_t *workspace_app_switcher_cmd();

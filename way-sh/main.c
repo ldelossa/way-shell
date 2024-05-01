@@ -49,6 +49,7 @@ static void build_command_tree() {
     cmd_tree_node_t *activities = activities_cmd();
     cmd_tree_node_t *app_switcher = app_switcher_cmd();
     cmd_tree_node_t *workspace_switcher = workspace_switcher_cmd();
+    cmd_tree_node_t *workspace_app_switcher = workspace_app_switcher_cmd();
     cmd_tree_node_t *output_switcher = output_switcher_cmd();
 
     cmd_tree_node_add_child(&root_cmd, message_tray);
@@ -58,6 +59,7 @@ static void build_command_tree() {
     cmd_tree_node_add_child(&root_cmd, activities);
     cmd_tree_node_add_child(&root_cmd, app_switcher);
     cmd_tree_node_add_child(&root_cmd, workspace_switcher);
+    cmd_tree_node_add_child(&root_cmd, workspace_app_switcher);
     cmd_tree_node_add_child(&root_cmd, output_switcher);
 }
 

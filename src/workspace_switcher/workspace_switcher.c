@@ -15,9 +15,15 @@ static WorkspaceSwitcher *global = NULL;
 
 enum signals { signals_n };
 
+enum mode {
+    switch_workspace,
+    switch_app,
+};
+
 typedef struct _WorkspaceSwitcher {
     GObject parent_instance;
     AdwWindow *win;
+    enum mode mode;
 
     // List model and filtering
     GtkListBox *workspace_list;
@@ -131,8 +137,44 @@ static void on_search_previous_match(GtkSearchEntry *entry,
     gtk_list_box_select_row(self->workspace_list, next_row);
 }
 
+static void on_search_activated_app_mode(GtkSearchEntry *entry,
+                                         WorkspaceSwitcher *self) {
+    if (!workspace_switcher_top_choice(self)) {
+        const gchar *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
+        WMWorkspace ws = {.num = -1, .name = (void *)search_text};
+        WMServiceSway *sway = wm_service_sway_get_global();
+        wm_service_sway_current_app_to_workspace(sway, &ws);
+        workspace_switcher_hide(self);
+        return;
+    }
+
+    GtkListBoxRow *selected =
+        gtk_list_box_get_selected_row(self->workspace_list);
+
+    GtkWidget *widget = gtk_list_box_row_get_child(selected);
+    if (!widget) return;
+
+    WMWorkspace *ws = g_object_get_data(G_OBJECT(widget), "workspace");
+    if (!ws) {
+        // should not happen...
+        g_error("Workspace not found.");
+    }
+
+    // switch to workspace
+    WMServiceSway *sway = wm_service_sway_get_global();
+    wm_service_sway_current_app_to_workspace(sway, ws);
+
+    // hide widget
+    workspace_switcher_hide(self);
+}
+
 static void on_search_activated(GtkSearchEntry *entry,
                                 WorkspaceSwitcher *self) {
+    if (self->mode == switch_app) {
+        on_search_activated_app_mode(entry, self);
+        return;
+    }
+
     // check if there are filtered results, if there aren't
     // TODO: create this workspace
     if (!workspace_switcher_top_choice(self)) {
@@ -238,7 +280,11 @@ static void on_row_activated(GtkListBox *box, GtkListBoxRow *row,
 
     // switch to workspace
     WMServiceSway *sway = wm_service_sway_get_global();
-    wm_service_sway_focus_workspace(sway, ws);
+
+    if (self->mode == switch_app)
+        wm_service_sway_current_app_to_workspace(sway, ws);
+    else
+        wm_service_sway_focus_workspace(sway, ws);
 
     // hide widget
     workspace_switcher_hide(self);
@@ -397,6 +443,8 @@ void workspace_switcher_show(WorkspaceSwitcher *self) {
 void workspace_switcher_hide(WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:workspace_switcher_hide() called.");
 
+    self->mode = switch_workspace;
+
     on_search_stop(NULL, self);
 
     gtk_widget_set_visible(GTK_WIDGET(self->win), false);
@@ -408,5 +456,28 @@ void workspace_switcher_toggle(WorkspaceSwitcher *self) {
         workspace_switcher_hide(self);
     } else {
         workspace_switcher_show(self);
+    }
+}
+
+void workspace_switcher_show_app_mode(WorkspaceSwitcher *self) {
+    g_debug("workspace_switcher.c:workspace_switcher_show() called.");
+
+    GtkListBoxRow *row = gtk_list_box_get_row_at_index(self->workspace_list, 0);
+    if (row) gtk_list_box_select_row(self->workspace_list, row);
+
+    self->mode = switch_app;
+
+    // grab search entry focus
+    gtk_widget_grab_focus(GTK_WIDGET(self->search_entry));
+
+    gtk_window_present(GTK_WINDOW(self->win));
+}
+
+void workspace_switcher_toggle_app_mode(WorkspaceSwitcher *self) {
+    g_debug("workspace_switcher.c:workspace_switcher_toggle() called.");
+    if (gtk_widget_get_visible(GTK_WIDGET(self->win))) {
+        workspace_switcher_hide(self);
+    } else {
+        workspace_switcher_show_app_mode(self);
     }
 }

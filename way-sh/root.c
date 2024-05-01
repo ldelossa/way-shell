@@ -14,6 +14,7 @@ static int root_exec(void *ctx, uint8_t argc, char **argv) {
         "\tactivities\n"
         "\tapp-switcher\n"
         "\tworkspace-switcher\n"
+        "\tworkspace-app-switcher\n"
         "\toutput-switcher\n"
 	);
     return 0;

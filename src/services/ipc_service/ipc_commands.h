@@ -28,6 +28,9 @@ enum IPCCommands : uint32_t {
     IPC_CMD_OUTPUT_SWITCHER_SHOW,
     IPC_CMD_OUTPUT_SWITCHER_HIDE,
     IPC_CMD_OUTPUT_SWITCHER_TOGGLE,
+    IPC_CMD_WORKSPACE_APP_SWITCHER_SHOW,
+    IPC_CMD_WORKSPACE_APP_SWITCHER_HIDE,
+    IPC_CMD_WORKSPACE_APP_SWITCHER_TOGGLE,
 };
 
 typedef struct _IPCHeader {
@@ -126,3 +129,15 @@ typedef struct _IPCOutputSwitcherHide {
 typedef struct _IPCOutputSwitcherToggle {
     IPCHeader header;
 } IPCOutputSwitcherToggle;
+
+typedef struct _IPCWorkspaceAppSwitcherShow {
+    IPCHeader header;
+} IPCWorkspaceAppSwitcherShow;
+
+typedef struct _IPCWorkspaceAppSwitcherHide {
+    IPCHeader header;
+} IPCWorkspaceAppSwitcherHide;
+
+typedef struct _IPCWorkspaceAppSwitcherToggle {
+    IPCHeader header;
+} IPCWorkspaceAppSwitcherToggle;

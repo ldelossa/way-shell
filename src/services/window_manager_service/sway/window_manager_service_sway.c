@@ -343,6 +343,18 @@ int wm_service_sway_current_ws_to_output(WMServiceSway *self, WMOutput *o) {
     return sway_client_ipc_move_ws_to_output(self->socket_fd, o->name);
 }
 
+int wm_service_sway_current_app_to_workspace(WMServiceSway *self,
+                                             WMWorkspace *ws) {
+    if (!ws) {
+        g_warning(
+            "window_manager_service_sway.c:wm_service_sway_current_app_to_"
+            "workspace() "
+            "workspaces not initialized.");
+        return -1;
+    }
+    return sway_client_ipc_move_app_to_workspace(self->socket_fd, ws->name);
+}
+
 // Get the global wm service
 // Will return NULL if `wm_service_sway_global_init` has not been called.
 WMServiceSway *wm_service_sway_get_global() { return global; };

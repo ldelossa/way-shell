@@ -88,8 +88,11 @@ gboolean sway_client_ipc_subscribe_resp(sway_client_ipc_msg *msg);
 // Focus the provided workspace.
 int sway_client_ipc_focus_workspace(int socket_fd, WMWorkspace *ws);
 
-// Move the given workspace to the provided output.
+// Move the currently focused workspace to the provided output.
 int sway_client_ipc_move_ws_to_output(int socket_fd, gchar *output);
+
+// Move the current focused app to the provided workspace.
+int sway_client_ipc_move_app_to_workspace(int socket_fd, gchar *workspace);
 
 // Events //
 

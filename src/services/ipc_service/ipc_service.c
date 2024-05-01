@@ -6,13 +6,13 @@
 
 #include "../../activities/activities.h"
 #include "../../app_switcher/app_switcher.h"
-#include "../../output_switcher/output_switcher.h"
-#include "../../workspace_switcher/workspace_switcher.h"
 #include "../../gresources.h"
+#include "../../output_switcher/output_switcher.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
 #include "../../services/theme_service.h"
 #include "../../services/wireplumber_service.h"
+#include "../../workspace_switcher/workspace_switcher.h"
 #include "glib-unix.h"
 #include "ipc_commands.h"
 
@@ -384,6 +384,45 @@ static gboolean ip_cmd_workspace_switcher_toggle() {
     return true;
 }
 
+static gboolean ip_cmd_workspace_app_switcher_show() {
+    g_debug("ipc_service.c:ip_cmd_workspace_switcher_show()");
+
+    WorkspaceSwitcher *a = workspace_switcher_get_global();
+    if (!a) {
+        return false;
+    }
+
+    workspace_switcher_show_app_mode(a);
+
+    return true;
+}
+
+static gboolean ip_cmd_workspace_app_switcher_hide() {
+    g_debug("ipc_service.c:ip_cmd_workspace_switcher_hide()");
+
+    WorkspaceSwitcher *a = workspace_switcher_get_global();
+    if (!a) {
+        return false;
+    }
+
+    workspace_switcher_hide(a);
+
+    return true;
+}
+
+static gboolean ip_cmd_workspace_app_switcher_toggle() {
+    g_debug("ipc_service.c:ip_cmd_workspace_switcher_toggle()");
+
+    WorkspaceSwitcher *a = workspace_switcher_get_global();
+    if (!a) {
+        return false;
+    }
+
+    workspace_switcher_toggle_app_mode(a);
+
+    return true;
+}
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -544,6 +583,24 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_OUTPUT_SWITCHER_TOGGLE");
             ret = ip_cmd_output_switcher_toggle();
+            break;
+        case IPC_CMD_WORKSPACE_APP_SWITCHER_SHOW:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_WORKSPACE_APP_SWITCHER_SHOW");
+            ret = ip_cmd_workspace_app_switcher_show();
+            break;
+        case IPC_CMD_WORKSPACE_APP_SWITCHER_HIDE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_WORKSPACE_APP_SWITCHER_HIDE");
+            ret = ip_cmd_workspace_app_switcher_hide();
+            break;
+        case IPC_CMD_WORKSPACE_APP_SWITCHER_TOGGLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_WORKSPACE_APP_SWITCHER_TOGGLE");
+            ret = ip_cmd_workspace_app_switcher_toggle();
             break;
         default:
             goto skip_resp;
