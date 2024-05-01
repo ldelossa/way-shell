@@ -6,6 +6,7 @@
 
 #include "../../activities/activities.h"
 #include "../../app_switcher/app_switcher.h"
+#include "../../output_switcher/output_switcher.h"
 #include "../../workspace_switcher/workspace_switcher.h"
 #include "../../gresources.h"
 #include "../../panel/message_tray/message_tray.h"
@@ -305,6 +306,45 @@ static gboolean ip_cmd_app_switcher_toggle() {
     return true;
 }
 
+static gboolean ip_cmd_output_switcher_show() {
+    g_debug("ipc_service.c:ip_cmd_output_switcher_show()");
+
+    OutputSwitcher *o = output_switcher_get_global();
+    if (!o) {
+        return false;
+    }
+
+    output_switcher_show(o);
+
+    return true;
+}
+
+static gboolean ip_cmd_output_switcher_hide() {
+    g_debug("ipc_service.c:ip_cmd_output_switcher_hide()");
+
+    OutputSwitcher *o = output_switcher_get_global();
+    if (!o) {
+        return false;
+    }
+
+    output_switcher_hide(o);
+
+    return true;
+}
+
+static gboolean ip_cmd_output_switcher_toggle() {
+    g_debug("ipc_service.c:ip_cmd_output_switcher_toggle()");
+
+    OutputSwitcher *o = output_switcher_get_global();
+    if (!o) {
+        return false;
+    }
+
+    output_switcher_toggle(o);
+
+    return true;
+}
+
 static gboolean ip_cmd_workspace_switcher_show() {
     g_debug("ipc_service.c:ip_cmd_workspace_switcher_show()");
 
@@ -486,6 +526,24 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_WORKSPACE_SWITCHER_TOGGLE");
             ret = ip_cmd_workspace_switcher_toggle();
+            break;
+        case IPC_CMD_OUTPUT_SWITCHER_SHOW:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_OUTPUT_SWITCHER_SHOW");
+            ret = ip_cmd_output_switcher_show();
+            break;
+        case IPC_CMD_OUTPUT_SWITCHER_HIDE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_OUTPUT_SWITCHER_HIDE");
+            ret = ip_cmd_output_switcher_hide();
+            break;
+        case IPC_CMD_OUTPUT_SWITCHER_TOGGLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_OUTPUT_SWITCHER_TOGGLE");
+            ret = ip_cmd_output_switcher_toggle();
             break;
         default:
             goto skip_resp;

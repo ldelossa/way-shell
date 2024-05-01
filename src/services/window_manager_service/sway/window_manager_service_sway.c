@@ -3,6 +3,7 @@
 #include <adwaita.h>
 #include <glib-2.0/glib-unix.h>
 
+#include "glib.h"
 #include "ipc.h"
 #include "sway_client.h"
 
@@ -19,6 +20,7 @@ struct _WMServiceSway {
     guint poll_id;
     gboolean polling;
     gboolean subscribed;
+    gchar *focused_workspace;
     GSettings *settings;
 };
 static guint service_signals[signals_n] = {0};
@@ -135,6 +137,11 @@ static void handle_ipc_event_workspaces(WMServiceSway *self,
     WMWorkspaceEvent *event = sway_client_ipc_event_workspace_resp(msg);
     if (event->type == WMWORKSPACE_EVENT_CREATED) {
         launch_on_workspace_new_script(event->workspace.name);
+    }
+
+    if (event->type == WMWORKSPACE_EVENT_FOCUSED) {
+        if (self->focused_workspace) g_free(self->focused_workspace);
+        self->focused_workspace = g_strdup(event->workspace.name);
     }
 
     sway_client_ipc_get_workspaces_req(self->socket_fd);
@@ -304,6 +311,17 @@ GPtrArray *wm_service_sway_get_workspaces(WMServiceSway *self) {
     return g_ptr_array_ref(self->workspaces);
 }
 
+GPtrArray *wm_service_sway_get_outputs(WMServiceSway *self) {
+    if (!self->outputs) {
+        g_warning(
+            "window_manager_service_sway.c:wm_service_sway_get_outputs() "
+            "outputs not initialized.");
+        return NULL;
+    }
+
+    return g_ptr_array_ref(self->outputs);
+}
+
 int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws) {
     if (!self->workspaces) {
         g_warning(
@@ -312,6 +330,17 @@ int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws) {
         return -1;
     }
     return sway_client_ipc_focus_workspace(self->socket_fd, ws);
+}
+
+int wm_service_sway_current_ws_to_output(WMServiceSway *self, WMOutput *o) {
+    if (!o) {
+        g_warning(
+            "window_manager_service_sway.c:wm_service_sway_current_ws_to_"
+            "output() "
+            "outputs not initialized.");
+        return -1;
+    }
+    return sway_client_ipc_move_ws_to_output(self->socket_fd, o->name);
 }
 
 // Get the global wm service

@@ -2,9 +2,9 @@
 
 #include "./activities/activities.h"
 #include "./app_switcher/app_switcher.h"
-#include "./workspace_switcher/workspace_switcher.h"
 #include "./dialog_overlay/dialog_overlay.h"
 #include "./osd/osd.h"
+#include "./output_switcher/output_switcher.h"
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/message_tray/message_tray_mediator.h"
 #include "./panel/panel.h"
@@ -22,6 +22,7 @@
 #include "./services/wayland_service/wayland_service.h"
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
+#include "./workspace_switcher/workspace_switcher.h"
 #include "gresources.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
@@ -127,6 +128,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
     app_switcher_activate(app, user_data);
     g_debug("main.c: activate(): app_switcher subsystems activated");
+
+    output_switcher_activate(app, user_data);
+    g_debug("main.c: activate(): output_switcher subsystems activated");
 
     workspace_switcher_activate(app, user_data);
     g_debug("main.c: activate(): workspace_switcher subsystems activated");

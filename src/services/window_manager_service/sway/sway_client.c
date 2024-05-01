@@ -627,6 +627,22 @@ int sway_client_ipc_focus_workspace(int socket_fd, WMWorkspace *ws) {
     return sway_client_ipc_send(socket_fd, &msg);
 }
 
+int sway_client_ipc_move_ws_to_output(int socket_fd, gchar *output) {
+    sway_client_ipc_msg msg = {.type = IPC_COMMAND};
+    char *cmd_prefix = "move workspace to ";
+
+    if (!output) return -1;
+    if (strlen(output) == 0) return -1;
+
+    msg.size = strlen(cmd_prefix) + strlen(output) + 1;
+    msg.payload = g_malloc0(msg.size);
+
+    strcpy(msg.payload, cmd_prefix);
+    strcat(msg.payload, output);
+
+    return sway_client_ipc_send(socket_fd, &msg);
+}
+
 WMWorkspaceEvent *sway_client_ipc_event_workspace_resp(
     sway_client_ipc_msg *msg) {
     JsonParser *parser = NULL;
