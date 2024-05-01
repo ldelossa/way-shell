@@ -85,6 +85,7 @@ Sway integrates with Way-Shell via its CLI `way-sh`.
 Below is the expected Sway config which Way-Shell supports.
 
 ```shell
+set $mod Mod4
 # way-shell configuration
 bindsym XF86AudioRaiseVolume exec way-sh volume up
 bindsym XF86AudioMute exec way-sh volume mute
