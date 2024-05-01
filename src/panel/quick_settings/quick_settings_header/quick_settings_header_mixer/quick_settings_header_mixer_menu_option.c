@@ -9,20 +9,23 @@
 #include "gtk/gtkdropdown.h"
 #include "gtk/gtkrevealer.h"
 
-GIcon *get_app_icon(const char *app_name) {
+static GAppInfo *search_apps_by_app_id(const gchar *app_id) {
+    GAppInfo *app_info = NULL;
     GList *apps = g_app_info_get_all();
     GList *l;
-
+    g_debug("app_switcher_app_widget: search_apps_by_app_id: %s", app_id);
     for (l = apps; l != NULL; l = l->next) {
-        GAppInfo *app = G_APP_INFO(l->data);
-
-        if (g_strcmp0(g_app_info_get_name(app), app_name) == 0) {
-            GIcon *icon = g_app_info_get_icon(app);
-            return icon;
+        GAppInfo *info = l->data;
+        const gchar *id = g_app_info_get_id(info);
+        const gchar *lower_id = g_utf8_strdown(id, -1);
+        const gchar *lower_app_id = g_utf8_strdown(app_id, -1);
+        if (g_strrstr(lower_id, lower_app_id)) {
+            app_info = info;
+            break;
         }
     }
-
-    return NULL;
+    g_list_free(apps);
+    return app_info;
 }
 
 enum signals { signals_n };
@@ -379,29 +382,47 @@ GtkButton *link_button_new(WirePlumberServiceNodeHeader *header) {
 
 static void set_stream_common(QuickSettingsHeaderMixerMenuOption *self,
                               WirePlumberServiceAudioStream *node) {
-    // lets see if we can find a desktop icon for the app with the stream
-    // name.
-    GIcon *icon = get_app_icon(node->app_name);
-    if (icon)
-        gtk_image_set_from_gicon(self->icon, icon);
-    else
+    // prefer icons from app info
+    GAppInfo *app_info = search_apps_by_app_id(node->app_name);
+    if (app_info) {
+        GIcon *icon = g_app_info_get_icon(G_APP_INFO(app_info));
+        // check and handle GFileIcon, set self->icon to a GtkImage
+        if (G_IS_FILE_ICON(icon)) {
+            g_debug("G_FILE_ICON");
+        }
+        // check and handle if GThemedIcon
+        else if (G_IS_THEMED_ICON(icon)) {
+            GdkDisplay *display = gdk_display_get_default();
+            GtkIconTheme *theme = gtk_icon_theme_get_for_display(display);
+            GtkIconPaintable *paintable = gtk_icon_theme_lookup_by_gicon(
+                theme, icon, 64, 1, GTK_TEXT_DIR_RTL, 0);
+            gtk_image_set_from_paintable(self->icon, GDK_PAINTABLE(paintable));
+        }
+        // check and handle if GLoadableIcon
+        else if (G_IS_LOADABLE_ICON(icon)) {
+            g_debug("G_LOADABLE_ICON");
+        }
+    } else
         gtk_image_set_from_icon_name(self->icon,
                                      "applications-multimedia-symbolic");
 
     // set name and tooltip based on stream direction
     if (node->type == WIRE_PLUMBER_SERVICE_TYPE_INPUT_AUDIO_STREAM) {
-        gtk_label_set_text(self->node_name,
-                           g_strdup_printf("%s (%s)", node->media_name, "Input"));
+        gtk_label_set_text(
+            self->node_name,
+            g_strdup_printf("%s (%s)", node->media_name, "Input"));
         gtk_widget_set_tooltip_text(
             GTK_WIDGET(self->button),
-            g_strdup_printf("%s: %s (%s)", node->app_name, node->media_name, "Input"));
+            g_strdup_printf("%s: %s (%s)", node->app_name, node->media_name,
+                            "Input"));
     } else {
         gtk_label_set_text(
             self->node_name,
             g_strdup_printf("%s (%s)", node->media_name, "Output"));
         gtk_widget_set_tooltip_text(
             GTK_WIDGET(self->button),
-            g_strdup_printf("%s: %s (%s)", node->app_name, node->media_name, "Output"));
+            g_strdup_printf("%s: %s (%s)", node->app_name, node->media_name,
+                            "Output"));
     }
 
     if (node->state == WP_NODE_STATE_RUNNING) {
