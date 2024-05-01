@@ -35,7 +35,8 @@ of effort.
 I'd love any community members to contribute their own methods of installation
 even if its just documentation.
 
-Way-Shell depends on the following packages (Fedora)
+Way-Shell depends on the following packages (Fedora 40).
+Please note that Fedora 40 packages the latest wireplumber libraries and (wireplumber-0.5) and Way-Shell will fail to build if a previous version is being linked. 
 
     libadwaita-devel \
     upower-devel \
@@ -74,6 +75,10 @@ Eventually, I hope to get proper deb/rpm packaging for this project but its not
 on my immediate radar.
 
 Contributions welcome!
+
+## Video Demonstration
+
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/sOooD4Q3mYU/0.jpg)](https://www.youtube.com/watch?v=sOooD4Q3mYU)
 
 ## Configuring Sway
 
