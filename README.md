@@ -86,14 +86,16 @@ Below is the expected Sway config which Way-Shell supports.
 
 ```shell
 # way-shell configuration
-exec way-shell
 bindsym XF86AudioRaiseVolume exec way-sh volume up
 bindsym XF86AudioMute exec way-sh volume mute
 bindsym XF86AudioLowerVolume exec way-sh volume down
 bindsym XF86MonBrightnessDown exec way-sh brightness down
 bindsym XF86MonBrightnessUp exec way-sh brightness up
 bindcode --release 133 exec way-sh activities toggle
-bindsym Mod4+Tab exec way-sh app-switcher toggle
+bindsym $mod+Tab exec way-sh app-switcher toggle
+bindsym $mod+o exec way-sh output-switcher toggle
+bindsym $mod+w exec way-sh workspace-switcher toggle
+bindsym $mod+a exec way-sh workspace-app-switcher toggle
 ```
 
 ## Road to v1.0
