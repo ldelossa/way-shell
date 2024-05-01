@@ -34,7 +34,7 @@ I'd love any community members to contribute their own methods of installation
 even if its just documentation.
 
 Way-Shell depends on the following packages (Fedora 40).
-Please note that Fedora 40 packages the latest wireplumber libraries and (wireplumber-0.5) and Way-Shell will fail to build if a previous version is being linked. 
+Please note that Fedora 40 packages the latest wireplumber libraries (wireplumber-0.5) and Way-Shell will fail to build if a previous version is being linked. 
 
     libadwaita-devel \
     upower-devel \
