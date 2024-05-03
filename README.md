@@ -114,6 +114,7 @@ The below table lists useful keymaps to keep in mind.
 | Super + g  | (In app switcher) move to next instance of an application if it exists |
 | Super + Shift + g  | (In app switcher) move to previous instance of an application if it exists |
 | Super + w | Open the workspace switcher (repeat to toggle close) |
+| Ctrl + Return | (In workspace switcher) create workspace with current search bar entry's text, useful if the desired name of a new workspace overlaps with an existing one. |
 | Super + a | Open the workspace app switcher (repeat to toggle close) |
 | Super + o | Open the output switcher (repeat to toggle close) |
 

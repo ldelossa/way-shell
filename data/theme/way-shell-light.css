@@ -820,7 +820,7 @@ statuspage {
 #workspace-switcher {
     color: @text-general;
     background: @base-panel-background;
-    font-size: 24px;
+    font-size: 18px;
     border-radius: 20px;
 }
 
@@ -835,11 +835,74 @@ statuspage {
     margin-bottom: 0px;
     padding: 8px;
     border-radius: 10px;
-    font-size: 24px;
 }
 
 #workspace-switcher #workspace-list {
     background: @top-panel-background;
     margin: 20px;
-    border-radius: 8px;
+    border-radius: 20px;
+}
+
+#workspace-switcher row:selected {
+   border-top-left-radius: 20px;
+   border-top-right-radius: 20px;
+ }
+
+#workspace-switcher row:selected {
+   border-bottom-left-radius: 20px;
+   border-bottom-right-radius: 20px;
+}
+
+#workspace-switcher row {
+   border-top-left-radius: 20px;
+   border-top-right-radius: 20px;
+   border-bottom-left-radius: 20px;
+   border-bottom-right-radius: 20px;
+}
+
+/*
+ * Output Switcher
+ */
+
+#output-switcher {
+    color: @text-general;
+    background: @base-panel-background;
+    font-size: 18px;
+    border-radius: 20px;
+}
+
+#output-switcher .output-entry {
+    color: @text-general;
+    padding: 4px;
+    margin: 4px;
+}
+
+#output-switcher #search-entry {
+    margin: 20px;
+    margin-bottom: 0px;
+    padding: 8px;
+    border-radius: 10px;
+}
+
+#output-switcher #output-list {
+    background: @top-panel-background;
+    margin: 20px;
+    border-radius: 20px;
+}
+
+#output-switcher row:selected {
+   border-top-left-radius: 20px;
+   border-top-right-radius: 20px;
+ }
+
+#output-switcher row:selected {
+   border-bottom-left-radius: 20px;
+   border-bottom-right-radius: 20px;
+}
+
+#output-switcher row {
+   border-top-left-radius: 20px;
+   border-top-right-radius: 20px;
+   border-bottom-left-radius: 20px;
+   border-bottom-right-radius: 20px;
 }

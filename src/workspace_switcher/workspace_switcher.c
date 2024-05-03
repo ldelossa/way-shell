@@ -168,6 +168,16 @@ static void on_search_activated_app_mode(GtkSearchEntry *entry,
     workspace_switcher_hide(self);
 }
 
+static void activate_with_current_search_entry(GtkSearchEntry *entry,
+                                               WorkspaceSwitcher *self) {
+    const gchar *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
+    WMWorkspace ws = {.num = -1, .name = (void *)search_text};
+    WMServiceSway *sway = wm_service_sway_get_global();
+    wm_service_sway_focus_workspace(sway, &ws);
+    workspace_switcher_hide(self);
+    return;
+}
+
 static void on_search_activated(GtkSearchEntry *entry,
                                 WorkspaceSwitcher *self) {
     if (self->mode == switch_app) {
@@ -175,14 +185,8 @@ static void on_search_activated(GtkSearchEntry *entry,
         return;
     }
 
-    // check if there are filtered results, if there aren't
-    // TODO: create this workspace
     if (!workspace_switcher_top_choice(self)) {
-        const gchar *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
-        WMWorkspace ws = {.num = -1, .name = (void *)search_text};
-        WMServiceSway *sway = wm_service_sway_get_global();
-        wm_service_sway_focus_workspace(sway, &ws);
-        workspace_switcher_hide(self);
+        activate_with_current_search_entry(entry, self);
         return;
     }
 
@@ -325,6 +329,16 @@ static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
 
     if (keyval == GDK_KEY_p && (state & GDK_CONTROL_MASK)) {
         on_search_previous_match(NULL, self);
+        return true;
+    }
+
+    // if the user holds ctrl and presses enter, ignore the search result and
+    // activate/create the workspace in the search entry.
+    //
+    // this allows the search to be fuzzy, but still provides a way for a user
+    // to create a workspace if the desired name overlaps with an existing one.
+    if (keyval == GDK_KEY_Return && (state & GDK_CONTROL_MASK)) {
+        activate_with_current_search_entry(self->search_entry, self);
         return true;
     }
 
