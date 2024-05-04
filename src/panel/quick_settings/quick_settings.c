@@ -310,6 +310,15 @@ void quick_settings_shrink(QuickSettings *qs) {
     gtk_window_set_default_size(GTK_WINDOW(qs->win), 400, 200);
 };
 
+void quick_settings_set_focused(QuickSettings *qs, gboolean focus) {
+    gtk_widget_remove_css_class(GTK_WIDGET(qs->win), "focused");
+    if (focus) {
+        gtk_widget_add_css_class(GTK_WIDGET(qs->win), "focused");
+    } else {
+        gtk_widget_remove_css_class(GTK_WIDGET(qs->win), "focused");
+    }
+};
+
 GdkMonitor *quick_settings_get_monitor(QuickSettings *qs) {
     return qs->monitor;
 };

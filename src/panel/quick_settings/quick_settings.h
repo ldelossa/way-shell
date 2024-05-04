@@ -39,4 +39,6 @@ void quick_settings_toggle(QuickSettings *qs, GdkMonitor *mon);
 // Shrink the QuickSettings UI to its original size, if possible.
 void quick_settings_shrink(QuickSettings *qs);
 
+void quick_settings_set_focused(QuickSettings *qs, gboolean focus);
+
 GdkMonitor *quick_settings_get_monitor(QuickSettings *qs);

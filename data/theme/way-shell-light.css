@@ -432,6 +432,7 @@ statuspage {
   border: 1px solid @base-panel-border;
   box-shadow: 0 2px 4px 0 @box-shadow;
   color: @panel-button-color;
+  transition: background 300ms ease;
 }
 
 /*
@@ -480,6 +481,7 @@ statuspage {
 #quick-settings .quick-settings-grid-button {
   padding: 3px;
   margin: 0px;
+  margin-bottom: 4px;
 }
 
 #quick-settings .quick-settings-grid-button button:hover {
@@ -568,9 +570,8 @@ statuspage {
 #quick-settings-menu #container {
   padding: 5px;
   border-radius: 20px;
-  background: @top-panel-background;
-
-  transition-duration: 250ms;
+  background: linear-gradient(@top-panel-background, shade(@top-panel-background, 0.9));
+  box-shadow: 0 10px 10px rgba(0, 0, 0, 0.5);
 }
 
 #quick-settings-menu #container button {
@@ -679,6 +680,32 @@ statuspage {
 
 #quick-settings-menu #container #options-container .mixer-link {
   margin-left: 38px;
+}
+
+/* these settings darken all other components of the quick-settings widget other
+ * then quick-setting-menu menu provide an emphasized and 3d appearance.
+ *
+ * these override the above settings for each ID to keep them below.
+ */
+
+#quick-settings.focused {
+    background: shade(@top-panel-background, .55);
+}
+
+#quick-settings.focused #quick-settings-scales {
+    color: shade(@text-general, .4);
+}
+#quick-settings.focused #quick-settings-header {
+    color: shade(@text-general, .4);
+}
+#quick-settings.focused scale slider {
+    background: shade(@scale-trough, .4);
+}
+#quick-settings.focused scale trough {
+    background: shade(@scale-trough, .4);
+}
+#quick-settings.focused scale trough highlight {
+    background: shade(@scale-trough-highlight, .4);
 }
 
 /*

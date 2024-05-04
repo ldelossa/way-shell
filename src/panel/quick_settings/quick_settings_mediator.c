@@ -1,6 +1,7 @@
 #include "quick_settings_mediator.h"
 
 #include "../message_tray/message_tray.h"
+#include "glib-object.h"
 #include "quick_settings.h"
 
 enum signals {
@@ -16,6 +17,7 @@ enum signals {
     quick_settings_req_open,
     quick_settings_req_close,
     quick_settings_req_shrink,
+    quick_settings_req_set_focus,
 
     signals_n
 };
@@ -72,6 +74,11 @@ static void quick_settings_mediator_class_init(
     signals[quick_settings_req_shrink] = g_signal_new(
         "quick-settings-req-shrink", G_TYPE_FROM_CLASS(object_class),
         G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    signals[quick_settings_req_set_focus] =
+        g_signal_new("quick-settings-req-set-focus",
+                     G_TYPE_FROM_CLASS(object_class), G_SIGNAL_RUN_FIRST, 0,
+                     NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 };
 
 static void on_quick_settings_open(QuickSettingsMediator *mediator,
@@ -97,6 +104,12 @@ static void on_quick_settings_shrink(QuickSettingsMediator *mediator) {
     quick_settings_shrink(mediator->qs);
 };
 
+static void on_quick_settings_set_focus(QuickSettingsMediator *mediator,
+                                        gboolean focus) {
+    g_debug("quick_settings_mediator.c:quick_settings_set_focus() called.");
+    quick_settings_set_focused(mediator->qs, focus);
+};
+
 static void quick_settings_mediator_init(QuickSettingsMediator *self) {
     // write into out actions api
     g_signal_connect(self, "quick-settings-req-open",
@@ -105,6 +118,8 @@ static void quick_settings_mediator_init(QuickSettingsMediator *self) {
                      G_CALLBACK(on_quick_settings_close), NULL);
     g_signal_connect(self, "quick-settings-req-shrink",
                      G_CALLBACK(on_quick_settings_shrink), NULL);
+    g_signal_connect(self, "quick-settings-req-set-focus",
+                     G_CALLBACK(on_quick_settings_set_focus), NULL);
 };
 
 // Sets a pointer to the Tray this QuickSettingsMediator mediates signals for.
@@ -155,6 +170,14 @@ void quick_settings_mediator_req_shrink(QuickSettingsMediator *mediator) {
         "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
         "signal.");
     g_signal_emit(mediator, signals[quick_settings_req_shrink], 0);
+};
+
+void quick_settings_mediator_req_set_focus(QuickSettingsMediator *mediator,
+                                           gboolean focus) {
+    g_debug(
+        "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
+        "signal.");
+    g_signal_emit(mediator, signals[quick_settings_req_set_focus], 0, focus);
 };
 
 static void on_message_tray_will_show(MessageTrayMediator *msg_tray_mediator,
