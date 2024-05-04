@@ -1,6 +1,7 @@
 #include "notification_widget.h"
 
 #include <adwaita.h>
+#include <string.h>
 
 #include "gtk/gtkrevealer.h"
 
@@ -65,28 +66,62 @@ static void notification_widget_init_layout(NotificationWidget *self,
     gtk_box_append(self->container, GTK_WIDGET(self->overlay));
 }
 
-static void set_notification_icon(NotificationWidget *self, Notification *n) {
-    GtkImage *icon = NULL;
-    if (n->img_data.data) {
-        GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data(
-            (const guchar *)n->img_data.data,
-            n->img_data.has_alpha ? GDK_COLORSPACE_RGB : GDK_COLORSPACE_RGB,
-            n->img_data.has_alpha, n->img_data.bits_per_sample,
-            n->img_data.width, n->img_data.height, n->img_data.rowstride, NULL,
-            NULL);
-        if (pixbuf) {
-            // scale image to 48 pixels
-            GdkPixbuf *scaled_pixbuf =
-                gdk_pixbuf_scale_simple(pixbuf, 48, 48, GDK_INTERP_BILINEAR);
+static void icon_from_img_data(GtkImage *icon,
+                               NotificationImageData *img_data) {
+    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_data(
+        (const guchar *)img_data->data,
+        img_data->has_alpha ? GDK_COLORSPACE_RGB : GDK_COLORSPACE_RGB,
+        img_data->has_alpha, img_data->bits_per_sample, img_data->width,
+        img_data->height, img_data->rowstride, NULL, NULL);
+    if (pixbuf) {
+        // scale image to 48 pixels
+        GdkPixbuf *scaled_pixbuf =
+            gdk_pixbuf_scale_simple(pixbuf, 48, 48, GDK_INTERP_BILINEAR);
 
-            GdkTexture *texture = gdk_texture_new_for_pixbuf(scaled_pixbuf);
-            icon =
-                GTK_IMAGE(gtk_image_new_from_paintable(GDK_PAINTABLE(texture)));
-            g_object_unref(texture);
+        GdkTexture *texture = gdk_texture_new_for_pixbuf(scaled_pixbuf);
+        gtk_image_set_from_paintable(icon, GDK_PAINTABLE(texture));
+        g_object_unref(texture);
+    }
+}
+
+static void icon_from_app_id(GtkImage *icon, gchar *app_id) {
+    GAppInfo *app_info = NULL;
+    GList *apps = g_app_info_get_all();
+    GList *l;
+    g_debug("app_switcher_app_widget: search_apps_by_app_id: %s", app_id);
+    for (l = apps; l != NULL; l = l->next) {
+        GAppInfo *info = l->data;
+        const gchar *id = g_app_info_get_id(info);
+        const gchar *lower_id = g_utf8_strdown(id, -1);
+        const gchar *lower_app_id = g_utf8_strdown(app_id, -1);
+        if (g_strrstr(lower_id, lower_app_id)) {
+            app_info = info;
+            break;
         }
-    } else
-        icon = GTK_IMAGE(gtk_image_new_from_icon_name(
-            "preferences-system-notifications-symbolic"));
+    }
+    g_list_free(apps);
+
+    GIcon *g_icon = g_app_info_get_icon(G_APP_INFO(app_info));
+    // check and handle if GThemedIcon
+    if (g_icon && G_IS_THEMED_ICON(g_icon)) {
+        GdkDisplay *display = gdk_display_get_default();
+        GtkIconTheme *theme = gtk_icon_theme_get_for_display(display);
+        GtkIconPaintable *paintable = gtk_icon_theme_lookup_by_gicon(
+            theme, g_icon, 48, 1, GTK_TEXT_DIR_RTL, 0);
+        gtk_image_set_from_paintable(icon, GDK_PAINTABLE(paintable));
+    }
+}
+
+static void set_notification_icon(NotificationWidget *self, Notification *n) {
+    GtkImage *icon = GTK_IMAGE(gtk_image_new_from_icon_name(
+        "preferences-system-notifications-symbolic"));
+    if (n->img_data.data) {
+        icon_from_img_data(icon, &n->img_data);
+    } else if (n->app_name && (strlen(n->app_name) > 0)) {
+        icon_from_app_id(icon, n->app_name);
+    }  else if (n->desktop_entry && (strlen(n->desktop_entry) > 0)) {
+        icon_from_app_id(icon, n->desktop_entry);
+    }
 
     gtk_image_set_pixel_size(icon, 48);
     gtk_widget_set_halign(GTK_WIDGET(icon), GTK_ALIGN_START);
@@ -94,6 +129,32 @@ static void set_notification_icon(NotificationWidget *self, Notification *n) {
 
     GtkBox *button_contents = GTK_BOX(gtk_button_get_child(self->button));
     gtk_box_append(button_contents, GTK_WIDGET(icon));
+}
+
+static void set_text_with_markup(GtkLabel *label, const gchar *text) {
+    PangoAttrList *attrs = NULL;
+    gchar *buf = NULL;
+    GError *error = NULL;
+
+    // Escape the text to ensure it's safe for parsing as markup
+    gchar *escaped_text = g_markup_escape_text(text, -1);
+
+    // Try to parse the escaped text as Pango markup
+    if (!pango_parse_markup(escaped_text, -1, 0, &attrs, &buf, NULL, &error)) {
+        fprintf(stderr, "Could not parse Pango markup %s: %s\n", text,
+                error->message);
+        g_error_free(error);
+        gtk_label_set_text(label, escaped_text);  // Fallback to plain text
+    } else {
+        gtk_label_set_markup(label, buf);
+        if (attrs) {
+            gtk_label_set_attributes(label, attrs);
+            pango_attr_list_unref(attrs);
+        }
+    }
+
+    g_free(buf);
+    g_free(escaped_text);
 }
 
 static void set_notification_text(NotificationWidget *self, Notification *n) {
@@ -109,6 +170,8 @@ static void set_notification_text(NotificationWidget *self, Notification *n) {
     gtk_label_set_ellipsize(summary, PANGO_ELLIPSIZE_END);
     gtk_label_set_lines(summary, 1);
     gtk_label_set_wrap(summary, true);
+    gtk_widget_set_size_request(GTK_WIDGET(summary), 380, -1);
+    gtk_label_set_xalign(summary, 0.0);
     self->summary = summary;
 
     // make body
@@ -121,6 +184,9 @@ static void set_notification_text(NotificationWidget *self, Notification *n) {
     gtk_label_set_ellipsize(body, PANGO_ELLIPSIZE_END);
     gtk_label_set_lines(body, 3);
     gtk_label_set_wrap(body, true);
+    set_text_with_markup(body, body_text);
+    gtk_widget_set_size_request(GTK_WIDGET(body), 380, -1);
+    gtk_label_set_xalign(body, 0.0);
     self->body = body;
 
     // add summary and body to text box.
