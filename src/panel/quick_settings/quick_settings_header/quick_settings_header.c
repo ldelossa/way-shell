@@ -38,23 +38,33 @@ static void quick_settings_header_on_qs_hidden(QuickSettingsMediator *mediator,
 static void on_power_button_click(GtkButton *button,
                                   QuickSettingsHeader *self) {
     g_debug("quick_settings.c:on_power_button_click() called.");
+    QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
     gboolean revealed =
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->power_menu_revealer));
-    gtk_revealer_set_reveal_child(self->power_menu_revealer, !revealed);
-
-    // close mixer revealer
-    gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
+    if (!revealed) {
+        quick_settings_mediator_req_set_focus(mediator, true);
+        gtk_revealer_set_reveal_child(self->power_menu_revealer, true);
+        gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
+    } else {
+        quick_settings_mediator_req_set_focus(mediator, false);
+        gtk_revealer_set_reveal_child(self->power_menu_revealer, false);
+    }
 };
 
 static void on_mixer_button_click(GtkButton *button,
                                   QuickSettingsHeader *self) {
     g_debug("quick_settings.c:on_mixer_button_click() called.");
+    QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
     gboolean revealed =
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->mixer_revealer));
-    gtk_revealer_set_reveal_child(self->mixer_revealer, !revealed);
-
-    // close power menu revealer
-    gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+    if (!revealed) {
+        quick_settings_mediator_req_set_focus(mediator, true);
+        gtk_revealer_set_reveal_child(self->mixer_revealer, true);
+        gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+    } else {
+        quick_settings_mediator_req_set_focus(mediator, false);
+        gtk_revealer_set_reveal_child(self->mixer_revealer, false);
+    }
 }
 
 // stub out empty dispose, finalize, class_init, and init methods for this
@@ -95,12 +105,7 @@ static void on_reveal_finish(GtkRevealer *revealer, GParamSpec *spec,
     gboolean revealed =
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->power_menu_revealer));
     QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
-    if (!revealed) {
-        quick_settings_mediator_req_shrink(mediator);
-        quick_settings_mediator_req_set_focus(mediator, false);
-    } else {
-        quick_settings_mediator_req_set_focus(mediator, true);
-    }
+    if (!revealed) quick_settings_mediator_req_shrink(mediator);
 }
 
 static void on_mixer_reveal_child(GtkRevealer *revealer, GParamSpec *spec,
@@ -108,12 +113,7 @@ static void on_mixer_reveal_child(GtkRevealer *revealer, GParamSpec *spec,
     gboolean revealed =
         gtk_revealer_get_reveal_child(GTK_REVEALER(self->mixer_revealer));
     QuickSettingsMediator *mediator = quick_settings_get_global_mediator();
-    if (!revealed) {
-        quick_settings_mediator_req_shrink(mediator);
-        quick_settings_mediator_req_set_focus(mediator, false);
-    } else {
-        quick_settings_mediator_req_set_focus(mediator, true);
-    }
+    if (!revealed) quick_settings_mediator_req_shrink(mediator);
     g_signal_emit(self, signals[mixer_revealed], 0, revealed);
 }
 
