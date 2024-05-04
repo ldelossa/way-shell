@@ -2,9 +2,9 @@
 
 #include <adwaita.h>
 
+#include "../dbus_service.h"
 #include "gio/gdbusinterfaceskeleton.h"
 #include "notifications_dbus.h"
-#include "../dbus_service.h"
 
 void print_notification(const Notification *n) {
     g_debug("Notification:");
@@ -69,6 +69,7 @@ struct _NotificationsService {
     DbusNotifications *dbus;
     GDBusConnection *conn;
     GPtrArray *notifications;
+    GHashTable *internal_ids;
     uint32_t last_id;
     gboolean enabled;
 };
@@ -126,8 +127,8 @@ static void on_name_lost(GDBusConnection *conn, const gchar *name,
 };
 
 static void notifications_service_dbus_connect(NotificationsService *self) {
-	DBUSService *dbus = dbus_service_get_global();
-	self->conn = dbus_service_get_session_bus(dbus);
+    DBUSService *dbus = dbus_service_get_global();
+    self->conn = dbus_service_get_session_bus(dbus);
 }
 
 static gboolean on_handle_get_server_information(
@@ -198,6 +199,24 @@ static void parse_notify_hints(GVariant *hints, Notification *n) {
     if (!n->img_data.data) g_free(n->img_data.data);
 
     return;
+}
+
+void notifications_service_send_notification(NotificationsService *self,
+                                             Notification *n) {
+    Notification *nn = g_malloc0(sizeof(Notification));
+    nn->id = self->last_id++;
+    nn->summary = g_strdup(n->summary);
+    nn->body = g_strdup(n->body);
+    nn->app_icon = g_strdup(n->app_icon);
+    nn->urgency = n->urgency;
+    nn->is_internal = true;
+
+    g_hash_table_add(self->internal_ids, GUINT_TO_POINTER(nn->id));
+    g_ptr_array_add(self->notifications, nn);
+    // emit notifications change signal
+    g_signal_emit(self, signals[notification_added], 0, self->notifications,
+                  nn->id, (self->notifications->len - 1));
+    g_signal_emit(self, signals[notification_changed], 0, self->notifications);
 }
 
 static gboolean on_handle_notify(DbusNotifications *dbus,
@@ -303,7 +322,7 @@ void connect_handlers(NotificationsService *self) {
     g_signal_connect(self->dbus, "handle-get-server-information",
                      G_CALLBACK(on_handle_get_server_information), self);
     g_signal_connect(self->dbus, "handle-close-notification",
-					 G_CALLBACK(on_handle_close_notification), self);
+                     G_CALLBACK(on_handle_close_notification), self);
 }
 
 static void notifications_service_init(NotificationsService *self) {
@@ -323,8 +342,23 @@ static void notifications_service_init(NotificationsService *self) {
 
     self->notifications = g_ptr_array_new();
 
+    self->internal_ids = g_hash_table_new(g_direct_hash, g_direct_equal);
+
     self->enabled = true;
 };
+
+static void free_notification(Notification *n) {
+    if (n->app_name) g_free(n->app_name);
+    if (n->app_icon) g_free(n->app_icon);
+    if (n->summary) g_free(n->summary);
+    if (n->body) g_free(n->body);
+    if (n->actions) g_strfreev(n->actions);
+    if (n->category) g_free(n->category);
+    if (n->desktop_entry) g_free(n->desktop_entry);
+    if (n->image_path) g_free(n->image_path);
+    if (n->img_data.data) g_free(n->img_data.data);
+    g_free(n);
+}
 
 int notifications_service_closed_notification(
     NotificationsService *self, guint32 id,
@@ -351,8 +385,15 @@ int notifications_service_closed_notification(
         return -1;
     }
     g_ptr_array_remove_fast(self->notifications, n);
+    free_notification(n);
 
-    dbus_notifications_emit_notification_closed(self->dbus, id, reason);
+    // if id is an internal id, remove it from internal ids set.
+    // if not, notify dbus.
+    if (g_hash_table_contains(self->internal_ids, GUINT_TO_POINTER(id))) {
+        g_hash_table_remove(self->internal_ids, GUINT_TO_POINTER(id));
+    } else {
+        dbus_notifications_emit_notification_closed(self->dbus, id, reason);
+    }
 
     // emit our own close signal
     g_signal_emit(self, signals[notification_closed], 0, self->notifications,
@@ -367,6 +408,12 @@ int notifications_service_invoke_action(NotificationsService *self, guint32 id,
     g_debug(
         "notifications_service.c:notification_service_invoke_action() "
         "called");
+
+    // if id is an internal id, just return
+    if (g_hash_table_contains(self->internal_ids, GUINT_TO_POINTER(id))) {
+        return 0;
+    }
+
     dbus_notifications_emit_action_invoked(self->dbus, id, action_key);
     return 0;
 }

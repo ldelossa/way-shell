@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 
+#include "../../../services/notifications_service/notifications_service.h"
 #include "../../../services/upower_service.h"
 
 typedef struct _QuickSettingsBatteryButton {
@@ -11,6 +12,12 @@ typedef struct _QuickSettingsBatteryButton {
     GtkLabel *percentage;
     GtkButton *button;
     UpDevice *device;
+    // 20% battery power left warning notification
+    gboolean warning_notification_sent;
+    // 15% battery power left warning notification
+    gboolean critical_notification_sent;
+    // 5% battery power left fata notification
+    gboolean fata_notification_sent;
 } QuickSettingsBatteryButton;
 G_DEFINE_TYPE(QuickSettingsBatteryButton, quick_settings_battery_button,
               G_TYPE_OBJECT);
@@ -19,6 +26,8 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
                                 QuickSettingsBatteryButton *self) {
     char *icon = NULL;
     double percent = 0;
+
+    NotificationsService *notifs = notifications_service_get_global();
 
     g_debug("quick_settings_battery_button.c:on_power_dev_notify() called.");
 
@@ -32,6 +41,63 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
             icon);
 
     gtk_label_set_text(self->percentage, g_strdup_printf("%.0f%%", percent));
+
+    // reset notification sent values
+    if (percent > 5) {
+        self->fata_notification_sent = false;
+    }
+    if (percent > 15) {
+        self->critical_notification_sent = false;
+    }
+    if (percent > 20) {
+        self->warning_notification_sent = false;
+    }
+
+    // if device is charging don't bother sending events below
+    guint state = 0;
+    g_object_get(power_dev, "state", &state, NULL);
+    gboolean charging = (state == UP_DEVICE_STATE_CHARGING ||
+                         state == UP_DEVICE_STATE_FULLY_CHARGED ||
+                         state == UP_DEVICE_STATE_PENDING_CHARGE);
+    if (charging) return;
+
+    gchar *body = g_strdup_printf("Battery is at %.0f%% power.", percent);
+
+    // send a notification if percent is in specific range, and notification
+    // was not sent
+    if (percent <= 5 && !self->fata_notification_sent) {
+        Notification n = {
+            .app_icon = "battery-level-0-symbolic",
+            .summary = "Battery is critically low",
+            .body = body,
+            .urgency = 2,
+            .is_internal = true,
+        };
+        notifications_service_send_notification(notifs, &n);
+        self->fata_notification_sent = true;
+    } else if (percent <= 15 && !self->critical_notification_sent) {
+        Notification n = {
+            .summary = "Battery is low",
+            .app_icon = "battery-level-10-symbolic",
+            .body = body,
+            .urgency = 2,
+            .is_internal = true,
+        };
+        notifications_service_send_notification(notifs, &n);
+        self->critical_notification_sent = true;
+    } else if (percent <= 20 && !self->warning_notification_sent) {
+        Notification n = {
+            .app_icon = "battery-level-20-symbolic",
+            .summary = "Battery is low",
+            .body = body,
+            .urgency = 0,
+            .is_internal = true,
+        };
+        notifications_service_send_notification(notifs, &n);
+        self->warning_notification_sent = true;
+    }
+
+    g_free(body);
 }
 
 // stub out dispose, finalize, class_init and init methods.

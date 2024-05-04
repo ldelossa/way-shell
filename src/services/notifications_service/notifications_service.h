@@ -57,6 +57,11 @@ typedef struct _Notification {
     gboolean resident;
     gboolean transient;
     uint8_t urgency;
+    // way-shell fields
+    // is_internal informs way-shell this is a notification created by way-shell
+    // itself. app_icon will take the form of an icon_name in the default icon
+    // theme.
+    gboolean is_internal;
 } Notification;
 
 int notifications_service_global_init();
@@ -71,3 +76,8 @@ int notifications_service_invoke_action(NotificationsService *self, guint32 id,
                                         char *action_key);
 
 GPtrArray *notifications_service_get_notifications(NotificationsService *self);
+
+// Internal notifications API which can be used by Way-Shell.
+// Actions currently not supported, fill in n->app_icon with a themed icon name
+// to set the icon to a specific icon.
+void notifications_service_send_notification(NotificationsService *self, Notification *n);

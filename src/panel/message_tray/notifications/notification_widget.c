@@ -119,8 +119,14 @@ static void set_notification_icon(NotificationWidget *self, Notification *n) {
         icon_from_img_data(icon, &n->img_data);
     } else if (n->app_name && (strlen(n->app_name) > 0)) {
         icon_from_app_id(icon, n->app_name);
-    }  else if (n->desktop_entry && (strlen(n->desktop_entry) > 0)) {
+    } else if (n->desktop_entry && (strlen(n->desktop_entry) > 0)) {
         icon_from_app_id(icon, n->desktop_entry);
+    }
+
+    // if this is an internal notification, app_icon will have a string for
+    // the system theme icon to use, prefer this.
+    if (n->is_internal && (strlen(n->app_icon) > 0)) {
+        gtk_image_set_from_icon_name(icon, n->app_icon);
     }
 
     gtk_image_set_pixel_size(icon, 48);
