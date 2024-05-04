@@ -708,6 +708,41 @@ label.day-number.today:focus {
     background: shade(@scale-trough-highlight, .3);
 }
 
+#quick-settings.focused .quick-settings-grid-button-toggle {
+    background: shade(@panel-button-hover, .5);
+    color: shade(@text-general, .5);
+}
+
+#quick-settings.focused .quick-settings-grid-button-toggle:hover {
+    background: shade(@panel-button-hover, .6);
+    color: shade(@text-general, .6);
+}
+
+#quick-settings.focused .quick-settings-grid-button-toggle.no-revealer {
+    background: shade(@panel-button-hover, .5);
+    color: shade(@text-general, .5);
+}
+
+#quick-settings.focused .quick-settings-grid-button-toggle.no-revealer:hover {
+    background: shade(@panel-button-hover, .6);
+    color: shade(@text-general, .6);
+}
+
+#quick-settings.focused .quick-settings-grid-button-reveal-hidden {
+    background: shade(@panel-button-hover, .5);
+    color: shade(@text-general, .5);
+}
+
+#quick-settings.focused .quick-settings-grid-button-reveal-hidden:hover {
+    background: shade(@panel-button-hover, .6);
+    color: shade(@text-general, .6);
+}
+
+#quick-settings.focused .quick-settings-grid-button-reveal-visible {
+    background: shade(@panel-button-hover, .5);
+    color: shade(@text-general, .5);
+}
+
 /*
  * Activities Widget
  */
