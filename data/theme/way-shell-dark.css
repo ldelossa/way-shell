@@ -683,7 +683,7 @@ label.day-number.today:focus {
 }
 
 /* these settings darken all other components of the quick-settings widget other
- * then quick-setting-menu menu provide an emphasized and 3d appearance.
+ * then quick-settings menu when the menu is displayed
  *
  * these override the above settings for each ID to keep them below.
  */
