@@ -4,19 +4,22 @@
 
 #include "../../../services/notifications_service/notifications_service.h"
 
-typedef struct _NotificationWidget {
-    guint32 id;
-    GtkEventControllerMotion *ctrl;
-    GtkBox *container;
-    GtkButton *button;
-    GtkImage *icon;
-    GtkOverlay *overlay;
-    GtkButton *dismiss;
-    GtkRevealer *dismiss_revealer;
-    GtkLabel *summary;
-    GtkLabel *body;
-} NotificationWidget;
+G_BEGIN_DECLS
 
-NotificationWidget *notification_widget_from_notification(Notification *n);
+struct _NotificationWidget;
+#define NOTIFICATION_WIDGET_TYPE notification_widget_get_type()
+G_DECLARE_FINAL_TYPE(NotificationWidget, notification_widget, NOTIFICATION,
+                     WIDGET, GObject);
 
-void notification_widget_free(NotificationWidget *w);
+G_END_DECLS
+
+NotificationWidget *notification_widget_from_notification(
+    Notification *n, gboolean expand_on_enter);
+
+GtkWidget *notification_widget_get_widget(NotificationWidget *self);
+
+guint32 notification_widget_get_id(NotificationWidget *self);
+
+GtkLabel *notification_widget_get_summary(NotificationWidget *self);
+
+GtkLabel *notification_widget_get_body(NotificationWidget *self);

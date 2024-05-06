@@ -45,12 +45,16 @@ static void notifications_osd_class_init(NotificationsOSDClass *klass) {
 };
 
 static void do_cleanup(NotificationsOSD *self) {
+    // debug self->notification pointer value in hex
+    g_debug("notification_osd.c:do_cleanup() self->notification: %p",
+            self->notification);
+
     if (self->notification) {
         if (self->timeout_id) {
             g_source_remove(self->timeout_id);
             self->timeout_id = 0;
         }
-        g_free(self->notification);
+        g_object_unref(self->notification);
         self->notification = NULL;
     }
 }
@@ -142,15 +146,17 @@ static void on_notification_added(NotificationsService *ns,
         return;
     }
 
-    NotificationWidget *new = notification_widget_from_notification(n);
+    NotificationWidget *new = notification_widget_from_notification(n, true);
     // for some reason, we need to reset this before presenting, despite
     // them being set in the constructing function.
-    gtk_label_set_ellipsize(new->summary, PANGO_ELLIPSIZE_END);
-    gtk_label_set_ellipsize(new->body, PANGO_ELLIPSIZE_END);
-    gtk_label_set_max_width_chars(new->summary, 30);
-    gtk_label_set_max_width_chars(new->body, 30);
+    GtkLabel *summary = notification_widget_get_summary(new);
+    GtkLabel *body = notification_widget_get_body(new);
+    gtk_label_set_ellipsize(summary, PANGO_ELLIPSIZE_END);
+    gtk_label_set_ellipsize(body, PANGO_ELLIPSIZE_END);
+    gtk_label_set_max_width_chars(summary, 30);
+    gtk_label_set_max_width_chars(body, 30);
 
-    gtk_box_append(self->container, GTK_WIDGET(new->container));
+    gtk_box_append(self->container, notification_widget_get_widget(new));
 
     gtk_window_present(GTK_WINDOW(self->win));
 

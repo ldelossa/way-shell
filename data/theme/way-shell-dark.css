@@ -317,8 +317,10 @@ label.day-number.today:focus {
 
 #notifications-osd .notification-widget,
 #notifications-list .notification-widget {
+  background-color: @notification-background;
   border-radius: 10px;
   padding: 4px;
+  margin: 4px;
 }
 
 #notification-list .notifications-list-controls {
@@ -329,6 +331,26 @@ label.day-number.today:focus {
 #notifications-osd {
   background-color: @transparent;
   color: @panel-button-color;
+}
+
+#notifications-osd .notification-widget-app-icon,
+#notifications-list .notification-widget-app-icon {
+    color: @panel-button-hover2;
+}
+
+#notifications-osd .notification-widget-app-name,
+#notifications-list .notification-widget-app-name {
+    font-size: 16px;
+    font-weight: bold;
+    color: @panel-button-hover2;
+}
+
+#notifications-osd .notification-widget-timer,
+#notifications-list .notification-widget-timer {
+    font-size: 12px;
+    color: @panel-button-hover2;
+    padding: 4px;
+    margin: 4px;
 }
 
 #notifications-osd .notification-widget-button,
@@ -345,7 +367,8 @@ label.day-number.today:focus {
 
 #notifications-osd .notification-widget-icon,
 #notifications-list .notification-widget-icon {
-  border-radius: 10px;
+  border-radius: 50%;
+  overflow: hidden;
   padding: 8px;
 }
 
@@ -360,9 +383,13 @@ label.day-number.today:focus {
 }
 
 #notifications-list .notification-widget-dismiss-button {
-  border-radius: 100%;
-  padding: 4px;
-  margin: 6px;
+    margin-left: 4px;
+    margin-right: 4px;
+}
+
+#notifications-list .notification-widget-expand-button {
+    margin-left: 4px;
+    margin-right: 4px;
 }
 
 #notifications-list #notifications-list-controls {

@@ -61,9 +61,9 @@ void on_notifications_added(NotificationsService *service,
         gtk_widget_set_visible(GTK_WIDGET(self->scroll), false);
     }
 
-    gtk_box_prepend(
-        self->list,
-        GTK_WIDGET(notification_widget_from_notification(n)->container));
+    NotificationWidget *nw = notification_widget_from_notification(n, false);
+
+    gtk_box_prepend(self->list, GTK_WIDGET(notification_widget_get_widget(nw)));
 }
 
 void on_notifications_removed(NotificationsService *service,
@@ -79,7 +79,7 @@ void on_notifications_removed(NotificationsService *service,
     while (child) {
         // get 'self' data pointer from widget
         w = g_object_get_data(G_OBJECT(child), "self");
-        if (w->id == id) {
+        if (notification_widget_get_id(w) == id) {
             break;
         }
         child = gtk_widget_get_next_sibling(GTK_WIDGET(child));
@@ -94,9 +94,10 @@ void on_notifications_removed(NotificationsService *service,
 
     // remove child from list box, this will unref container, freeing all
     // widgets.
-    gtk_box_remove(self->list, GTK_WIDGET(w->container));
+    gtk_box_remove(self->list, notification_widget_get_widget(w));
+
     // free notification since we malloc'd it.
-    g_free(w);
+    g_object_unref(w);
 }
 
 // stub out dispose, finalize, class_init and init methods.
@@ -141,20 +142,10 @@ static void on_clear_all_clicked(GtkButton *button, NotificationsList *self) {
     while (child) {
         w = g_object_get_data(G_OBJECT(child), "self");
         notifications_service_closed_notification(
-            service, w->id, NOTIFICATIONS_CLOSED_REASON_DISMISSED);
+            service, notification_widget_get_id(w),
+            NOTIFICATIONS_CLOSED_REASON_DISMISSED);
         child = gtk_widget_get_first_child(GTK_WIDGET(self->list));
     }
-}
-
-static void on_dnd_setting_change(GSettings *settings, gchar *key,
-                                  NotificationsList *self) {
-    g_debug("notifications_list.c:on_dnd_switch_changed() called");
-
-    // set switch row to new setting
-    gboolean dnd = g_settings_get_boolean(settings, "do-not-disturb");
-
-    // set dnd_switch based on setting
-    adw_switch_row_set_active(ADW_SWITCH_ROW(self->dnd_switch), dnd);
 }
 
 static void notifications_list_init_layout(NotificationsList *self) {

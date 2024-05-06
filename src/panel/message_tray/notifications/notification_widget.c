@@ -3,7 +3,192 @@
 #include <adwaita.h>
 #include <string.h>
 
-#include "gtk/gtkrevealer.h"
+#include "glib.h"
+#include "gtk/gtk.h"
+
+enum signals { signals_n };
+
+typedef struct _NotificationWidget {
+    GObject parent_instance;
+    guint32 id;
+    AdwAnimation *expand_animation;
+    GtkEventControllerMotion *ctrl;
+    GtkBox *container;
+
+    // header
+    GtkCenterBox *header;
+    GtkImage *header_app_icon;
+    GtkLabel *header_app_name;
+    GtkLabel *header_timer;
+    GtkButton *header_expand;
+    GtkButton *header_dismiss;
+
+    // notification button
+    GtkButton *button;
+    GtkImage *icon;
+    GtkOverlay *overlay;
+
+    // button text
+    GtkLabel *summary;
+    GtkLabel *body;
+
+    // properties
+    gboolean expanded;
+    GDateTime *created_on;
+    guint32 timer_id;
+} NotificationWidget;
+
+static guint notification_widget_signals[signals_n] = {0};
+G_DEFINE_TYPE(NotificationWidget, notification_widget, G_TYPE_OBJECT);
+
+void on_pointer_enter(GtkEventControllerMotion *ctrl, double x, double y,
+                      NotificationWidget *self) {
+    g_debug("notification_widget.c:on_pointer_enter() called");
+    AdwAnimationState state = adw_animation_get_state(self->expand_animation);
+    gboolean reverse = adw_timed_animation_get_reverse(
+        ADW_TIMED_ANIMATION(self->expand_animation));
+
+    switch (state) {
+        case ADW_ANIMATION_IDLE:
+            g_debug("notification_widget.c:on_pointer_enter() called: idle");
+            adw_animation_play(self->expand_animation);
+            return;
+        case ADW_ANIMATION_PAUSED:
+            g_debug("notification_widget.c:on_pointer_enter() called: paused");
+            adw_timed_animation_set_reverse(
+                ADW_TIMED_ANIMATION(self->expand_animation), false);
+            adw_animation_play(self->expand_animation);
+            return;
+        case ADW_ANIMATION_FINISHED:
+            g_debug(
+                "notification_widget.c:on_pointer_enter() called: finished");
+            if (reverse) {
+                g_debug(
+                    "notification_widget.c:on_pointer_enter() called: finished "
+                    "reverse");
+                adw_timed_animation_set_reverse(
+                    ADW_TIMED_ANIMATION(self->expand_animation), false);
+                adw_animation_play(self->expand_animation);
+                return;
+            }
+        case ADW_ANIMATION_PLAYING:
+            g_debug(
+                "notification_widget.c:on_pointer_enter() called: finished");
+            if (reverse) {
+                // pause animation
+                adw_animation_pause(self->expand_animation);
+                // reverse it
+                adw_timed_animation_set_reverse(
+                    ADW_TIMED_ANIMATION(self->expand_animation), false);
+                // play it
+                adw_animation_play(self->expand_animation);
+                return;
+            }
+        default:
+            return;
+    }
+}
+
+void on_pointer_leave(GtkEventControllerMotion *ctrl, double x, double y,
+                      NotificationWidget *self) {
+    AdwAnimationState state = adw_animation_get_state(self->expand_animation);
+    gboolean reverse = adw_timed_animation_get_reverse(
+        ADW_TIMED_ANIMATION(self->expand_animation));
+
+    switch (state) {
+        case ADW_ANIMATION_IDLE:
+            // play animation
+            adw_animation_play(self->expand_animation);
+            return;
+        case ADW_ANIMATION_PAUSED:
+            adw_timed_animation_set_reverse(
+                ADW_TIMED_ANIMATION(self->expand_animation), true);
+            adw_animation_play(self->expand_animation);
+            return;
+        case ADW_ANIMATION_FINISHED:
+            if (!reverse) {
+                adw_timed_animation_set_reverse(
+                    ADW_TIMED_ANIMATION(self->expand_animation), true);
+                adw_animation_play(self->expand_animation);
+                return;
+            }
+        case ADW_ANIMATION_PLAYING:
+            if (!reverse) {
+                // pause animation
+                adw_animation_pause(self->expand_animation);
+                // reverse it
+                adw_timed_animation_set_reverse(
+                    ADW_TIMED_ANIMATION(self->expand_animation), true);
+                // play it
+                adw_animation_play(self->expand_animation);
+                return;
+            }
+        default:
+            return;
+    }
+}
+
+void on_dismiss_clicked(GtkButton *button, NotificationWidget *self) {
+    g_debug("notification_widget.c:on_dismiss_clicked() called");
+
+    NotificationsService *service = notifications_service_get_global();
+    notifications_service_closed_notification(
+        service, self->id, NOTIFICATIONS_CLOSED_REASON_DISMISSED);
+}
+
+void on_notification_clicked(GtkButton *button, NotificationWidget *self) {
+    g_debug("notification_widget.c:on_notification_clicked() called");
+
+    NotificationsService *service = notifications_service_get_global();
+    notifications_service_invoke_action(service, self->id, "default");
+    // dimiss it after click
+    notifications_service_closed_notification(
+        service, self->id, NOTIFICATIONS_CLOSED_REASON_REQUESTED);
+}
+
+// stub out dispose, finalize, class_init and init methods.
+static void notification_widget_dispose(GObject *gobject) {
+    NotificationWidget *self = NOTIFICATION_WIDGET(gobject);
+
+    // debug with pointer value as hex
+    g_debug("notification_widget.c:notification_widget_dispose() called: %p",
+            self);
+
+    // remove signal handlers
+    g_signal_handlers_disconnect_by_func(self->button, on_notification_clicked,
+                                         self);
+    g_signal_handlers_disconnect_by_func(self->header_dismiss,
+                                         on_dismiss_clicked, self);
+    g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_enter, self);
+    g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_leave, self);
+
+    // kill timer
+    g_source_remove(self->timer_id);
+
+    // Chain-up
+    G_OBJECT_CLASS(notification_widget_parent_class)->dispose(gobject);
+};
+
+static void notification_widget_finalize(GObject *gobject) {
+    // Chain-up
+    G_OBJECT_CLASS(notification_widget_parent_class)->finalize(gobject);
+};
+
+static void notification_widget_class_init(NotificationWidgetClass *klass) {
+    GObjectClass *object_class = G_OBJECT_CLASS(klass);
+    object_class->dispose = notification_widget_dispose;
+    object_class->finalize = notification_widget_finalize;
+};
+
+static void expand_animation_cb(double value, GtkLabel *body) {
+    gtk_label_set_lines(body, value);
+}
+
+static GtkImage *get_notification_app_icon(NotificationWidget *self,
+                                           Notification *n);
+
+static void on_expand_button_clicked(GtkButton *button,
+                                     NotificationWidget *self);
 
 static void notification_widget_init_layout(NotificationWidget *self,
                                             Notification *n) {
@@ -17,7 +202,50 @@ static void notification_widget_init_layout(NotificationWidget *self,
     gtk_widget_add_controller(GTK_WIDGET(self->container),
                               GTK_EVENT_CONTROLLER(self->ctrl));
 
-    // create overlay to stack dismiss button ontop of overlay
+    // setup header
+    self->header = GTK_CENTER_BOX(gtk_center_box_new());
+    GtkBox *header_left = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    GtkBox *header_right = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_center_box_set_start_widget(self->header, GTK_WIDGET(header_left));
+    gtk_center_box_set_end_widget(self->header, GTK_WIDGET(header_right));
+
+    self->header_app_icon = get_notification_app_icon(self, n);
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_app_icon),
+                             "notification-widget-app-icon");
+    self->header_app_name =
+        GTK_LABEL(gtk_label_new(n->app_name ? n->app_name : ""));
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_app_name),
+                             "notification-widget-app-name");
+    gtk_widget_set_valign(GTK_WIDGET(self->header_app_name), GTK_ALIGN_CENTER);
+    self->header_timer = GTK_LABEL(gtk_label_new("Just now"));
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_timer),
+                             "notification-widget-timer");
+    gtk_widget_set_valign(GTK_WIDGET(self->header_timer), GTK_ALIGN_END);
+
+    self->header_expand =
+        GTK_BUTTON(gtk_button_new_from_icon_name("go-down-symbolic"));
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_expand), "circular");
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_expand),
+                             "notification-widget-expand-button");
+    gtk_widget_set_visible(GTK_WIDGET(self->header_expand), false);
+    g_signal_connect(self->header_expand, "clicked",
+                     G_CALLBACK(on_expand_button_clicked), self);
+
+    GtkImage *header_dismiss_icon =
+        GTK_IMAGE(gtk_image_new_from_icon_name("window-close-symbolic"));
+    gtk_image_set_pixel_size(header_dismiss_icon, 18);
+    self->header_dismiss = GTK_BUTTON(gtk_button_new());
+    gtk_button_set_child(self->header_dismiss, GTK_WIDGET(header_dismiss_icon));
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_dismiss), "circular");
+    gtk_widget_add_css_class(GTK_WIDGET(self->header_dismiss),
+                             "notification-widget-dismiss-button");
+
+    gtk_box_append(header_left, GTK_WIDGET(self->header_app_icon));
+    gtk_box_append(header_left, GTK_WIDGET(self->header_app_name));
+    gtk_box_append(header_left, GTK_WIDGET(self->header_timer));
+    gtk_box_append(header_right, GTK_WIDGET(self->header_expand));
+    gtk_box_append(header_right, GTK_WIDGET(self->header_dismiss));
+
     self->overlay = GTK_OVERLAY(gtk_overlay_new());
 
     // create main notification button.
@@ -37,33 +265,45 @@ static void notification_widget_init_layout(NotificationWidget *self,
                                  "notification-widget-button");
     }
 
-    // dismiss button used in overlay stack.
-    GtkImage *dismiss_icon =
-        GTK_IMAGE(gtk_image_new_from_icon_name("window-close-symbolic"));
-    gtk_image_set_pixel_size(dismiss_icon, 16);
-    self->dismiss = GTK_BUTTON(gtk_button_new());
-    gtk_widget_set_size_request(GTK_WIDGET(self->dismiss), 16, 16);
-    gtk_button_set_child(self->dismiss, GTK_WIDGET(dismiss_icon));
-    gtk_widget_set_halign(GTK_WIDGET(self->dismiss), GTK_ALIGN_END);
-    gtk_widget_set_valign(GTK_WIDGET(self->dismiss), GTK_ALIGN_START);
-    gtk_widget_add_css_class(GTK_WIDGET(self->dismiss), "circular");
-    gtk_widget_add_css_class(GTK_WIDGET(self->dismiss),
-                             "notification-widget-dismiss-button");
+    // setup summary and body labels
+    self->summary = GTK_LABEL(gtk_label_new(""));
+    gtk_widget_add_css_class(GTK_WIDGET(self->summary), "summary");
+    gtk_widget_set_halign(GTK_WIDGET(self->summary), GTK_ALIGN_START);
+    gtk_label_set_max_width_chars(self->summary, 40);
+    gtk_label_set_ellipsize(self->summary, PANGO_ELLIPSIZE_END);
+    gtk_label_set_lines(self->summary, 1);
+    gtk_label_set_wrap(self->summary, true);
+    gtk_widget_set_size_request(GTK_WIDGET(self->summary), 380, -1);
+    gtk_label_set_xalign(self->summary, 0.0);
 
-    // dismiss button gets a revealer to animate its appearence
-    self->dismiss_revealer = GTK_REVEALER(gtk_revealer_new());
-    gtk_revealer_set_transition_type(self->dismiss_revealer,
-                                     GTK_REVEALER_TRANSITION_TYPE_CROSSFADE);
-    gtk_widget_set_halign(GTK_WIDGET(self->dismiss_revealer), GTK_ALIGN_END);
-    gtk_widget_set_valign(GTK_WIDGET(self->dismiss_revealer), GTK_ALIGN_START);
-    gtk_revealer_set_transition_duration(self->dismiss_revealer, 250);
-    gtk_revealer_set_reveal_child(self->dismiss_revealer, false);
-    gtk_revealer_set_child(self->dismiss_revealer, GTK_WIDGET(self->dismiss));
+    self->body = GTK_LABEL(gtk_label_new(""));
+    gtk_widget_add_css_class(GTK_WIDGET(self->body), "body");
+    gtk_widget_set_halign(GTK_WIDGET(self->body), GTK_ALIGN_START);
+    gtk_label_set_max_width_chars(self->body, 200);
+    gtk_label_set_ellipsize(self->body, PANGO_ELLIPSIZE_END);
+    gtk_label_set_lines(self->body, 2);
+    gtk_label_set_wrap(self->body, true);
+    gtk_widget_set_size_request(GTK_WIDGET(self->body), 380, -1);
+    gtk_label_set_xalign(self->body, 0.0);
+
+    // set body expand animation
+    AdwAnimationTarget *target = adw_callback_animation_target_new(
+        (AdwAnimationTargetFunc)expand_animation_cb, self->body, NULL);
+    self->expand_animation =
+        adw_timed_animation_new(GTK_WIDGET(self->body), 2, 10, 200, target);
+    adw_timed_animation_set_easing(ADW_TIMED_ANIMATION(self->expand_animation),
+                                   ADW_LINEAR);
 
     // setup overlay and add it to our container
     gtk_overlay_set_child(self->overlay, GTK_WIDGET(self->button));
-    gtk_overlay_add_overlay(self->overlay, GTK_WIDGET(self->dismiss_revealer));
+    gtk_box_append(self->container, GTK_WIDGET(self->header));
     gtk_box_append(self->container, GTK_WIDGET(self->overlay));
+}
+
+static void notification_widget_init(NotificationWidget *self) {
+    self->id = 0;
+    self->expanded = false;
+    self->expand_animation = NULL;
 }
 
 static void icon_from_img_data(GtkImage *icon,
@@ -74,9 +314,8 @@ static void icon_from_img_data(GtkImage *icon,
         img_data->has_alpha, img_data->bits_per_sample, img_data->width,
         img_data->height, img_data->rowstride, NULL, NULL);
     if (pixbuf) {
-        // scale image to 48 pixels
         GdkPixbuf *scaled_pixbuf =
-            gdk_pixbuf_scale_simple(pixbuf, 48, 48, GDK_INTERP_BILINEAR);
+            gdk_pixbuf_scale_simple(pixbuf, 32, 32, GDK_INTERP_BILINEAR);
 
         GdkTexture *texture = gdk_texture_new_for_pixbuf(scaled_pixbuf);
         gtk_image_set_from_paintable(icon, GDK_PAINTABLE(texture));
@@ -115,6 +354,8 @@ static void icon_from_app_id(GtkImage *icon, gchar *app_id) {
 static void set_notification_icon(NotificationWidget *self, Notification *n) {
     GtkImage *icon = GTK_IMAGE(gtk_image_new_from_icon_name(
         "preferences-system-notifications-symbolic"));
+    gtk_widget_set_valign(GTK_WIDGET(icon), GTK_ALIGN_START);
+
     if (n->img_data.data) {
         icon_from_img_data(icon, &n->img_data);
     } else if (n->app_name && (strlen(n->app_name) > 0)) {
@@ -129,7 +370,7 @@ static void set_notification_icon(NotificationWidget *self, Notification *n) {
         gtk_image_set_from_icon_name(icon, n->app_icon);
     }
 
-    gtk_image_set_pixel_size(icon, 48);
+    gtk_image_set_pixel_size(icon, 42);
     gtk_widget_set_halign(GTK_WIDGET(icon), GTK_ALIGN_START);
     gtk_widget_add_css_class(GTK_WIDGET(icon), "notification-widget-icon");
 
@@ -169,71 +410,97 @@ static void set_notification_text(NotificationWidget *self, Notification *n) {
     // make summary
     char *summary_text = g_strstrip(n->summary);
     summary_text = g_strdelimit(summary_text, "\n", ' ');
-    GtkLabel *summary = GTK_LABEL(gtk_label_new(summary_text));
-    gtk_widget_add_css_class(GTK_WIDGET(summary), "summary");
-    gtk_widget_set_halign(GTK_WIDGET(summary), GTK_ALIGN_START);
-    gtk_label_set_max_width_chars(summary, 40);
-    gtk_label_set_ellipsize(summary, PANGO_ELLIPSIZE_END);
-    gtk_label_set_lines(summary, 1);
-    gtk_label_set_wrap(summary, true);
-    gtk_widget_set_size_request(GTK_WIDGET(summary), 380, -1);
-    gtk_label_set_xalign(summary, 0.0);
-    self->summary = summary;
+    gtk_label_set_text(self->summary, summary_text);
 
     // make body
     char *body_text = g_strstrip(n->body);
     body_text = g_strdelimit(body_text, "\n", ' ');
-    GtkLabel *body = GTK_LABEL(gtk_label_new(body_text));
-    gtk_widget_add_css_class(GTK_WIDGET(body), "body");
-    gtk_widget_set_halign(GTK_WIDGET(body), GTK_ALIGN_START);
-    gtk_label_set_max_width_chars(body, 200);
-    gtk_label_set_ellipsize(body, PANGO_ELLIPSIZE_END);
-    gtk_label_set_lines(body, 3);
-    gtk_label_set_wrap(body, true);
-    set_text_with_markup(body, body_text);
-    gtk_widget_set_size_request(GTK_WIDGET(body), 380, -1);
-    gtk_label_set_xalign(body, 0.0);
-    self->body = body;
+    set_text_with_markup(self->body, body_text);
 
     // add summary and body to text box.
-    gtk_box_append(text, GTK_WIDGET(summary));
-    gtk_box_append(text, GTK_WIDGET(body));
+    gtk_box_append(text, GTK_WIDGET(self->summary));
+    gtk_box_append(text, GTK_WIDGET(self->body));
     GtkBox *button_contents = GTK_BOX(gtk_button_get_child(self->button));
     gtk_box_append(GTK_BOX(button_contents), GTK_WIDGET(text));
 }
 
-void on_pointer_enter(GtkEventControllerMotion *ctrl, double x, double y,
-                      NotificationWidget *self) {
-    gtk_revealer_set_reveal_child(self->dismiss_revealer, true);
+static GtkImage *get_notification_app_icon(NotificationWidget *self,
+                                           Notification *n) {
+    GtkImage *icon = GTK_IMAGE(gtk_image_new_from_icon_name(
+        "preferences-system-notifications-symbolic"));
+    if (n->app_name && (strlen(n->app_name) > 0)) {
+        icon_from_app_id(icon, n->app_name);
+    } else if (n->desktop_entry && (strlen(n->desktop_entry) > 0)) {
+        icon_from_app_id(icon, n->desktop_entry);
+    } else if (n->is_internal && (strlen(n->app_icon) > 0)) {
+        // if this is an internal notification, app_icon will have a string for
+        // the system theme icon to use, prefer this.
+        gtk_image_set_from_icon_name(icon, n->app_icon);
+    }
+
+    gtk_image_set_pixel_size(icon, 18);
+    gtk_widget_set_halign(GTK_WIDGET(icon), GTK_ALIGN_START);
+    gtk_widget_add_css_class(GTK_WIDGET(icon), "notification-widget-icon");
+
+    return icon;
 }
 
-void on_pointer_leave(GtkEventControllerMotion *ctrl, double x, double y,
-                      NotificationWidget *self) {
-    gtk_revealer_set_reveal_child(self->dismiss_revealer, false);
+static void on_expand_button_clicked(GtkButton *button,
+                                     NotificationWidget *self) {
+    g_debug("notification_widget.c:on_expand_button_clicked() called");
+
+    if (self->expanded) {
+        gtk_button_set_icon_name(self->header_expand, "go-down-symbolic");
+        adw_timed_animation_set_reverse(
+            ADW_TIMED_ANIMATION(self->expand_animation), true);
+        adw_animation_play(self->expand_animation);
+    } else {
+        gtk_button_set_icon_name(self->header_expand, "go-up-symbolic");
+        adw_timed_animation_set_reverse(
+            ADW_TIMED_ANIMATION(self->expand_animation), false);
+        adw_animation_play(self->expand_animation);
+    }
+
+    self->expanded = !self->expanded;
 }
 
-void on_dismiss_clicked(GtkButton *button, NotificationWidget *self) {
-    g_debug("notification_widget.c:on_dismiss_clicked() called");
+static gboolean update_timer(NotificationWidget *self) {
+    GDateTime *now = g_date_time_new_now_local();
 
-    NotificationsService *service = notifications_service_get_global();
-    notifications_service_closed_notification(
-        service, self->id, NOTIFICATIONS_CLOSED_REASON_DISMISSED);
+    // determine how many minutes and hours and days have passed
+    GTimeSpan span = g_date_time_difference(now, self->created_on);
+    gint days = span / G_TIME_SPAN_DAY;
+    gint hours = (span % G_TIME_SPAN_DAY) / G_TIME_SPAN_HOUR;
+    gint minutes = (span % G_TIME_SPAN_HOUR) / G_TIME_SPAN_MINUTE;
+
+    if (days == 1) {
+        gtk_label_set_text(self->header_timer, g_strdup_printf("%d day ago", days));
+    } else if (days > 1) {
+        gtk_label_set_text(self->header_timer, g_strdup_printf("%d days ago", days));
+    } else if (hours == 1) {
+        gtk_label_set_text(self->header_timer, g_strdup_printf("%d hour ago", hours));
+    } else if (hours > 1) {
+        gtk_label_set_text(self->header_timer, g_strdup_printf("%d hours ago", hours));
+    } else if (minutes == 1) {
+        gtk_label_set_text(self->header_timer, g_strdup_printf("%d minute ago", minutes));
+    } else if (minutes > 1) {
+        gtk_label_set_text(self->header_timer, g_strdup_printf("%d minutes ago", minutes));
+    } else {
+        gtk_label_set_text(self->header_timer, "Just now");
+    }
+
+    g_date_time_unref(now);
+
+    return true;
 }
 
-void on_notification_clicked(GtkButton *button, NotificationWidget *self) {
-    g_debug("notification_widget.c:on_notification_clicked() called");
-
-    NotificationsService *service = notifications_service_get_global();
-    notifications_service_invoke_action(service, self->id, "default");
-    // dimiss it after click
-    notifications_service_closed_notification(
-        service, self->id, NOTIFICATIONS_CLOSED_REASON_REQUESTED);
-}
-
-NotificationWidget *notification_widget_from_notification(Notification *n) {
-    NotificationWidget *self = g_malloc0(sizeof(NotificationWidget));
+NotificationWidget *notification_widget_from_notification(
+    Notification *n, gboolean expand_on_enter) {
+    NotificationWidget *self = g_object_new(NOTIFICATION_WIDGET_TYPE, NULL);
 
     self->id = n->id;
+
+    self->created_on = g_date_time_new_now_local();
 
     notification_widget_init_layout(self, n);
     set_notification_icon(self, n);
@@ -244,27 +511,42 @@ NotificationWidget *notification_widget_from_notification(Notification *n) {
                      G_CALLBACK(on_notification_clicked), self);
 
     // wire up dissmiss click
-    g_signal_connect(self->dismiss, "clicked", G_CALLBACK(on_dismiss_clicked),
-                     self);
+    g_signal_connect(self->header_dismiss, "clicked",
+                     G_CALLBACK(on_dismiss_clicked), self);
 
     // wire up motion controller
-    g_signal_connect(self->ctrl, "enter", G_CALLBACK(on_pointer_enter), self);
-    g_signal_connect(self->ctrl, "leave", G_CALLBACK(on_pointer_leave), self);
+    if (expand_on_enter) {
+        g_signal_connect(self->ctrl, "enter", G_CALLBACK(on_pointer_enter),
+                         self);
+        g_signal_connect(self->ctrl, "leave", G_CALLBACK(on_pointer_leave),
+                         self);
+    } else {
+        // set expander button visible as visible if we aren't expanding on
+        // cursor enter
+        gtk_widget_set_visible(GTK_WIDGET(self->header_expand), true);
+    }
 
     // give the main container a pointer to ourselves.
     g_object_set_data(G_OBJECT(self->container), "self", self);
 
+    // setup timer for ever minute to update header_timer
+    self->timer_id = g_timeout_add_seconds(60, (GSourceFunc)update_timer, self);
+
     return self;
 }
 
-void notification_widget_free(NotificationWidget *w) {
-    g_debug("notification_widget.c:notification_widget_free() called");
+GtkWidget *notification_widget_get_widget(NotificationWidget *self) {
+    return GTK_WIDGET(self->container);
+}
 
-    // remove signal handlers
-    g_signal_handlers_disconnect_by_func(w->button, on_notification_clicked, w);
-    g_signal_handlers_disconnect_by_func(w->dismiss, on_dismiss_clicked, w);
-    g_signal_handlers_disconnect_by_func(w->ctrl, on_pointer_enter, w);
-    g_signal_handlers_disconnect_by_func(w->ctrl, on_pointer_leave, w);
+guint32 notification_widget_get_id(NotificationWidget *self) {
+    return self->id;
+}
 
-    g_free(w);
+GtkLabel *notification_widget_get_summary(NotificationWidget *self) {
+    return self->summary;
+}
+
+GtkLabel *notification_widget_get_body(NotificationWidget *self) {
+    return self->body;
 }

@@ -196,8 +196,6 @@ static void parse_notify_hints(GVariant *hints, Notification *n) {
         }
     }
 
-    if (!n->img_data.data) g_free(n->img_data.data);
-
     return;
 }
 
@@ -356,7 +354,6 @@ static void free_notification(Notification *n) {
     if (n->category) g_free(n->category);
     if (n->desktop_entry) g_free(n->desktop_entry);
     if (n->image_path) g_free(n->image_path);
-    if (n->img_data.data) g_free(n->img_data.data);
     g_free(n);
 }
 
