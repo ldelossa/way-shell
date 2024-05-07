@@ -240,6 +240,7 @@ static gboolean on_handle_notify(DbusNotifications *dbus,
     n->id = self->last_id++;
     n->replaces_id = replaces_id;
     n->expire_timeout = expire_timeout;
+    n->created_on = g_date_time_new_now_local();
 
     g_ptr_array_add(self->notifications, n);
 
@@ -354,6 +355,7 @@ static void free_notification(Notification *n) {
     if (n->category) g_free(n->category);
     if (n->desktop_entry) g_free(n->desktop_entry);
     if (n->image_path) g_free(n->image_path);
+    if (n->created_on) g_date_time_unref(n->created_on);
     g_free(n);
 }
 
@@ -381,6 +383,12 @@ int notifications_service_closed_notification(
             "notification not found in array");
         return -1;
     }
+
+    // emit notification closed before we free memory, tells listeners to 
+    // jetison this notification.
+    g_signal_emit(self, signals[notification_closed], 0, self->notifications,
+                  n->id, index);
+
     g_ptr_array_remove_fast(self->notifications, n);
     free_notification(n);
 
@@ -392,9 +400,6 @@ int notifications_service_closed_notification(
         dbus_notifications_emit_notification_closed(self->dbus, id, reason);
     }
 
-    // emit our own close signal
-    g_signal_emit(self, signals[notification_closed], 0, self->notifications,
-                  n->id, index);
     g_signal_emit(self, signals[notification_changed], 0, self->notifications);
 
     return 0;

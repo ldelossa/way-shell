@@ -62,6 +62,7 @@ typedef struct _Notification {
     // itself. app_icon will take the form of an icon_name in the default icon
     // theme.
     gboolean is_internal;
+    GDateTime *created_on;
 } Notification;
 
 int notifications_service_global_init();

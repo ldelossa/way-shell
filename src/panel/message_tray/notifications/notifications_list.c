@@ -4,6 +4,7 @@
 
 #include "../../../services/notifications_service/notifications_service.h"
 #include "../message_tray.h"
+#include "./notification_group.h"
 #include "./notification_osd.h"
 #include "./notification_widget.h"
 
@@ -12,7 +13,6 @@ enum signals { signals_n };
 struct _NotificationsList {
     GObject parent_instance;
     MessageTray *tray;
-    GPtrArray *notifications;
     GtkBox *container;
     GtkBox *list_container;
     GtkScrolledWindow *scroll;
@@ -23,9 +23,18 @@ struct _NotificationsList {
     GtkButton *clear;
     NotificationsOSD *osd;
     GSettings *settings;
+    GHashTable *notification_groups;
 };
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(NotificationsList, notifications_list, G_TYPE_OBJECT);
+
+static void on_notification_group_empty(NotificationGroup *group,
+                                        NotificationsList *self) {
+    g_debug("notifications_list.c:notification_group_empty() called");
+    gtk_box_remove(self->list, notification_group_get_widget(group));
+    g_hash_table_remove(self->notification_groups,
+                        notification_group_get_app_name(group));
+}
 
 void on_notifications_added(NotificationsService *service,
                             GPtrArray *notifications, guint32 id, guint32 index,
@@ -43,15 +52,6 @@ void on_notifications_added(NotificationsService *service,
         return;
     }
 
-    // check if you need to replace current notifications array
-    if (self->notifications != notifications) {
-        if (self->notifications) {
-            g_ptr_array_unref(self->notifications);
-        }
-        self->notifications = notifications;
-        g_ptr_array_ref(self->notifications);
-    }
-
     // swap the status page if we need to.
     if (notifications->len > 0) {
         gtk_widget_set_visible(GTK_WIDGET(self->status), false);
@@ -61,43 +61,16 @@ void on_notifications_added(NotificationsService *service,
         gtk_widget_set_visible(GTK_WIDGET(self->scroll), false);
     }
 
-    NotificationWidget *nw = notification_widget_from_notification(n, false);
-
-    gtk_box_prepend(self->list, GTK_WIDGET(notification_widget_get_widget(nw)));
-}
-
-void on_notifications_removed(NotificationsService *service,
-                              GPtrArray *notifications, guint32 id,
-                              guint32 index, NotificationsList *self) {
-    g_debug(
-        "notifications_list.c:on_notifications_removed() notifications "
-        "removed");
-
-    // find NotificationWidget in self->list
-    NotificationWidget *w = NULL;
-    GtkWidget *child = gtk_widget_get_first_child(GTK_WIDGET(self->list));
-    while (child) {
-        // get 'self' data pointer from widget
-        w = g_object_get_data(G_OBJECT(child), "self");
-        if (notification_widget_get_id(w) == id) {
-            break;
-        }
-        child = gtk_widget_get_next_sibling(GTK_WIDGET(child));
+    if (!g_hash_table_contains(self->notification_groups, n->app_name)) {
+        NotificationGroup *nw = g_object_new(NOTIFICATION_GROUP_TYPE, NULL);
+        notification_group_add_notification(nw, n);
+        gtk_box_prepend(self->list,
+                        GTK_WIDGET(notification_group_get_widget(nw)));
+        g_hash_table_insert(self->notification_groups, g_strdup(n->app_name),
+                            nw);
+        g_signal_connect(nw, "notification-group-empty",
+                         G_CALLBACK(on_notification_group_empty), self);
     }
-
-    if (!w) {
-        g_warning(
-            "notifications_list.c:on_notifications_removed() notification "
-            "widget not found in list");
-        return;
-    }
-
-    // remove child from list box, this will unref container, freeing all
-    // widgets.
-    gtk_box_remove(self->list, notification_widget_get_widget(w));
-
-    // free notification since we malloc'd it.
-    g_object_unref(w);
 }
 
 // stub out dispose, finalize, class_init and init methods.
@@ -107,8 +80,6 @@ static void notifications_list_dispose(GObject *gobject) {
     // cancel signals
     NotificationsService *service = notifications_service_get_global();
     g_signal_handlers_disconnect_by_func(service, on_notifications_added, self);
-    g_signal_handlers_disconnect_by_func(service, on_notifications_removed,
-                                         self);
 
     // unref osd
     g_object_unref(self->osd);
@@ -131,20 +102,14 @@ static void notifications_list_class_init(NotificationsListClass *klass) {
 static void on_clear_all_clicked(GtkButton *button, NotificationsList *self) {
     g_debug("notifications_list.c:on_clear_all_clicked() called");
 
-    NotificationsService *service = notifications_service_get_global();
-    // this is a little tricky, but when we ask the notification service to
-    // close a notification, our signal handler is invoked for the remove event,
-    // thus we modify self->list in 'notifications_service_closed_notification'.
-    // therefore, just keep getting the head of the list in each iteration until
-    // its empty.
-    NotificationWidget *w = NULL;
-    GtkWidget *child = gtk_widget_get_first_child(GTK_WIDGET(self->list));
-    while (child) {
-        w = g_object_get_data(G_OBJECT(child), "self");
-        notifications_service_closed_notification(
-            service, notification_widget_get_id(w),
-            NOTIFICATIONS_CLOSED_REASON_DISMISSED);
-        child = gtk_widget_get_first_child(GTK_WIDGET(self->list));
+    GList *notification_groups =
+        g_hash_table_get_values(self->notification_groups);
+
+    for (GList *l = notification_groups; l; l = l->next) {
+        NotificationGroup *group = l->data;
+        notification_group_dismiss_all(group);
+        // each group will fire an empty signal, so we'll unref them at
+        // that signal handler 'on_notification_group_empty'.
     }
 }
 
@@ -225,8 +190,6 @@ static void notifications_list_init_layout(NotificationsList *self) {
         Notification *n = g_ptr_array_index(notifications, i);
         on_notifications_added(service, notifications, n->id, i, self);
     }
-    self->notifications = notifications;
-    g_ptr_array_ref(notifications);
 
     // getting gsettings
     self->settings = g_settings_new("org.ldelossa.way-shell.notifications");
@@ -238,8 +201,6 @@ static void notifications_list_init_layout(NotificationsList *self) {
     // connect to signals
     g_signal_connect(service, "notification-added",
                      G_CALLBACK(on_notifications_added), self);
-    g_signal_connect(service, "notification-closed",
-                     G_CALLBACK(on_notifications_removed), self);
 }
 
 void notifications_list_reinitialize(NotificationsList *self) {
@@ -248,18 +209,18 @@ void notifications_list_reinitialize(NotificationsList *self) {
     // kill our signals
     NotificationsService *service = notifications_service_get_global();
     g_signal_handlers_disconnect_by_func(service, on_notifications_added, self);
-    g_signal_handlers_disconnect_by_func(service, on_notifications_removed,
-                                         self);
 
-    // remove the ref to notifications array;
-    g_ptr_array_unref(self->notifications);
+    // remove all NotificationGroups, unrefing each one.
+    g_hash_table_remove_all(self->notification_groups);
 
     // init our layout again
     notifications_list_init_layout(self);
 }
 
 static void notifications_list_init(NotificationsList *self) {
-    // instantiate dependent widgets
+    self->notification_groups =
+        g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_object_unref);
+
     self->osd = g_object_new(NOTIFICATIONS_OSD_TYPE, NULL);
     notification_osd_set_notification_list(self->osd, self);
 

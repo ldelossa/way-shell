@@ -315,17 +315,43 @@ label.day-number.today:focus {
  * Message Tray Notifications
  */
 
+statuspage {
+  color: @panel-button-color;
+}
+
+#notifications-osd .notification-widget-container,
+#notifications-list .notification-widget-container {
+  background-color: @transparent;
+  padding: 2px;
+  margin: 2px;
+}
+
 #notifications-osd .notification-widget,
 #notifications-list .notification-widget {
   background-color: @notification-background;
   border-radius: 10px;
-  padding: 4px;
-  margin: 4px;
 }
 
-statuspage {
-  color: @panel-button-color;
+#notifications-list .notification-group-stack-effect-box1 {
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  background: shade(@notification-background, .95);
+  padding: 0px;
+  margin-top: 0px;
 }
+
+#notifications-list .notification-group-stack-effect-box2 {
+  border-top-left-radius: 0px;
+  border-top-right-radius: 0px;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  background: shade(@notification-background, .9);
+  padding: 0px;
+  margin-top: 0px;
+}
+
 
 #notification-list .notifications-list-controls {
   font-weight: bold;
@@ -380,21 +406,39 @@ statuspage {
 #notifications-osd .notification-widget label.summary,
 #notifications-list .notification-widget label.summary {
   font-weight: bold;
+  padding: 2px;
+  margin: 2px;
 }
 
-#notifications-osd .notification-widget label.title,
-#notifications-list .notification-widget label.title {
+#notifications-osd .notification-widget label.body,
+#notifications-list .notification-widget label.body {
   font-size: 14px;
+  padding: 2px;
+  margin: 2px;
 }
 
+#notifications-osd .notification-widget-dismiss-button,
 #notifications-list .notification-widget-dismiss-button {
-    margin-left: 4px;
-    margin-right: 4px;
+    background: @transparent;
+    margin: 2px;
 }
 
+#notifications-osd .notification-widget-dismiss-button,
 #notifications-list .notification-widget-expand-button {
-    margin-left: 4px;
-    margin-right: 4px;
+    background: @transparent;
+    margin: 2px;
+}
+
+#notifications-osd .notification-widget-dismiss-button:hover,
+#notifications-list .notification-widget-dismiss-button:hover {
+    background: @panel-button-hover;
+    margin: 2px;
+}
+
+#notifications-osd .notification-widget-dismiss-button:hover,
+#notifications-list .notification-widget-expand-button:hover {
+    background: @panel-button-hover;
+    margin: 2px;
 }
 
 #notifications-list #notifications-list-controls {
@@ -404,6 +448,32 @@ statuspage {
 
 #notifications-list #notifications-list-controls .notifications-list-clear {
   margin: 6px;
+}
+
+/*
+ * Notification Group
+ */
+
+#notifications-list .notification-group-list-header {
+    border-radius: 10px;
+}
+
+#notifications-list .notification-group-app-name {
+    padding: 4px;
+    margin: 4px;
+    margin-right: 8px;
+    font-size: 18px;
+    font-weight: bold;
+}
+
+#notifications-list .notification-group-dismiss-button,
+#notifications-list .notification-group-conceal-button {
+    padding: 2px;
+    margin: 2px;
+}
+
+#notifications-list .notification-group-overlay-expand-button {
+    background: @transparent;
 }
 
 /*

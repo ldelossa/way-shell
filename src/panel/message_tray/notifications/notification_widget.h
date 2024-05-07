@@ -23,3 +23,8 @@ guint32 notification_widget_get_id(NotificationWidget *self);
 GtkLabel *notification_widget_get_summary(NotificationWidget *self);
 
 GtkLabel *notification_widget_get_body(NotificationWidget *self);
+
+void notification_widget_set_stack_effect(NotificationWidget *self,
+                                          gboolean show);
+
+void notification_widget_dismiss_notification(NotificationWidget *self);
