@@ -177,11 +177,10 @@ static void on_day_selected(GtkCalendar *calendar, Calendar *self) {
 
 static void calendar_init_calendar(Calendar *self) {
     self->calendar = GTK_CALENDAR(gtk_calendar_new());
-	gtk_widget_set_size_request(GTK_WIDGET(self->calendar), -1, 300);
+	gtk_widget_set_size_request(GTK_WIDGET(self->calendar), -1, 224);
     gtk_calendar_set_show_heading(self->calendar, false);
     gtk_calendar_set_show_week_numbers(self->calendar, false);
     gtk_widget_set_hexpand(GTK_WIDGET(self->calendar), true);
-    gtk_widget_set_vexpand(GTK_WIDGET(self->calendar), true);
 
     // wire up day-selected signal
     g_signal_connect(self->calendar, "day-selected",

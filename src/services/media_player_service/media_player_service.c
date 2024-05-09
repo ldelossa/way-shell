@@ -2,8 +2,8 @@
 
 #include <adwaita.h>
 
-#include "media_player_dbus.h"
 #include "../../services/dbus_service.h"
+#include "media_player_dbus.h"
 
 static MediaPlayerService *global = NULL;
 
@@ -63,17 +63,17 @@ static void media_player_fill_metadata(GVariant *metadata,
         if (g_strcmp0(key, "xesam:artist") == 0) {
             GVariantIter *artist_iter = g_variant_iter_new(value);
             gchar *value;
-			gchar *artist;
+            gchar *artist;
 
-			g_variant_iter_next(artist_iter, "s", &artist);
+            g_variant_iter_next(artist_iter, "s", &artist);
 
             while (g_variant_iter_next(artist_iter, "s", &value)) {
-				artist = g_strconcat(artist, ", ", value, NULL);
+                artist = g_strconcat(artist, ", ", value, NULL);
             }
 
             g_variant_iter_free(artist_iter);
 
-			player->artist = artist;
+            player->artist = artist;
         }
         if (g_strcmp0(key, "mpris:artUrl") == 0) {
             player->art_url = g_strdup(g_variant_get_string(value, NULL));
@@ -164,6 +164,9 @@ static void media_player_added(gchar *name, const gchar *object_path,
     media_player->proxy = mediaplayer2;
     media_player->player = mediaplayer2_player;
     media_player->name = g_strdup(name);
+
+    media_player->identity =
+        g_strdup(dbus_media_player2_get_identity(mediaplayer2));
 
     media_player->playback_status = g_strdup(
         dbus_media_player2_player_get_playback_status(mediaplayer2_player));
@@ -268,8 +271,8 @@ static void media_player_service_dbus_connect(MediaPlayerService *self) {
         "media_player_service.c:media_player_service_dbus_connect(): "
         "connecting to dbus");
 
-	DBUSService *dbus = dbus_service_get_global();
-	self->conn = dbus_service_get_session_bus(dbus);
+    DBUSService *dbus = dbus_service_get_global();
+    self->conn = dbus_service_get_session_bus(dbus);
 
     // we need to listen for NameOwnerChanged to determine if we see
     // service own or release name that starts with org.mpris.MediaPlayer2.

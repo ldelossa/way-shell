@@ -5,6 +5,7 @@
 
 #include "./notifications/notifications_list.h"
 #include "calendar/calendar.h"
+#include "gtk/gtk.h"
 #include "media_players/media_players.h"
 #include "message_tray_mediator.h"
 
@@ -34,7 +35,7 @@ static void message_tray_dispose(GObject *gobject) {
 
     g_object_unref(self->notifications_list);
 
-	g_object_unref(self->media_players);
+    g_object_unref(self->media_players);
 
     // Chain-up
     G_OBJECT_CLASS(message_tray_parent_class)->dispose(gobject);
@@ -68,6 +69,11 @@ static void animation_close_done(AdwAnimation *animation, MessageTray *self) {
 
     // emit hidden signal
     message_tray_mediator_emit_hidden(mediator, self, self->monitor);
+
+    // after the above signal is emitted, notifications or other child widgets
+    // may be removed or collapsed, so shrink the message tray after being
+    // hidden, ensuring when its opened itll be back at the default size.
+    message_tray_shrink(self);
 
     // clear monitor
     self->monitor = NULL;
@@ -138,6 +144,12 @@ static void on_window_destroy(GtkWidget *w, MessageTray *self) {
     message_tray_reinitialize(self);
 };
 
+static void on_layout_changed(GdkSurface *surface, gint width, gint height,
+                              MessageTray *self) {
+    g_debug("message_tray.c:on_layout_changed() called. width: %d, height: %d",
+            width, height);
+}
+
 static void message_tray_init_layout(MessageTray *self) {
     self->monitor = NULL;
 
@@ -149,6 +161,11 @@ static void message_tray_init_layout(MessageTray *self) {
     gtk_widget_set_name(GTK_WIDGET(self->win), "message-tray");
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 8);
+
+    // get GdkSurface from self->win
+    GtkNative *native = gtk_widget_get_native(GTK_WIDGET(self->win));
+    GdkSurface *surface = gtk_native_get_surface(native);
+    g_signal_connect(surface, "layout", G_CALLBACK(on_layout_changed), self);
 
     // wire into window's GtkWidget destroy signal
     g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);
@@ -176,6 +193,10 @@ static void message_tray_init_layout(MessageTray *self) {
     gtk_widget_set_hexpand(GTK_WIDGET(right_box), true);
     gtk_widget_set_vexpand(GTK_WIDGET(right_box), true);
 
+    self->media_players = g_object_new(MEDIA_PLAYERS_TYPE, NULL);
+    gtk_box_append(left_box,
+                   GTK_WIDGET(media_players_get_widget(self->media_players)));
+
     gtk_box_append(
         left_box,
         GTK_WIDGET(notifications_list_get_widget(self->notifications_list)));
@@ -185,13 +206,13 @@ static void message_tray_init_layout(MessageTray *self) {
     gtk_box_append(right_box, GTK_WIDGET(calendar_get_widget(self->calendar)));
 
     // add media players widget
-    self->media_players = g_object_new(MEDIA_PLAYERS_TYPE, NULL);
-    gtk_box_append(GTK_BOX(calendar_get_widget(self->calendar)),
-                   GTK_WIDGET(media_players_get_widget(self->media_players)));
+    // self->media_players = g_object_new(MEDIA_PLAYERS_TYPE, NULL);
+    // gtk_box_append(GTK_BOX(calendar_get_widget(self->calendar)),
+    //                GTK_WIDGET(media_players_get_widget(self->media_players)));
 
     // set 800x600 size request and adjust left box
-    gtk_widget_set_size_request(GTK_WIDGET(self->container), 800, 600);
-    gtk_widget_set_size_request(GTK_WIDGET(left_box), 800 * 0.60, 600);
+    gtk_widget_set_size_request(GTK_WIDGET(self->container), 700, 600);
+    gtk_widget_set_size_request(GTK_WIDGET(left_box), 700 * 0.67, 600);
 
     // animation controller
     AdwAnimationTarget *target = adw_callback_animation_target_new(
@@ -203,7 +224,7 @@ static void message_tray_init_layout(MessageTray *self) {
 }
 
 void message_tray_reinitialize(MessageTray *self) {
-	g_object_unref(self->media_players);
+    g_object_unref(self->media_players);
 
     // reset mediator's pointer to us
     message_tray_mediator_set_tray(mediator, self);
@@ -278,7 +299,7 @@ void message_tray_set_visible(MessageTray *self, GdkMonitor *monitor) {
     message_tray_mediator_emit_will_show(mediator, self, monitor);
 
     // present underlay
-    // gtk_window_present(GTK_WINDOW(self->underlay));
+    gtk_window_present(GTK_WINDOW(self->underlay));
 
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
@@ -308,6 +329,11 @@ void message_tray_toggle(MessageTray *self, GdkMonitor *monitor) {
         message_tray_set_hidden(self, self->monitor);
     }
     return message_tray_set_visible(self, monitor);
+}
+
+void message_tray_shrink(MessageTray *self) {
+    g_debug("message_tray.c:message_tray_shrink() called.");
+    gtk_window_set_default_size(GTK_WINDOW(self->win), 700, 600);
 }
 
 GdkMonitor *message_tray_get_monitor(MessageTray *self) {

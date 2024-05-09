@@ -4,9 +4,11 @@
 
 #include "../../../services/notifications_service/notifications_service.h"
 #include "../message_tray.h"
+#include "../message_tray_mediator.h"
 #include "./notification_group.h"
 #include "./notification_osd.h"
 #include "./notification_widget.h"
+#include "gtk/gtk.h"
 
 enum signals { signals_n };
 
@@ -28,12 +30,64 @@ struct _NotificationsList {
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(NotificationsList, notifications_list, G_TYPE_OBJECT);
 
+void apply_scrolling_policy(NotificationsList *self, gboolean shrink) {
+    g_debug("notifications_list.c:apply_scrolling_policy() called");
+    // get the size of the container
+    int size = 0;
+
+    if (shrink) {
+        MessageTrayMediator *mediator = message_tray_get_global_mediator();
+        message_tray_mediator_req_shrink(mediator);
+    }
+
+    gtk_widget_measure(GTK_WIDGET(self->list), GTK_ORIENTATION_VERTICAL, -1,
+                       NULL, &size, NULL, NULL);
+
+    g_debug("notifications_list.c:apply_scrolling_policy() size: %d", size);
+
+    if (size >= 900) {
+        gtk_widget_set_size_request(GTK_WIDGET(self->scroll), -1, 1080);
+        gtk_scrolled_window_set_policy(self->scroll, GTK_POLICY_NEVER,
+                                       GTK_POLICY_ALWAYS);
+    } else {
+        gtk_widget_set_size_request(GTK_WIDGET(self->scroll), -1, -1);
+        gtk_scrolled_window_set_policy(self->scroll, GTK_POLICY_NEVER,
+                                       GTK_POLICY_NEVER);
+    }
+}
+
 static void on_notification_group_empty(NotificationGroup *group,
                                         NotificationsList *self) {
     g_debug("notifications_list.c:notification_group_empty() called");
     gtk_box_remove(self->list, notification_group_get_widget(group));
     g_hash_table_remove(self->notification_groups,
                         notification_group_get_app_name(group));
+    apply_scrolling_policy(self, true);
+}
+
+static void on_notification_group_will_expand(NotificationGroup *group,
+                                              NotificationsList *self) {
+    // a bit subtle, but this helps to not blow past the display's edge when
+    // a large notificaition group is expanded.
+    //
+    // we set the scroll box to no height or widget request which immediately
+    // scrolls the contents.
+    //
+    // a `notification-group-expanded` event will follow this very shortly and
+    // snap the scroll box into the appropriate size.
+    gtk_widget_set_size_request(GTK_WIDGET(self->scroll), -1, -1);
+    gtk_scrolled_window_set_policy(self->scroll, GTK_POLICY_NEVER,
+                                   GTK_POLICY_ALWAYS);
+}
+
+static void on_notification_group_expand(NotificationGroup *group,
+                                         NotificationsList *self) {
+    apply_scrolling_policy(self, false);
+}
+
+static void on_notification_group_collapsed(NotificationGroup *group,
+                                            NotificationsList *self) {
+    apply_scrolling_policy(self, true);
 }
 
 void on_notifications_added(NotificationsService *service,
@@ -68,8 +122,27 @@ void on_notifications_added(NotificationsService *service,
                         GTK_WIDGET(notification_group_get_widget(nw)));
         g_hash_table_insert(self->notification_groups, g_strdup(n->app_name),
                             nw);
+
+        // connect to signals
         g_signal_connect(nw, "notification-group-empty",
                          G_CALLBACK(on_notification_group_empty), self);
+        g_signal_connect(nw, "notification-group-expanded",
+                         G_CALLBACK(on_notification_group_expand), self);
+        g_signal_connect(nw, "notification-group-will-expand",
+                         G_CALLBACK(on_notification_group_will_expand), self);
+        g_signal_connect(nw, "notification-group-collapsed",
+                         G_CALLBACK(on_notification_group_collapsed), self);
+
+        g_signal_connect(nw, "notification-group-notification-added",
+                         G_CALLBACK(on_notification_group_expand), self);
+        g_signal_connect(nw, "notification-group-notification-closed",
+                         G_CALLBACK(on_notification_group_collapsed), self);
+        g_signal_connect(nw, "notification-group-notification-expanded",
+                         G_CALLBACK(on_notification_group_expand), self);
+        g_signal_connect(nw, "notification-group-notification-collapsed",
+                         G_CALLBACK(on_notification_group_collapsed), self);
+
+        apply_scrolling_policy(self, false);
     }
 }
 
@@ -122,7 +195,7 @@ static void notifications_list_init_layout(NotificationsList *self) {
     self->scroll = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
     gtk_widget_set_vexpand(GTK_WIDGET(self->scroll), true);
     gtk_scrolled_window_set_policy(self->scroll, GTK_POLICY_NEVER,
-                                   GTK_POLICY_AUTOMATIC);
+                                   GTK_POLICY_NEVER);
 
     // status page displayed when no notifications are available
     self->status = ADW_STATUS_PAGE(adw_status_page_new());

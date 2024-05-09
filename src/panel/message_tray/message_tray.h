@@ -33,3 +33,5 @@ void message_tray_set_hidden(MessageTray *self, GdkMonitor *monitor);
 GdkMonitor *message_tray_get_monitor(MessageTray *self);
 
 void message_tray_reinitialize(MessageTray *self);
+
+void message_tray_shrink(MessageTray *self);

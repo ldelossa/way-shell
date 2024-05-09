@@ -3,11 +3,22 @@
 #include <adwaita.h>
 
 #include "../../../services/notifications_service/notifications_service.h"
+#include "../../message_tray/message_tray.h"
 #include "glib.h"
 #include "gtk/gtk.h"
 #include "notification_widget.h"
 
-enum signals { notification_group_empty, signals_n };
+enum signals {
+    notification_group_empty,
+    notification_group_will_expand,
+    notification_group_expanded,
+    notification_group_collapsed,
+    notification_added,
+    notification_closed,
+    notification_expanded,
+    notification_collapsed,
+    signals_n
+};
 
 // The NotificaionGroup is a complex widget which consists of the following
 // layout at a high level:
@@ -78,6 +89,9 @@ void on_notification_closed(NotificationsService *service,
                             GPtrArray *notifications, guint32 id, guint32 index,
                             NotificationGroup *self);
 
+static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
+                                   GdkMonitor *mon, NotificationGroup *self);
+
 // stub out dispose, finalize, class_init and init methods.
 static void notification_group_dispose(GObject *object) {
     G_OBJECT_CLASS(notification_group_parent_class)->dispose(object);
@@ -90,6 +104,9 @@ static void notification_group_dispose(GObject *object) {
     NotificationsService *ns = notifications_service_get_global();
     g_signal_handlers_disconnect_by_func(ns, on_notification_added, object);
     g_signal_handlers_disconnect_by_func(ns, on_notification_closed, object);
+
+    MessageTrayMediator *mtm = message_tray_get_global_mediator();
+    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_hidden, object);
 }
 
 static void notification_group_finalize(GObject *object) {
@@ -104,6 +121,34 @@ static void notification_group_class_init(NotificationGroupClass *klass) {
     notification_group_signals[notification_group_empty] =
         g_signal_new("notification-group-empty", G_TYPE_FROM_CLASS(klass),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_group_will_expand] =
+        g_signal_new("notification-group-will-expand", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_group_expanded] =
+        g_signal_new("notification-group-expanded", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_group_collapsed] =
+        g_signal_new("notification-group-collapsed", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_added] = g_signal_new(
+        "notification-group-notification-added", G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_closed] = g_signal_new(
+        "notification-group-notification-closed", G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_expanded] = g_signal_new(
+        "notification-group-notification-expanded", G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_group_signals[notification_collapsed] = g_signal_new(
+        "notification-group-notification-collapsed", G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 }
 
 // configures the NotificaionGroup widget appropriately given the state of
@@ -122,6 +167,8 @@ static void apply_expansion_rules(NotificationGroup *self) {
         gtk_widget_set_visible(GTK_WIDGET(self->overlay_expand_button), false);
         // force expansion to close.
         self->expanded = false;
+        g_signal_emit(
+            self, notification_group_signals[notification_group_collapsed], 0);
     }
     if (size > 1 && self->expanded) {
         // show header revelear
@@ -156,6 +203,9 @@ static void expand_messages_on_click(GtkButton *button,
         apply_expansion_rules(self);
     } else {
         self->expanded = !self->expanded;
+        g_signal_emit(
+            self, notification_group_signals[notification_group_will_expand],
+            0);
         apply_expansion_rules(self);
     }
 }
@@ -166,6 +216,26 @@ static void on_dismiss_button_clicked(GtkButton *button,
     notification_group_dismiss_all(self);
     // notification chains will do everything else we need to cleanup out
     // group, nothing further needed here.
+}
+
+static void on_notification_list_revealed(GtkRevealer *revealer,
+                                          GParamSpec *pspec,
+                                          NotificationGroup *self) {
+    if (gtk_revealer_get_child_revealed(revealer)) {
+        g_signal_emit(
+            self, notification_group_signals[notification_group_expanded], 0);
+    } else {
+        g_signal_emit(
+            self, notification_group_signals[notification_group_collapsed], 0);
+    }
+}
+
+static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
+                                   GdkMonitor *mon, NotificationGroup *self) {
+    if (self->expanded) {
+        self->expanded = !self->expanded;
+        apply_expansion_rules(self);
+    }
 }
 
 static void notification_group_init_layout(NotificationGroup *self) {
@@ -211,6 +281,10 @@ static void notification_group_init_layout(NotificationGroup *self) {
     gtk_revealer_set_child(self->notification_list_header_revealer,
                            GTK_WIDGET(self->list_header));
 
+    g_signal_connect(self->notification_list_header_revealer,
+                     "notify::child-revealed",
+                     G_CALLBACK(on_notification_list_revealed), self);
+
     // create head notification container
     self->head_notification_container =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -219,6 +293,9 @@ static void notification_group_init_layout(NotificationGroup *self) {
 
     // create notification list revealer
     self->notification_list = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
+    gtk_widget_add_css_class(GTK_WIDGET(self->notification_list),
+                             "notification-group-notification-list");
+
     self->notification_list_revealer = GTK_REVEALER(gtk_revealer_new());
     gtk_revealer_set_transition_type(self->notification_list_revealer,
                                      GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
@@ -239,19 +316,19 @@ static void notification_group_init_layout(NotificationGroup *self) {
     gtk_overlay_set_child(self->overlay,
                           GTK_WIDGET(self->head_notification_container));
 
+    // wire into message_tray_hidden event
+    MessageTrayMediator *mtm = message_tray_get_global_mediator();
+    g_signal_connect(mtm, "message-tray-hidden",
+                     G_CALLBACK(on_message_tray_hidden), self);
+
     // add overlay to main container
     gtk_box_append(self->container, GTK_WIDGET(self->overlay));
 }
 
 // moves the current head notification to the top of the expandable notification
 // list and sets `n` as the new head notification.
-static void push_new_head(NotificationGroup *self, Notification *n) {
-    NotificationWidget *new_head =
-        notification_widget_from_notification(n, false);
-
-    g_hash_table_insert(self->notification_widgets, GUINT_TO_POINTER(n->id),
-                        new_head);
-
+static void push_new_head(NotificationGroup *self,
+                          NotificationWidget *new_head) {
     NotificationWidget *head = self->head_notification;
     notification_widget_set_stack_effect(head, false);
 
@@ -323,6 +400,18 @@ static void notification_group_init(NotificationGroup *self) {
     notification_group_init_layout(self);
 }
 
+static void on_notification_expand(NotificationWidget *w,
+                                   NotificationGroup *self) {
+    g_debug("notification_group.c:on_notification_expand called");
+    g_signal_emit(self, notification_group_signals[notification_expanded], 0);
+}
+
+static void on_notification_collapse(NotificationWidget *w,
+                                     NotificationGroup *self) {
+    g_debug("notification_group.c:on_notification_collapse called");
+    g_signal_emit(self, notification_group_signals[notification_collapsed], 0);
+}
+
 void on_notification_added(NotificationsService *service,
                            GPtrArray *notifications, guint32 id, guint32 index,
                            NotificationGroup *self) {
@@ -331,7 +420,20 @@ void on_notification_added(NotificationsService *service,
     Notification *n = g_ptr_array_index(notifications, index);
     if (g_strcmp0(n->app_name, self->app) != 0) return;
 
-    push_new_head(self, n);
+    NotificationWidget *new_head =
+        notification_widget_from_notification(n, false);
+
+    g_signal_connect(new_head, "notification-expanded",
+                     G_CALLBACK(on_notification_expand), self);
+    g_signal_connect(new_head, "notification-collapsed",
+                     G_CALLBACK(on_notification_collapse), self);
+
+    g_hash_table_insert(self->notification_widgets, GUINT_TO_POINTER(n->id),
+                        new_head);
+
+    push_new_head(self, new_head);
+
+    g_signal_emit(self, notification_group_signals[notification_added], 0);
 
     apply_expansion_rules(self);
 }
@@ -368,6 +470,9 @@ void on_notification_closed(NotificationsService *service,
                                    true);
             notification_widget_set_stack_effect(self->head_notification, true);
         }
+
+        g_signal_emit(self, notification_group_signals[notification_closed], 0);
+
         apply_expansion_rules(self);
         return;
     }
@@ -378,6 +483,8 @@ void on_notification_closed(NotificationsService *service,
 
     // this also unrefs notification.id == id, don't double unref.
     g_hash_table_remove(self->notification_widgets, GUINT_TO_POINTER(id));
+
+    g_signal_emit(self, notification_group_signals[notification_closed], 0);
 
     apply_expansion_rules(self);
 }
@@ -391,17 +498,24 @@ void notification_group_add_notification(NotificationGroup *self,
     gtk_label_set_text(self->app_name, n->app_name);
 
     // create notification widget
-    NotificationWidget *nw = notification_widget_from_notification(n, false);
-    self->head_notification = nw;
+    NotificationWidget *new_head =
+        notification_widget_from_notification(n, false);
+
+    g_signal_connect(new_head, "notification-expanded",
+                     G_CALLBACK(on_notification_expand), self);
+    g_signal_connect(new_head, "notification-collapsed",
+                     G_CALLBACK(on_notification_collapse), self);
+
+    self->head_notification = new_head;
 
     g_hash_table_insert(self->notification_widgets, GUINT_TO_POINTER(n->id),
-                        nw);
+                        new_head);
 
     // setup head notification container
     gtk_box_append(self->head_notification_container,
                    GTK_WIDGET(self->notification_list_header_revealer));
     gtk_box_append(self->head_notification_container,
-                   notification_widget_get_widget(nw));
+                   notification_widget_get_widget(new_head));
     gtk_box_append(self->head_notification_container,
                    GTK_WIDGET(self->notification_list_revealer));
 

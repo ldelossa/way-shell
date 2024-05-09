@@ -235,12 +235,12 @@
 }
 
 #message-tray #calendar-today row label.title {
-  font-size: 20px;
+  font-size: 14px;
   font-weight: bold;
 }
 
 #message-tray #calendar-today row label.subtitle {
-  font-size: 24px;
+  font-size: 16px;
   font-weight: bold;
 }
 
@@ -267,7 +267,7 @@ label.day-name {
   color: @panel-button-color;
   padding: 0px;
   margin: 0px;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 #message-tray calendar.view grid label.day-number:active {
@@ -361,6 +361,14 @@ statuspage {
 #notifications-osd {
   background-color: @transparent;
   color: @panel-button-color;
+}
+
+#notification-osd .notification-widget-header,
+#notification-list .notification-widget-header {
+	margin-left: 2px;
+    margin-right: 4px;
+    margin-top: 2px;
+    margin-bottom: 0px;
 }
 
 #notifications-osd .notification-widget-app-icon,
@@ -474,6 +482,10 @@ statuspage {
 
 #notifications-list .notification-group-overlay-expand-button {
     background: @transparent;
+}
+
+#notifications-list .notification-group-notification-list {
+    margin-bottom: 15px;
 }
 
 /*

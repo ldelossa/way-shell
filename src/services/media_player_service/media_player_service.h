@@ -5,6 +5,7 @@
 typedef struct _MediaPlayer {
     DbusMediaPlayer2Player *player;
     DbusMediaPlayer2 *proxy;
+    gchar *identity;
     gchar *name;
     gchar *playback_status;
     gchar *art_url;

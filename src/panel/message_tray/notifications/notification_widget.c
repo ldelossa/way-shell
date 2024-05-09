@@ -3,10 +3,11 @@
 #include <adwaita.h>
 #include <string.h>
 
+#include "../message_tray.h"
 #include "glib.h"
 #include "gtk/gtk.h"
 
-enum signals { signals_n };
+enum signals { notification_expanded, notification_collapsed, signals_n };
 
 typedef struct _NotificationWidget {
     GObject parent_instance;
@@ -30,8 +31,6 @@ typedef struct _NotificationWidget {
     GtkButton *button;
     AdwAvatar *avatar;
     GtkImage *icon;
-    GtkOverlay *overlay;
-
     // button text
     GtkLabel *summary;
     GtkLabel *body;
@@ -150,6 +149,9 @@ void on_notification_clicked(GtkButton *button, NotificationWidget *self) {
         service, self->id, NOTIFICATIONS_CLOSED_REASON_REQUESTED);
 }
 
+static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
+                                   GdkMonitor *mon, NotificationWidget *self);
+
 // stub out dispose, finalize, class_init and init methods.
 static void notification_widget_dispose(GObject *gobject) {
     NotificationWidget *self = NOTIFICATION_WIDGET(gobject);
@@ -165,6 +167,9 @@ static void notification_widget_dispose(GObject *gobject) {
                                          on_dismiss_clicked, self);
     g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_enter, self);
     g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_leave, self);
+
+    MessageTrayMediator *mtm = message_tray_get_global_mediator();
+    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_hidden, self);
 
     // kill timer
     g_source_remove(self->timer_id);
@@ -185,6 +190,14 @@ static void notification_widget_class_init(NotificationWidgetClass *klass) {
     GObjectClass *object_class = G_OBJECT_CLASS(klass);
     object_class->dispose = notification_widget_dispose;
     object_class->finalize = notification_widget_finalize;
+
+    notification_widget_signals[notification_expanded] =
+        g_signal_new("notification-expanded", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    notification_widget_signals[notification_collapsed] =
+        g_signal_new("notification-collapsed", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 };
 
 static void expand_animation_cb(double value, GtkLabel *body) {
@@ -196,6 +209,40 @@ static GtkImage *get_notification_app_icon(NotificationWidget *self,
 
 static void on_expand_button_clicked(GtkButton *button,
                                      NotificationWidget *self);
+
+static void on_expand_animation_done(AdwAnimation *animation,
+                                     NotificationWidget *self) {
+    g_debug("notification_widget.c:on_expand_animation_done() called");
+
+    gboolean reverse =
+        adw_timed_animation_get_reverse(ADW_TIMED_ANIMATION(animation));
+
+    if (reverse) {
+        g_debug(
+            "notification_widget.c:on_expand_animation_done() called: "
+            "reverse");
+        g_signal_emit(self, notification_widget_signals[notification_collapsed],
+                      0);
+    } else {
+        g_debug(
+            "notification_widget.c:on_expand_animation_done() called: "
+            "not reverse");
+        g_signal_emit(self, notification_widget_signals[notification_expanded],
+                      0);
+    }
+}
+
+static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
+                                   GdkMonitor *mon, NotificationWidget *self) {
+    g_debug("notification_widget.c:on_message_tray_hidden() called");
+    if (self->expanded) {
+        gtk_button_set_icon_name(self->header_expand, "go-down-symbolic");
+        adw_timed_animation_set_reverse(
+            ADW_TIMED_ANIMATION(self->expand_animation), true);
+        adw_animation_play(self->expand_animation);
+        self->expanded = !self->expanded;
+    }
+}
 
 static void notification_widget_init_layout(NotificationWidget *self,
                                             Notification *n) {
@@ -221,8 +268,14 @@ static void notification_widget_init_layout(NotificationWidget *self,
 
     // setup header
     self->header = GTK_CENTER_BOX(gtk_center_box_new());
+    gtk_widget_add_css_class(GTK_WIDGET(self->header),
+                             "notification-widget-header");
     GtkBox *header_left = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_set_valign(GTK_WIDGET(header_left), GTK_ALIGN_CENTER);
+
     GtkBox *header_right = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+    gtk_widget_set_valign(GTK_WIDGET(header_right), GTK_ALIGN_CENTER);
+
     gtk_center_box_set_start_widget(self->header, GTK_WIDGET(header_left));
     gtk_center_box_set_end_widget(self->header, GTK_WIDGET(header_right));
 
@@ -263,8 +316,6 @@ static void notification_widget_init_layout(NotificationWidget *self,
     gtk_box_append(header_right, GTK_WIDGET(self->header_expand));
     gtk_box_append(header_right, GTK_WIDGET(self->header_dismiss));
 
-    self->overlay = GTK_OVERLAY(gtk_overlay_new());
-
     GtkBox *button_contents =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
 
@@ -279,7 +330,7 @@ static void notification_widget_init_layout(NotificationWidget *self,
                                  "notification-widget-button");
     }
 
-    self->avatar = ADW_AVATAR(adw_avatar_new(64, "", false));
+    self->avatar = ADW_AVATAR(adw_avatar_new(48, "", false));
     gtk_widget_add_css_class(GTK_WIDGET(self->avatar),
                              "notification-widget-icon");
     adw_avatar_set_icon_name(self->avatar,
@@ -305,7 +356,7 @@ static void notification_widget_init_layout(NotificationWidget *self,
     gtk_widget_set_halign(GTK_WIDGET(self->body), GTK_ALIGN_START);
     gtk_label_set_max_width_chars(self->body, 200);
     gtk_label_set_ellipsize(self->body, PANGO_ELLIPSIZE_END);
-    gtk_label_set_lines(self->body, 2);
+    gtk_label_set_lines(self->body, 1);
     gtk_label_set_wrap(self->body, true);
     gtk_widget_set_size_request(GTK_WIDGET(self->body), 380, -1);
     gtk_label_set_xalign(self->body, 0.0);
@@ -320,14 +371,16 @@ static void notification_widget_init_layout(NotificationWidget *self,
     AdwAnimationTarget *target = adw_callback_animation_target_new(
         (AdwAnimationTargetFunc)expand_animation_cb, self->body, NULL);
     self->expand_animation =
-        adw_timed_animation_new(GTK_WIDGET(self->body), 2, 10, 200, target);
+        adw_timed_animation_new(GTK_WIDGET(self->body), 1, 10, 200, target);
     adw_timed_animation_set_easing(ADW_TIMED_ANIMATION(self->expand_animation),
                                    ADW_LINEAR);
 
+    g_signal_connect(self->expand_animation, "done",
+                     G_CALLBACK(on_expand_animation_done), self);
+
     // setup overlay and add it to our container
-    gtk_overlay_set_child(self->overlay, GTK_WIDGET(self->button));
     gtk_box_append(self->notification_container, GTK_WIDGET(self->header));
-    gtk_box_append(self->notification_container, GTK_WIDGET(self->overlay));
+    gtk_box_append(self->notification_container, GTK_WIDGET(self->button));
 
     gtk_box_append(self->container, GTK_WIDGET(self->notification_container));
 
@@ -375,7 +428,7 @@ static void avatar_from_img_data(NotificationWidget *self,
         img_data->height, img_data->rowstride, NULL, NULL);
     if (pixbuf) {
         GdkPixbuf *scaled_pixbuf =
-            gdk_pixbuf_scale_simple(pixbuf, 64, 64, GDK_INTERP_BILINEAR);
+            gdk_pixbuf_scale_simple(pixbuf, 48, 48, GDK_INTERP_BILINEAR);
 
         GdkTexture *texture = gdk_texture_new_for_pixbuf(scaled_pixbuf);
         adw_avatar_set_custom_image(self->avatar, GDK_PAINTABLE(texture));
@@ -405,7 +458,7 @@ static void icon_from_app_id(GtkImage *icon, gchar *app_id) {
         GdkDisplay *display = gdk_display_get_default();
         GtkIconTheme *theme = gtk_icon_theme_get_for_display(display);
         GtkIconPaintable *paintable = gtk_icon_theme_lookup_by_gicon(
-            theme, g_icon, 64, 1, GTK_TEXT_DIR_RTL, 0);
+            theme, g_icon, 48, 1, GTK_TEXT_DIR_RTL, 0);
         gtk_image_set_from_paintable(icon, GDK_PAINTABLE(paintable));
     }
 }
@@ -431,7 +484,7 @@ static void avatar_from_app_id(NotificationWidget *self, gchar *app_id) {
         GdkDisplay *display = gdk_display_get_default();
         GtkIconTheme *theme = gtk_icon_theme_get_for_display(display);
         GtkIconPaintable *paintable = gtk_icon_theme_lookup_by_gicon(
-            theme, g_icon, 64, 1, GTK_TEXT_DIR_RTL, 0);
+            theme, g_icon, 48, 1, GTK_TEXT_DIR_RTL, 0);
         adw_avatar_set_custom_image(self->avatar, GDK_PAINTABLE(paintable));
     }
 }
@@ -599,6 +652,12 @@ NotificationWidget *notification_widget_from_notification(
         // set expander button visible as visible if we aren't expanding on
         // cursor enter
         gtk_widget_set_visible(GTK_WIDGET(self->header_expand), true);
+    }
+
+    if (!expand_on_enter) {
+        MessageTrayMediator *mtm = message_tray_get_global_mediator();
+        g_signal_connect(mtm, "message-tray-hidden",
+                         G_CALLBACK(on_message_tray_hidden), self);
     }
 
     // give the main container a pointer to ourselves.

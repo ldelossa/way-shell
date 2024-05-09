@@ -44,3 +44,5 @@ void message_tray_mediator_req_open(MessageTrayMediator *mediator,
 // Emits the message-tray-close signal on the MessageTrayMediator.
 // Tells the message tray to close if its visible.
 void message_tray_mediator_req_close(MessageTrayMediator *mediator);
+
+void message_tray_mediator_req_shrink(MessageTrayMediator *mediator);

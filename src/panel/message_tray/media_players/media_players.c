@@ -7,6 +7,7 @@
 typedef struct _MediaPlayerWidget {
     int index;
     gchar *name;
+    gchar *identity;
     GtkLabel *artist;
     GtkLabel *title;
     GtkCenterBox *container;
@@ -50,8 +51,6 @@ MediaPlayerWidget *media_player_widget_new() {
     self->container = GTK_CENTER_BOX(gtk_center_box_new());
     gtk_widget_add_css_class(GTK_WIDGET(self->container), "media-player");
     gtk_widget_set_hexpand(GTK_WIDGET(self->container), TRUE);
-    gtk_widget_set_vexpand(GTK_WIDGET(self->container), TRUE);
-    gtk_widget_set_valign(GTK_WIDGET(self->container), GTK_ALIGN_END);
 
     self->icon = GTK_BUTTON(
         gtk_button_new_from_icon_name("applications-multimedia-symbolic"));
@@ -124,6 +123,8 @@ static void media_player_widget_fill(MediaPlayerWidget *self,
                                      MediaPlayer *player) {
     // set name
     self->name = g_strdup(player->name);
+
+    self->identity = g_strdup(player->identity);
 
     // update play/pause icon depending on playback state
     if (g_strcmp0(player->playback_status, "Playing") == 0) {
@@ -280,7 +281,7 @@ static void media_players_init_layout(MediaPlayers *self) {
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->container), "media-players");
     gtk_widget_set_hexpand(GTK_WIDGET(self->container), TRUE);
-    gtk_widget_set_size_request(GTK_WIDGET(self->container), -1, 140);
+    // gtk_widget_set_size_request(GTK_WIDGET(self->container), -1, 140);
 
     // create horizontal scrolled window where media players will reside in.
     self->scrolled_win = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
@@ -295,7 +296,7 @@ static void media_players_init_layout(MediaPlayers *self) {
     gtk_widget_set_hexpand(GTK_WIDGET(self->media_player_list), TRUE);
 
     // wire it up
-    gtk_box_append(self->container, GTK_WIDGET(self->scrolled_win));
+    gtk_box_append(self->container, GTK_WIDGET(self->media_player_list));
     gtk_scrolled_window_set_child(self->scrolled_win,
                                   GTK_WIDGET(self->media_player_list));
 

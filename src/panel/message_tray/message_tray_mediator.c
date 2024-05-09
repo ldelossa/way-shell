@@ -16,6 +16,7 @@ enum signals {
     // actions
     message_tray_open,
     message_tray_close,
+    message_tray_shrink_req,
     signals_n
 };
 
@@ -66,6 +67,10 @@ static void message_tray_mediator_class_init(MessageTrayMediatorClass *klass) {
     signals[message_tray_close] =
         g_signal_new("message-tray-close", G_TYPE_FROM_CLASS(object_class),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    signals[message_tray_shrink_req] =
+        g_signal_new("message-tray-shrink", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 };
 
 static void on_message_tray_open(MessageTrayMediator *mediator,
@@ -83,6 +88,14 @@ static void on_message_tray_close(MessageTrayMediator *mediator) {
                             message_tray_get_monitor(mediator->tray));
 };
 
+static void on_message_tray_shrink(MessageTrayMediator *mediator) {
+    g_debug("message_tray_mediator.c:message_tray_shrink() called.");
+    if (message_tray_get_monitor(mediator->tray) == NULL) {
+        return;
+    }
+    message_tray_shrink(mediator->tray);
+};
+
 static void message_tray_mediator_init(MessageTrayMediator *self) {
     // wire into our open and close signals
     g_signal_connect(self, "message-tray-open",
@@ -90,6 +103,9 @@ static void message_tray_mediator_init(MessageTrayMediator *self) {
 
     g_signal_connect(self, "message-tray-close",
                      G_CALLBACK(on_message_tray_close), NULL);
+
+    g_signal_connect(self, "message-tray-shrink",
+                     G_CALLBACK(on_message_tray_shrink), NULL);
 };
 
 // Emitted when the MessageTray is about to become visible.
@@ -137,6 +153,13 @@ void message_tray_mediator_req_close(MessageTrayMediator *mediator) {
         "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
         "signal.");
     g_signal_emit(mediator, signals[message_tray_close], 0);
+};
+
+void message_tray_mediator_req_shrink(MessageTrayMediator *mediator) {
+    g_debug(
+        "message_tray_mediator.c:message_tray_mediator_emit_close() emitting "
+        "signal.");
+    g_signal_emit(mediator, signals[message_tray_shrink_req], 0);
 };
 
 static void on_quick_settings_will_show(QuickSettingsMediator *qs_mediator,
