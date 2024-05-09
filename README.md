@@ -135,7 +135,7 @@ support the following keybinds.
 
 - [x] Multi-monitor support
 - [x] Scrolling workspaces bar
-- [x] Notifications daemon implementation and message tray
+- [x] Notifications daemon implementation and message tray ([Gnome 46+ style notifications](https://blogs.gnome.org/shell-dev/2024/04/23/notifications-46-and-beyond/))
 - [x] Calendar (in message tray)
 - [x] Quick Settings with button grid
 - [x] Network Manager integration
