@@ -67,6 +67,7 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
     // was not sent
     if (percent <= 5 && !self->fata_notification_sent) {
         Notification n = {
+            .app_name = "Way-Shell",
             .app_icon = "battery-level-0-symbolic",
             .summary = "Battery is critically low",
             .body = body,
@@ -77,6 +78,7 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
         self->fata_notification_sent = true;
     } else if (percent <= 15 && !self->critical_notification_sent) {
         Notification n = {
+            .app_name = "Way-Shell",
             .summary = "Battery is low",
             .app_icon = "battery-level-10-symbolic",
             .body = body,
@@ -87,6 +89,7 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
         self->critical_notification_sent = true;
     } else if (percent <= 20 && !self->warning_notification_sent) {
         Notification n = {
+            .app_name = "Way-Shell",
             .app_icon = "battery-level-20-symbolic",
             .summary = "Battery is low",
             .body = body,

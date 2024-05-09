@@ -10,6 +10,8 @@ enum signals {
     message_tray_will_show,
     // the message tray is now visible.
     message_tray_visible,
+    // the message tray is about to be hidden, still on screen.
+    message_tray_will_hide,
     // the message tray is now hidden.
     message_tray_hidden,
 
@@ -51,6 +53,11 @@ static void message_tray_mediator_class_init(MessageTrayMediatorClass *klass) {
 
     signals[message_tray_visible] =
         g_signal_new("message-tray-visible", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 2,
+                     MESSAGE_TRAY_TYPE, GDK_TYPE_MONITOR);
+
+    signals[message_tray_will_hide] =
+        g_signal_new("message-tray-will-hide", G_TYPE_FROM_CLASS(object_class),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 2,
                      MESSAGE_TRAY_TYPE, GDK_TYPE_MONITOR);
 
@@ -127,6 +134,16 @@ void message_tray_mediator_emit_visible(MessageTrayMediator *mediator,
         "message_tray_mediator.c:message_tray_mediator_emit_visible() emitting "
         "signal.");
     g_signal_emit(mediator, signals[message_tray_visible], 0, tray, monitor);
+};
+
+// Emits the message-tray-will-hide signal on the MessageTrayMediator.
+void message_tray_mediator_emit_will_hide(MessageTrayMediator *mediator,
+                                          MessageTray *tray,
+                                          GdkMonitor *monitor) {
+    g_debug(
+        "message_tray_mediator.c:message_tray_mediator_emit_will_hide() "
+        "emitting signal.");
+    g_signal_emit(mediator, signals[message_tray_will_hide], 0, tray, monitor);
 };
 
 // Emits the message-tray-hidden signal on the MessageTrayMediator.

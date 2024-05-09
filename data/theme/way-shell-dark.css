@@ -315,11 +315,20 @@ label.day-number.today:focus {
  * Message Tray Notifications
  */
 
+#notifications-list scrolledwindow undershoot.bottom {
+  background: linear-gradient(to top, shade(@scrolled-window-undershoot, .1), transparent);
+}
+
+#notifications-list scrolledwindow undershoot.top {
+  background: linear-gradient(to bottom, shade(@scrolled-window-undershoot, .1), transparent);
+}
+
 #notifications-osd .notification-widget-container,
 #notifications-list .notification-widget-container {
   background-color: @transparent;
   padding: 2px;
   margin: 2px;
+  margin-bottom: 4px;
 }
 
 #notifications-osd .notification-widget,
@@ -452,12 +461,39 @@ label.day-number.today:focus {
   margin: 6px;
 }
 
+#notifications-list .notification-widget-media-button {
+    padding: 4px;
+    border-radius: 11px;
+    margin-top: 11px;
+    margin-bottom: 11px;
+}
+
+/* notification widget media player */
+
+#notifications-list .media-player .notification-widget-button:hover {
+	background: @panel-button-hover;
+}
+
+#notifications-list .notification-widget-media-buttons-container {
+	background: @transparent;
+}
+
+#notifications-list .notification-widget-media-button {
+    background: @transparent;
+    border-radius: 10px;
+}
+
+#notifications-list .notification-widget-media-button:hover {
+    background: @success;
+}
+
 /*
  * Notification Group
  */
 
 #notifications-list .notification-group-list-header {
     border-radius: 10px;
+    margin-top: 20px;
 }
 
 #notifications-list .notification-group-app-name {
@@ -479,51 +515,7 @@ label.day-number.today:focus {
 }
 
 #notifications-list .notification-group-notification-list {
-    margin-bottom: 15px;
-}
-
-/*
- * Message Tray Media Players
- */
-
-#message-tray #media-players .media-player {
-	background: @notification-background;
-	border-radius: 10px;
-	margin: 4px;
-}
-
-#message-tray #media-players button {
-	background: transparent;
-}
-
-#message-tray #media-players button:hover {
-	background: @success;
-}
-
-#message-tray #media-players .media-player-title {
-	font-size: 15px;
-	font-weight: bold;
-}
-
-#message-tray #media-players .media-player-artist {
-	font-size: 14px;
-}
-
-#message-tray #media-players image {
-	margin: 2px;
-}
-
-#message-tray #media-players image {
-	margin: 4px;
-}
-
-#message-tray #media-players .media-player-labels {
-	padding-left: 6px;
-}
-
-#message-tray #media-players scrollbar {
-  opacity: 1;
-  margin-right: -18px;
+    margin-bottom: 16px;
 }
 
 /*

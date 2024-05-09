@@ -89,8 +89,9 @@ void on_notification_closed(NotificationsService *service,
                             GPtrArray *notifications, guint32 id, guint32 index,
                             NotificationGroup *self);
 
-static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
-                                   GdkMonitor *mon, NotificationGroup *self);
+static void on_message_tray_will_hide(MessageTrayMediator *mtm,
+                                      MessageTray *tray, GdkMonitor *mon,
+                                      NotificationGroup *self);
 
 // stub out dispose, finalize, class_init and init methods.
 static void notification_group_dispose(GObject *object) {
@@ -106,7 +107,8 @@ static void notification_group_dispose(GObject *object) {
     g_signal_handlers_disconnect_by_func(ns, on_notification_closed, object);
 
     MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_hidden, object);
+    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_will_hide,
+                                         object);
 }
 
 static void notification_group_finalize(GObject *object) {
@@ -230,8 +232,9 @@ static void on_notification_list_revealed(GtkRevealer *revealer,
     }
 }
 
-static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
-                                   GdkMonitor *mon, NotificationGroup *self) {
+static void on_message_tray_will_hide(MessageTrayMediator *mtm,
+                                      MessageTray *tray, GdkMonitor *mon,
+                                      NotificationGroup *self) {
     if (self->expanded) {
         self->expanded = !self->expanded;
         apply_expansion_rules(self);
@@ -318,8 +321,8 @@ static void notification_group_init_layout(NotificationGroup *self) {
 
     // wire into message_tray_hidden event
     MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_connect(mtm, "message-tray-hidden",
-                     G_CALLBACK(on_message_tray_hidden), self);
+    g_signal_connect(mtm, "message-tray-will-hide",
+                     G_CALLBACK(on_message_tray_will_hide), self);
 
     // add overlay to main container
     gtk_box_append(self->container, GTK_WIDGET(self->overlay));

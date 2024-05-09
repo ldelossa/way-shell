@@ -6,7 +6,6 @@
 #include "./notifications/notifications_list.h"
 #include "calendar/calendar.h"
 #include "gtk/gtk.h"
-#include "media_players/media_players.h"
 #include "message_tray_mediator.h"
 
 // global MessageTrayMediator.
@@ -19,7 +18,6 @@ struct _MessageTray {
     GtkBox *container;
     AdwWindow *underlay;
     Calendar *calendar;
-    MediaPlayers *media_players;
     NotificationsList *notifications_list;
     GdkMonitor *monitor;
 };
@@ -34,8 +32,6 @@ static void message_tray_dispose(GObject *gobject) {
     MessageTray *self = MESSAGE_TRAY_TRAY(gobject);
 
     g_object_unref(self->notifications_list);
-
-    g_object_unref(self->media_players);
 
     // Chain-up
     G_OBJECT_CLASS(message_tray_parent_class)->dispose(gobject);
@@ -62,6 +58,8 @@ static void animation_close_done(AdwAnimation *animation, MessageTray *self) {
     // make animation forward
     adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->animation),
                                     FALSE);
+    // emit will hide signal
+    message_tray_mediator_emit_will_hide(mediator, self, self->monitor);
 
     // hide tray
     gtk_widget_set_visible(GTK_WIDGET(self->win), false);
@@ -193,10 +191,6 @@ static void message_tray_init_layout(MessageTray *self) {
     gtk_widget_set_hexpand(GTK_WIDGET(right_box), true);
     gtk_widget_set_vexpand(GTK_WIDGET(right_box), true);
 
-    self->media_players = g_object_new(MEDIA_PLAYERS_TYPE, NULL);
-    gtk_box_append(left_box,
-                   GTK_WIDGET(media_players_get_widget(self->media_players)));
-
     gtk_box_append(
         left_box,
         GTK_WIDGET(notifications_list_get_widget(self->notifications_list)));
@@ -224,8 +218,6 @@ static void message_tray_init_layout(MessageTray *self) {
 }
 
 void message_tray_reinitialize(MessageTray *self) {
-    g_object_unref(self->media_players);
-
     // reset mediator's pointer to us
     message_tray_mediator_set_tray(mediator, self);
 

@@ -1,6 +1,9 @@
 #include "notifications_service.h"
 
 #include <adwaita.h>
+#include <gio/gdesktopappinfo.h>
+#include <gio/gio.h>
+#include <gtk/gtk.h>
 
 #include "../dbus_service.h"
 #include "gio/gdbusinterfaceskeleton.h"
@@ -242,6 +245,28 @@ static gboolean on_handle_notify(DbusNotifications *dbus,
     n->expire_timeout = expire_timeout;
     n->created_on = g_date_time_new_now_local();
 
+    // if we don't have an app name, we can try to resolve it from our desktop
+    // entry.
+    if (strlen(n->app_name) == 0 && strlen(n->desktop_entry) > 0) {
+        g_free(n->app_name);
+        n->app_name = g_strdup(n->desktop_entry);
+
+        char *desktop_entry = g_strdup(n->desktop_entry);
+        desktop_entry = g_strconcat(desktop_entry, ".desktop", NULL);
+
+        GDesktopAppInfo *info = g_desktop_app_info_new(desktop_entry);
+        if (info) {
+            const char *name = g_desktop_app_info_get_string(info, "Name");
+            if (name) {
+                g_free(n->app_name);
+                n->app_name = g_strdup(name);
+            }
+            g_object_unref(info);
+        }
+
+        g_free(desktop_entry);
+    }
+
     g_ptr_array_add(self->notifications, n);
 
     GVariant *ret = g_variant_new("(u)", n->id);
@@ -384,7 +409,7 @@ int notifications_service_closed_notification(
         return -1;
     }
 
-    // emit notification closed before we free memory, tells listeners to 
+    // emit notification closed before we free memory, tells listeners to
     // jetison this notification.
     g_signal_emit(self, signals[notification_closed], 0, self->notifications,
                   n->id, index);
