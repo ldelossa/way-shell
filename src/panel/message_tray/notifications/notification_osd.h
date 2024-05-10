@@ -18,3 +18,6 @@ void notification_osd_reinitialize(NotificationsOSD *self);
 
 void notification_osd_set_notification_list(NotificationsOSD *self,
                                             NotificationsList *list);
+
+void notification_osd_connect_message_tray_signals(NotificationsOSD *self,
+                                                   MessageTray *tray);

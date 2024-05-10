@@ -48,3 +48,5 @@ GdkMonitor *panel_get_monitor(Panel *panel);
 void panel_attach_to_monitor(Panel *panel, GdkMonitor *mon);
 
 Panel *panel_get_from_monitor(GdkMonitor *monitor);
+
+GHashTable *panel_get_all_panels();

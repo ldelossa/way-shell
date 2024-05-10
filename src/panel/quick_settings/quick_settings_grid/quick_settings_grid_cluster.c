@@ -3,7 +3,6 @@
 #include <adwaita.h>
 
 #include "../quick_settings.h"
-#include "../quick_settings_mediator.h"
 #include "quick_settings_grid_button.h"
 
 enum signals { empty, removed, remove_button_req, will_reveal, signals_n };
@@ -31,8 +30,7 @@ void quick_settings_grid_cluster_hide_all(QuickSettingsGridCluster *self) {
         gtk_revealer_set_reveal_child(self->right->revealer, false);
 }
 
-static void on_quick_settings_hidden(QuickSettingsMediator *mediator,
-                                     QuickSettings *qs, GdkMonitor *mon,
+static void on_quick_settings_hidden(QuickSettings *qs,
                                      QuickSettingsGridCluster *self) {
     g_debug("quick_settings_grid_cluster.c:on_quick_settings_hidden() called");
     quick_settings_grid_cluster_hide_all(self);
@@ -43,10 +41,10 @@ static void quick_settings_grid_cluster_dispose(GObject *gobject) {
     QuickSettingsGridCluster *self = QUICK_SETTINGS_GRID_CLUSTER(gobject);
 
     // disconnect from quick settings global mediator signal
-    QuickSettingsMediator *m = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
 
     g_signal_handlers_disconnect_by_func(
-        m, G_CALLBACK(on_quick_settings_hidden), self);
+        qs, G_CALLBACK(on_quick_settings_hidden), self);
 
     if (self->left != self->dummy_left) {
         quick_settings_grid_button_free(self->left);
@@ -269,8 +267,8 @@ static void quick_settings_grid_cluster_init_layout(
                                   GTK_WIDGET(self->dummy_right->container));
 
     // connect to quick settings mediator's hidden event
-    QuickSettingsMediator *m = quick_settings_get_global_mediator();
-    g_signal_connect(m, "quick-settings-hidden",
+    QuickSettings *qs = quick_settings_get_global();
+    g_signal_connect(qs, "quick-settings-hidden",
                      G_CALLBACK(on_quick_settings_hidden), self);
 
     // wire into our own 'remove_button_req' to handle emittions of this signal

@@ -91,8 +91,8 @@ static void on_brightness_changed(BrightnessService *bs, float percent,
 
     // if quick settings is currently displayed, don't show brightness OSD, its
     // redunant
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    if (quick_settings_mediator_qs_is_visible(qs)) return;
+    QuickSettings *qs = quick_settings_get_global();
+    if (quick_settings_is_visible(qs)) return;
 
     // if a timeout exists cancel it
     if (self->timeout_id) {
@@ -127,8 +127,8 @@ static void on_default_sink_changed(WirePlumberService *wp,
 
     // if quick settings is currently displayed, don't show volume OSD, its
     // redunant
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    if (quick_settings_mediator_qs_is_visible(qs)) return;
+    QuickSettings *qs = quick_settings_get_global();
+    if (quick_settings_is_visible(qs)) return;
 
     // if a timeout exists cancel it
     if (self->timeout_id) {
@@ -164,9 +164,7 @@ static void on_window_destroy(GtkWindow *win, OSD *self) {
     osd_reinitialize(self);
 }
 
-static void on_quick_settings_will_show(QuickSettingsMediator *m,
-                                        QuickSettings *qs, GdkMonitor *mon,
-                                        OSD *self) {
+static void on_quick_settings_will_show(QuickSettings *qs, OSD *self) {
     g_debug("osd.c:on_quick_settings_will_show() called");
     do_cleanup(self);
     gtk_revealer_set_reveal_child(self->volume_revealer, false);
@@ -267,7 +265,7 @@ void osd_init_layout(OSD *self) {
                      G_CALLBACK(on_brightness_changed), self);
 
     // wire into quick settings mediator will show
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
     g_signal_connect(qs, "quick-settings-will-show",
                      G_CALLBACK(on_quick_settings_will_show), self);
 
@@ -285,7 +283,7 @@ void osd_reinitialize(OSD *self) {
     BrightnessService *bs = brightness_service_get_global();
     g_signal_handlers_disconnect_by_func(bs, on_brightness_changed, self);
 
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
     g_signal_handlers_disconnect_by_func(qs, on_quick_settings_will_show, self);
 
     osd_init_layout(self);

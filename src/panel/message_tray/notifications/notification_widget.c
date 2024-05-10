@@ -161,8 +161,7 @@ void on_notification_clicked(GtkButton *button, NotificationWidget *self) {
         service, self->id, NOTIFICATIONS_CLOSED_REASON_REQUESTED);
 }
 
-static void on_message_tray_will_hide(MessageTrayMediator *mtm,
-                                      MessageTray *tray, GdkMonitor *mon,
+static void on_message_tray_will_hide(MessageTray *tray,
                                       NotificationWidget *self);
 
 // stub out dispose, finalize, class_init and init methods.
@@ -181,8 +180,8 @@ static void notification_widget_dispose(GObject *gobject) {
     g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_enter, self);
     g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_leave, self);
 
-    MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_will_hide, self);
+    MessageTray *mt = message_tray_get_global();
+    g_signal_handlers_disconnect_by_func(mt, on_message_tray_will_hide, self);
 
     // kill timer
     g_source_remove(self->timer_id);
@@ -242,10 +241,9 @@ static void on_expand_animation_done(AdwAnimation *animation,
     }
 }
 
-static void on_message_tray_will_hide(MessageTrayMediator *mtm,
-                                      MessageTray *tray, GdkMonitor *mon,
+static void on_message_tray_will_hide(MessageTray *tray,
                                       NotificationWidget *self) {
-    g_debug("notification_widget.c:on_message_tray_hidden() called");
+    g_debug("notification_widget.c:on_message_tray_will_hide() called");
     if (self->expanded) {
         gtk_button_set_icon_name(self->header_expand, "go-down-symbolic");
         adw_timed_animation_set_reverse(
@@ -677,8 +675,8 @@ NotificationWidget *notification_widget_from_notification(
     }
 
     if (!expand_on_enter) {
-        MessageTrayMediator *mtm = message_tray_get_global_mediator();
-        g_signal_connect(mtm, "message-tray-will-hide",
+        MessageTray *mt = message_tray_get_global();
+        g_signal_connect(mt, "message-tray-will-hide",
                          G_CALLBACK(on_message_tray_will_hide), self);
     }
 

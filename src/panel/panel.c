@@ -6,7 +6,6 @@
 
 #include "../activities/activities.h"
 #include "./panel_status_bar/panel_status_bar.h"
-#include "message_tray/message_tray_mediator.h"
 #include "panel_clock.h"
 #include "panel_mediator.h"
 #include "panel_workspaces_bar/panel_workspaces_bar.h"
@@ -17,6 +16,9 @@
 // The Panel subsystem reconciles GdkMonitor events such that changes to
 // monitors (new/removed) also destroy/create Panels.
 static GHashTable *panels = NULL;
+// An array of GdkMonitor pointers which mirrors the GListModel returned
+// from gdk_display_get_monitors(display);
+static GPtrArray *monitors = NULL;
 
 // The global PanelMediator returned by this module when
 // panel_get_global_mediator() is called.
@@ -33,6 +35,10 @@ struct _Panel {
     PanelWorkspacesBar *ws_bar;
     PanelClock *clock;
     PanelStatusBar *status_bar;
+
+    // used to track monitor position in GListModel for deletion.
+    guint32 monitor_pos;
+    gchar *monitor_desc;
 };
 G_DEFINE_TYPE(Panel, panel, G_TYPE_OBJECT)
 
@@ -59,6 +65,8 @@ static void panel_dispose(GObject *gobject) {
     g_object_unref(self->ws_bar);
     g_object_unref(self->monitor);
     g_object_unref(self->clock);
+
+    g_free(self->monitor_desc);
 
     // Chain-up
     G_OBJECT_CLASS(panel_parent_class)->dispose(gobject);
@@ -149,6 +157,51 @@ void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
                      self);
 }
 
+static void panel_on_monitor_added(GdkMonitor *mon, guint pos) {
+    const char *desc = NULL;
+
+    g_debug("panel.c:panel_on_monitor_added(): called.");
+
+    if (!gdk_monitor_is_valid(mon)) {
+        g_warning(
+            "panel.c:panel_on_monitor_change() received invalid monitor "
+            "from "
+            "Gdk, moving to next.");
+        return;
+    }
+
+    // insert into our mirrored monitor list.
+    g_ptr_array_insert(monitors, pos, mon);
+
+    Panel *panel = g_object_new(PANEL_TYPE, NULL);
+    panel->monitor_desc = g_strdup(desc);
+    panel_attach_to_monitor(panel, mon);
+
+    g_debug("panel.c:panel_on_monitor_added(): added bar for monitor: [%s]",
+            panel->monitor_desc);
+}
+
+static void panel_on_monitor_removed(guint pos) {
+    g_debug("panel.c:panel_on_monitor_removed(): called.");
+
+    GdkMonitor *removed = g_ptr_array_index(monitors, pos);
+    if (!removed) return;
+    g_ptr_array_remove_index(monitors, pos);
+
+    Panel *panel = g_hash_table_lookup(panels, removed);
+    if (!panel) return;
+
+    g_debug(
+        "panel.c:panel_on_monitor_removed(): removing bar for monitor: [%s]",
+        panel->monitor_desc);
+
+    g_object_unref(panel);
+
+    if (GTK_IS_WINDOW(panel->win)) gtk_window_destroy(GTK_WINDOW(panel->win));
+
+    g_hash_table_remove(panels, removed);
+}
+
 // Iterates over the monitors GListModel, creating panels for any new monitors.
 // Designed to be a handler for the GListModel(GdkMonitor)::items-changed
 // signal.
@@ -156,47 +209,20 @@ static void panel_on_monitor_change(GListModel *monitors, guint position,
                                     guint removed, guint added,
                                     gpointer gtk_app) {
     uint8_t n = g_list_model_get_n_items(monitors);
-    const char *desc = NULL;
-    const char *model = NULL;
-    const char *connector = NULL;
 
+    // debug all arguments and n
     g_debug(
-        "panel.c:panel_on_monitor_change(): received monitor change event.");
-    g_debug("panel.c:panel_on_monitor_change(): new number of monitors %d", n);
+        "panel.c:panel_on_monitor_change() called with position: [%d], "
+        "removed: [%d], added: [%d], n: [%d]",
+        position, removed, added, n);
 
-    // the least buggiest thing I found to do was simply kill all the panels and
-    // reinitialize them with the latest set of monitors.
-    GHashTableIter iter;
-    gpointer key, value;
-    g_hash_table_iter_init(&iter, panels);
-    while (g_hash_table_iter_next(&iter, &key, &value)) {
-        Panel *panel = PANEL_PANEL(value);
-        g_object_unref(panel);
-        gtk_window_destroy(GTK_WINDOW(panel->win));
+    if (added > 0) {
+        panel_on_monitor_added(g_list_model_get_item(monitors, position),
+                               position);
     }
-    g_hash_table_remove_all(panels);
 
-    for (uint8_t i = 0; i < n; i++) {
-        GdkMonitor *mon = g_list_model_get_item(monitors, i);
-        if (!gdk_monitor_is_valid(mon)) {
-            g_warning(
-                "panel.c:panel_on_monitor_change() received invalid monitor "
-                "from "
-                "Gdk, moving to next.");
-            continue;
-        }
-
-        desc = gdk_monitor_get_description(mon);
-        model = gdk_monitor_get_model(mon);
-        connector = gdk_monitor_get_connector(mon);
-
-        Panel *panel = g_object_new(PANEL_TYPE, NULL);
-        panel_attach_to_monitor(panel, mon);
-
-        g_debug(
-            "panel.c:panel_on_monitor_change(): initialized bar for monitor: "
-            "[%s] [%s] [%s]",
-            desc, model, connector);
+    if (removed > 0) {
+        panel_on_monitor_removed(position);
     }
 }
 
@@ -231,6 +257,7 @@ void panel_on_qs_hidden(Panel *panel) {
 void panel_activate(AdwApplication *app, gpointer user_data) {
     mediator = g_object_new(PANEL_MEDIATOR_TYPE, NULL);
     panels = g_hash_table_new(g_direct_hash, g_direct_equal);
+    monitors = g_ptr_array_new();
 
     g_debug(
         "panel.c:panel_activate() initializing bars with synthetic monitor "
@@ -240,7 +267,9 @@ void panel_activate(AdwApplication *app, gpointer user_data) {
     GdkDisplay *display = gdk_seat_get_display(seat);
     GListModel *monitors = gdk_display_get_monitors(display);
 
-    panel_on_monitor_change(monitors, 0, 0, 0, app);
+    for (uint8_t i = 0; i < g_list_model_get_n_items(monitors); i++) {
+        panel_on_monitor_added(g_list_model_get_item(monitors, i), i);
+    }
 
     g_debug(
         "panel.c:panel_activate() init finished, listening for monitor "
@@ -259,3 +288,5 @@ void panel_activate(AdwApplication *app, gpointer user_data) {
 Panel *panel_get_from_monitor(GdkMonitor *monitor) {
     return g_hash_table_lookup(panels, monitor);
 }
+
+GHashTable *panel_get_all_panels() { return g_hash_table_ref(panels); }

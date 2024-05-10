@@ -151,8 +151,8 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
 static void on_failure_banner_clicked(GtkButton *button,
                                       QuickSettingsGridWifiMenu *self) {
     gtk_revealer_set_reveal_child(self->menu.banner, false);
-    QuickSettingsMediator *m = quick_settings_get_global_mediator();
-    quick_settings_mediator_req_shrink(m);
+    QuickSettings *qs = quick_settings_get_global();
+    quick_settings_shrink(qs);
 }
 
 static void do_scan(GtkButton *_, QuickSettingsGridWifiMenu *self);

@@ -51,15 +51,8 @@ static void ipc_service_class_init(IPCServiceClass *klass) {
 static gboolean ipc_cmd_message_tray_open() {
     g_debug("ipc_service.c:ipc_cmd_message_tray_open()");
 
-    // TODO: really, we want to open the tray on the currently focused monitor
-    // but GDK4 does not supply methods to find the "monitor at pointer"
-    // anymore. come up with a better way to pick the focused monitor to open
-    // this on, maybe by querying the window manager (sway, etc..)?
-    GdkDisplay *display = gdk_display_get_default();
-    GListModel *monitors = gdk_display_get_monitors(display);
-
-    MessageTrayMediator *m = message_tray_get_global_mediator();
-    message_tray_mediator_req_open(m, g_list_model_get_item(monitors, 0));
+    MessageTray *m = message_tray_get_global();
+    message_tray_set_visible(m);
     return true;
 }
 

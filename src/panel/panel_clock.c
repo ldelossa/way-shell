@@ -5,7 +5,6 @@
 #include "../services/clock_service.h"
 #include "../services/notifications_service/notifications_service.h"
 #include "message_tray/message_tray.h"
-#include "message_tray/message_tray_mediator.h"
 #include "panel.h"
 
 struct _PanelClock {
@@ -76,13 +75,9 @@ static void panel_clock_class_init(PanelClockClass *klass) {
 };
 
 static void on_click(GtkWidget *w, PanelClock *clock) {
-    MessageTrayMediator *m = message_tray_get_global_mediator();
+    MessageTray *m = message_tray_get_global();
     if (!m) return;
-    if (clock->toggled) {
-        message_tray_mediator_req_close(m);
-        return;
-    }
-    message_tray_mediator_req_open(m, panel_get_monitor(clock->panel));
+    message_tray_toggle(m);
 }
 
 static void panel_clock_on_dnd_changed(GSettings *settings, gchar *key,

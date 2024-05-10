@@ -4,7 +4,6 @@
 
 #include "../panel.h"
 #include "../quick_settings/quick_settings.h"
-#include "../quick_settings/quick_settings_mediator.h"
 #include "./panel_status_bar_idle_inhibitor_button.h"
 #include "./panel_status_bar_network_button.h"
 #include "./panel_status_bar_power_button.h"
@@ -49,12 +48,9 @@ static void panel_status_bar_class_init(PanelStatusBarClass *klass) {
 
 static void on_click(GtkButton *button, PanelStatusBar *self) {
     g_debug("quick_settings_button.c:on_click() called.");
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
     if (!qs) return;
-    if (self->toggled)
-        quick_settings_mediator_req_close(qs);
-    else
-        quick_settings_mediator_req_open(qs, panel_get_monitor(self->panel));
+    quick_settings_toggle(qs);
 };
 
 static void panel_status_bar_init_layout(PanelStatusBar *self) {

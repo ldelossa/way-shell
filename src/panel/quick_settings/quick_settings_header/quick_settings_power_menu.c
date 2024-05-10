@@ -5,7 +5,6 @@
 #include "../../../dialog_overlay/dialog_overlay.h"
 #include "../../../services/logind_service/logind_service.h"
 #include "../quick_settings.h"
-#include "../quick_settings_mediator.h"
 #include "../quick_settings_menu_widget.h"
 #include "gtk/gtkrevealer.h"
 
@@ -104,8 +103,8 @@ static void on_suspend_clicked(GtkButton *button,
             "dialog_overlay_get_global() returned NULL.");
     }
 
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    quick_settings_mediator_req_close(qs);
+    QuickSettings *qs = quick_settings_get_global();
+    quick_settings_set_hidden(qs);
 
     dialog_overlay_present(dialog, "Suspend?",
                            "Are you sure you want to suspend?",
@@ -130,8 +129,8 @@ static void on_restart_clicked(GtkButton *button,
             "dialog_overlay_get_global() returned NULL.");
     }
 
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    quick_settings_mediator_req_close(qs);
+    QuickSettings *qs = quick_settings_get_global();
+    quick_settings_set_hidden(qs);
 
     dialog_overlay_present(dialog, "Restart?",
                            "Are you sure you want to restart?",
@@ -149,8 +148,8 @@ static void on_poweroff_clicked(GtkButton *button,
                                 QuickSettingsPowerMenu *self) {
     g_debug("quick_settings_power_menu.c:on_poweroff_clicked():");
 
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    quick_settings_mediator_req_close(qs);
+    QuickSettings *qs = quick_settings_get_global();
+    quick_settings_set_hidden(qs);
 
     DialogOverlay *dialog = dialog_overlay_get_global();
     if (!dialog) {
@@ -172,8 +171,8 @@ static void logout_callback() {
 static void on_logout_clicked(GtkButton *button, QuickSettingsPowerMenu *self) {
     g_debug("quick_settings_power_menu.c:on_logout_clicked():");
 
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
-    quick_settings_mediator_req_close(qs);
+    QuickSettings *qs = quick_settings_get_global();
+    quick_settings_set_hidden(qs);
 
     DialogOverlay *dialog = dialog_overlay_get_global();
     if (!dialog) {
@@ -253,8 +252,7 @@ GtkWidget *make_power_button(QuickSettingsPowerMenu *self, gchar *title,
     return GTK_WIDGET(container);
 }
 
-static void on_quick_settings_hidden(QuickSettingsMediator *mediator,
-                                     QuickSettings *qs, GdkMonitor *mon,
+static void on_quick_settings_hidden(QuickSettings *qs,
                                      QuickSettingsPowerMenu *self) {
     g_debug("quick_settings_power_menu.c:on_quick_settings_hidden() called.");
 
@@ -300,14 +298,14 @@ static void quick_settings_power_menu_init_layout(
     gtk_box_append(self->menu.options, GTK_WIDGET(logout_button));
 
     // wire into quick settings hidden event and close all revealers
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
     g_signal_connect(qs, "quick-settings-hidden",
                      G_CALLBACK(on_quick_settings_hidden), self);
 }
 
 void quick_settings_power_menu_reinitialize(QuickSettingsPowerMenu *self) {
     // kill signals to quick settings mediator
-    QuickSettingsMediator *qs = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
     g_signal_handlers_disconnect_by_func(qs, on_quick_settings_hidden, self);
 
     // if we got here, all the revealers are dead because the parent component

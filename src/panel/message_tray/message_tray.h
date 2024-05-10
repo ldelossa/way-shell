@@ -2,8 +2,6 @@
 
 #include <adwaita.h>
 
-#include "message_tray_mediator.h"
-
 G_BEGIN_DECLS
 
 // The top-of-screen Panel which exists on each monitor of the current
@@ -19,19 +17,18 @@ G_END_DECLS
 // the global MessageTrayMediator can be retrieved.
 void message_tray_activate(AdwApplication *app, gpointer user_data);
 
-// Returns the global MessageTrayMediator.
-// Must call `message_tray_activate` or returns NULL.
-MessageTrayMediator *message_tray_get_global_mediator();
+MessageTray *message_tray_get_global();
 
-// Opens the MessageTray relative to the given Monitor.
-void message_tray_set_visible(MessageTray *self, GdkMonitor *monitor);
+// Opens the MessageTray on the current monitor.
+void message_tray_set_visible(MessageTray *self);
 
-// Closes the MessageTray relative to the given Montor.
-// If already hidden this results in a no-op.
-void message_tray_set_hidden(MessageTray *self, GdkMonitor *monitor);
-
-GdkMonitor *message_tray_get_monitor(MessageTray *self);
+// Closes the MessageTray.
+void message_tray_set_hidden(MessageTray *self);
 
 void message_tray_reinitialize(MessageTray *self);
 
 void message_tray_shrink(MessageTray *self);
+
+void message_tray_runtime_signals(MessageTray *self);
+
+void message_tray_toggle(MessageTray *self);

@@ -6,14 +6,21 @@
 
 #include "quick_settings_grid/quick_settings_grid.h"
 #include "quick_settings_header/quick_settings_header.h"
-#include "quick_settings_mediator.h"
 #include "quick_settings_scales/quick_settings_scales.h"
 
-// global QuickSettingsMediator.
-static QuickSettingsMediator *mediator = NULL;
+static QuickSettings *global = NULL;
 
-// global QuickSettingsMediator subsystem.
-static QuickSettings *qs = NULL;
+enum signals {
+    // signals
+    // the quick settings is about to be visible, but not on screen yet.
+    quick_settings_will_show,
+    // the quick settings is now visible.
+    quick_settings_visible,
+    // the quick settings is now hidden.
+    quick_settings_hidden,
+
+    signals_n
+};
 
 struct _QuickSettings {
     GObject parent_instance;
@@ -24,8 +31,8 @@ struct _QuickSettings {
     QuickSettingsGrid *qs_grid;
     QuickSettingsScales *scales;
     AdwWindow *underlay;
-    GdkMonitor *monitor;
 };
+static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(QuickSettings, quick_settings, G_TYPE_OBJECT);
 
 void static opacity_animation(double value, QuickSettings *qs) {
@@ -54,6 +61,18 @@ static void quick_settings_class_init(QuickSettingsClass *klass) {
     GObjectClass *object_class = G_OBJECT_CLASS(klass);
     object_class->dispose = quick_settings_dispose;
     object_class->finalize = quick_settings_finalize;
+
+    signals[quick_settings_will_show] = g_signal_new(
+        "quick-settings-will-show", G_TYPE_FROM_CLASS(object_class),
+        G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    signals[quick_settings_visible] =
+        g_signal_new("quick-settings-visible", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    signals[quick_settings_hidden] =
+        g_signal_new("quick-settings-hidden", G_TYPE_FROM_CLASS(object_class),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 };
 
 static void animation_close_done(AdwAnimation *animation, QuickSettings *self) {
@@ -72,22 +91,19 @@ static void animation_close_done(AdwAnimation *animation, QuickSettings *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->underlay), false);
 
     // emit hidden signal
-    quick_settings_mediator_emit_hidden(mediator, self, self->monitor);
+    g_signal_emit(self, signals[quick_settings_hidden], 0);
 
     quick_settings_set_focused(self, false);
-
-    // clear panel
-    self->monitor = NULL;
 };
 
-void quick_settings_set_hidden(QuickSettings *self, GdkMonitor *mon) {
+void quick_settings_set_hidden(QuickSettings *self) {
     int anim_state = 0;
 
     g_debug("quick_settings.c:quick_settings_set_hidden() called.");
 
     // this is required, since external callers will call this method as expect
     // a no-op of there is no attached self->panel.
-    if (!self || !self->win || !self->monitor || !mon) {
+    if (!self || !self->win) {
         return;
     }
 
@@ -112,7 +128,7 @@ void quick_settings_set_hidden(QuickSettings *self, GdkMonitor *mon) {
 
 static void on_underlay_click(GtkButton *button, QuickSettings *qs) {
     g_debug("quick_settings.c:on_click() called.");
-    quick_settings_set_hidden(qs, qs->monitor);
+    quick_settings_set_hidden(qs);
 };
 
 static void quick_settings_init_underlay(QuickSettings *self) {
@@ -154,9 +170,22 @@ static void on_mixer_revealed(QuickSettingsHeader *header, gboolean revealed,
     }
 };
 
-static void quick_settings_init_layout(QuickSettings *self) {
-    self->monitor = NULL;
+static void on_quick_settings_req_open(QuickSettings *self) {
+    g_debug("quick_settings.c.c:on_quick_settings_open() called.");
+    quick_settings_set_visible(self);
+};
 
+static void on_quick_settings_req_close(QuickSettings *self) {
+    g_debug("quick_settings.c.c:quick_settings_close() called.");
+    quick_settings_set_hidden(self);
+};
+
+static void on_quick_settings_req_shrink(QuickSettings *self) {
+    g_debug("quick_settings.c.c:quick_settings_shrink() called.");
+    quick_settings_shrink(self);
+};
+
+static void quick_settings_init_layout(QuickSettings *self) {
     // init underlay
     quick_settings_init_underlay(self);
 
@@ -204,6 +233,14 @@ static void quick_settings_init_layout(QuickSettings *self) {
     // connect to header's mixer-revealed signal
     g_signal_connect(self->header, "mixer-revealed",
                      G_CALLBACK(on_mixer_revealed), self);
+
+    // connect to request signals
+    g_signal_connect(self, "quick-settings-req-open",
+                     G_CALLBACK(on_quick_settings_req_open), NULL);
+    g_signal_connect(self, "quick-settings-req-close",
+                     G_CALLBACK(on_quick_settings_req_close), NULL);
+    g_signal_connect(self, "quick-settings-req-shrink",
+                     G_CALLBACK(on_quick_settings_req_shrink), NULL);
 }
 
 static void on_window_destroy(GtkWindow *win, QuickSettings *self) {
@@ -226,25 +263,15 @@ static void animation_open_done(AdwAnimation *animation, QuickSettings *qs) {
     g_signal_handlers_disconnect_by_func(qs->animation, animation_open_done,
                                          qs);
     // emit visible signal
-    quick_settings_mediator_emit_visible(mediator, qs, qs->monitor);
+    g_signal_emit(qs, signals[quick_settings_visible], 0);
 };
 
-void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
+void quick_settings_set_visible(QuickSettings *self) {
     int anim_state = 0;
 
     g_debug("quick_settings.c:quick_settings_set_visible() called.");
 
-    if (!self || !monitor) return;
-
-    // determine current state
-    if (self->monitor && self->monitor == monitor) {
-        // monitor is already opened on the requested monitor, just return.
-        return;
-    }
-    if (self->monitor && self->monitor != monitor) {
-        // monitor is opened on another monitor, close it first
-        quick_settings_set_hidden(self, self->monitor);
-    }
+    if (!self) return;
 
     // this ensures there are no in-flight animation done callbacks on the
     // event-loop before starting a new animation, and avoids timing bugs.
@@ -256,12 +283,8 @@ void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
         return;
     }
 
-    // move underlay and win to new monitor
-    gtk_layer_set_monitor(GTK_WINDOW(self->underlay), monitor);
-    gtk_layer_set_monitor(GTK_WINDOW(self->win), monitor);
-
     // emit will show signal before we open any windows.
-    quick_settings_mediator_emit_will_show(mediator, self, monitor);
+    g_signal_emit(self, signals[quick_settings_will_show], 0);
 
     // show underlay
     gtk_window_present(GTK_WINDOW(self->underlay));
@@ -269,18 +292,13 @@ void quick_settings_set_visible(QuickSettings *self, GdkMonitor *monitor) {
     // present the window
     gtk_window_present(GTK_WINDOW(self->win));
 
-    // store pointer to monitor we attached to.
-    self->monitor = monitor;
-
     // connect animation done signal and play animation
     g_signal_connect(self->animation, "done", G_CALLBACK(animation_open_done),
                      self);
     adw_animation_play(self->animation);
 }
 
-QuickSettingsMediator *quick_settings_get_global_mediator() {
-    return mediator;
-};
+QuickSettings *quick_settings_get_global() { return global; };
 
 void quick_settings_reinitialize(QuickSettings *self) {
     g_debug("quick_settings.c:quick_settings_reinitialize() called.");
@@ -288,9 +306,6 @@ void quick_settings_reinitialize(QuickSettings *self) {
     // kill our signals
     g_signal_handlers_disconnect_by_func(self->win, on_window_destroy, self);
     g_signal_handlers_disconnect_by_func(self->header, on_mixer_revealed, self);
-
-    // reset mediator's pointer to us
-    quick_settings_mediator_set_qs(mediator, self);
 
     // reinitialize dependent widgets
     quick_settings_grid_reinitialize(self->qs_grid);
@@ -302,14 +317,21 @@ void quick_settings_reinitialize(QuickSettings *self) {
 }
 
 void quick_settings_activate(AdwApplication *app, gpointer user_data) {
-    mediator = g_object_new(QUICK_SETTINGS_MEDIATOR_TYPE, NULL);
-    qs = g_object_new(QUICK_SETTINGS_TYPE, NULL);
-    quick_settings_mediator_set_qs(mediator, qs);
+    global = g_object_new(QUICK_SETTINGS_TYPE, NULL);
 };
 
 void quick_settings_shrink(QuickSettings *qs) {
     g_debug("quick_settings.c:quick_settings_shrink() called.");
     gtk_window_set_default_size(GTK_WINDOW(qs->win), 400, 200);
+};
+
+void quick_settings_toggle(QuickSettings *qs) {
+    g_debug("quick_settings.c:quick_settings_toggle() called.");
+    if (quick_settings_is_visible(qs)) {
+        quick_settings_set_hidden(qs);
+    } else {
+        quick_settings_set_visible(qs);
+    }
 };
 
 void quick_settings_set_focused(QuickSettings *qs, gboolean focus) {
@@ -321,6 +343,6 @@ void quick_settings_set_focused(QuickSettings *qs, gboolean focus) {
     }
 };
 
-GdkMonitor *quick_settings_get_monitor(QuickSettings *qs) {
-    return qs->monitor;
+gboolean quick_settings_is_visible(QuickSettings *qs) {
+    return gtk_widget_is_visible(GTK_WIDGET(qs->win));
 };

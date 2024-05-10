@@ -4,7 +4,6 @@
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
 #include "../message_tray.h"
-#include "../message_tray_mediator.h"
 #include "./notification_widget.h"
 #include "gtk/gtkrevealer.h"
 #include "notifications_list.h"
@@ -76,21 +75,18 @@ static void on_window_destroy(GtkWindow *win, NotificationsOSD *self) {
     notification_osd_reinitialize(self);
 }
 
-static void on_tray_will_show(MessageTrayMediator *mtm, MessageTray *tray,
-                              Panel *panel, NotificationsOSD *self) {
+static void on_tray_will_show(MessageTray *tray, NotificationsOSD *self) {
     g_debug("notification_osd.c:on_tray_will_show() called");
     if (!self->win) return;
     gtk_revealer_set_reveal_child(self->revealer, false);
 }
 
-static void on_tray_visible(MessageTrayMediator *mtm, MessageTray *tray,
-                            Panel *panel, NotificationsOSD *self) {
+static void on_tray_visible(MessageTray *tray, NotificationsOSD *self) {
     g_debug("notification_osd.c:on_tray_visible() called");
     self->message_tray_visible = true;
 }
 
-static void on_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
-                           Panel *panel, NotificationsOSD *self) {
+static void on_tray_hidden(MessageTray *tray, NotificationsOSD *self) {
     g_debug("notification_osd.c:on_tray_hidden() called");
     self->message_tray_visible = false;
 }
@@ -202,15 +198,6 @@ static void notifications_osd_init_layout(NotificationsOSD *self) {
     gtk_widget_add_controller(GTK_WIDGET(self->container),
                               GTK_EVENT_CONTROLLER(self->ctlr));
 
-    // wire into global message-tray-mediator visible and hidden events
-    MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_connect(mtm, "message-tray-visible", G_CALLBACK(on_tray_visible),
-                     self);
-    g_signal_connect(mtm, "message-tray-hidden", G_CALLBACK(on_tray_hidden),
-                     self);
-    g_signal_connect(mtm, "message-tray-will-show",
-                     G_CALLBACK(on_tray_will_show), self);
-
     // listen for notification add events
     NotificationsService *ns = notifications_service_get_global();
     g_signal_connect(ns, "notification-added",
@@ -227,10 +214,10 @@ void notification_osd_reinitialize(NotificationsOSD *self) {
     g_signal_handlers_disconnect_by_func(ns, on_notification_added, self);
     g_signal_handlers_disconnect_by_func(ns, on_notifications_removed, self);
 
-    MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_handlers_disconnect_by_func(mtm, on_tray_visible, self);
-    g_signal_handlers_disconnect_by_func(mtm, on_tray_hidden, self);
-    g_signal_handlers_disconnect_by_func(mtm, on_tray_will_show, self);
+    MessageTray *mt = message_tray_get_global();
+    g_signal_handlers_disconnect_by_func(mt, on_tray_visible, self);
+    g_signal_handlers_disconnect_by_func(mt, on_tray_hidden, self);
+    g_signal_handlers_disconnect_by_func(mt, on_tray_will_show, self);
 
     notifications_osd_init_layout(self);
 }
@@ -242,4 +229,14 @@ static void notifications_osd_init(NotificationsOSD *self) {
 void notification_osd_set_notification_list(NotificationsOSD *self,
                                             NotificationsList *list) {
     self->list = list;
+}
+
+void notification_osd_connect_message_tray_signals(NotificationsOSD *self,
+                                                   MessageTray *mt) {
+    g_signal_connect(mt, "message-tray-visible", G_CALLBACK(on_tray_visible),
+                     self);
+    g_signal_connect(mt, "message-tray-hidden", G_CALLBACK(on_tray_hidden),
+                     self);
+    g_signal_connect(mt, "message-tray-will-show",
+                     G_CALLBACK(on_tray_will_show), self);
 }

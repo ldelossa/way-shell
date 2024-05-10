@@ -206,6 +206,7 @@ void notifications_service_send_notification(NotificationsService *self,
                                              Notification *n) {
     Notification *nn = g_malloc0(sizeof(Notification));
     nn->id = self->last_id++;
+    nn->app_name = g_strdup(n->app_name);
     nn->summary = g_strdup(n->summary);
     nn->body = g_strdup(n->body);
     nn->app_icon = g_strdup(n->app_icon);

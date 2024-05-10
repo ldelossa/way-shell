@@ -4,7 +4,6 @@
 
 #include "../../../services/notifications_service/notifications_service.h"
 #include "../message_tray.h"
-#include "../message_tray_mediator.h"
 #include "./notification_group.h"
 #include "./notification_osd.h"
 #include "glib.h"
@@ -38,8 +37,8 @@ void apply_scrolling_policy(NotificationsList *self, gboolean shrink) {
     int size = 0;
 
     if (shrink) {
-        MessageTrayMediator *mediator = message_tray_get_global_mediator();
-        message_tray_mediator_req_shrink(mediator);
+        MessageTray *mt = message_tray_get_global();
+        message_tray_shrink(mt);
     }
 
     gtk_widget_measure(GTK_WIDGET(self->list), GTK_ORIENTATION_VERTICAL, -1,
@@ -170,8 +169,7 @@ void on_notifications_added(NotificationsService *service,
     }
 }
 
-static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
-                                   GdkMonitor *mon, NotificationsList *self);
+static void on_message_tray_hidden(MessageTray *tray, NotificationsList *self);
 
 // stub out dispose, finalize, class_init and init methods.
 static void notifications_list_dispose(GObject *gobject) {
@@ -181,8 +179,8 @@ static void notifications_list_dispose(GObject *gobject) {
     NotificationsService *service = notifications_service_get_global();
     g_signal_handlers_disconnect_by_func(service, on_notifications_added, self);
 
-    MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_hidden, self);
+    MessageTray *mt = message_tray_get_global();
+    g_signal_handlers_disconnect_by_func(mt, on_message_tray_hidden, self);
 
     // unref osd
     g_object_unref(self->osd);
@@ -274,8 +272,7 @@ static void media_players_on_media_player_removed(MediaPlayerService *serv,
     g_object_unref(widget);
 }
 
-static void on_message_tray_hidden(MessageTrayMediator *mtm, MessageTray *tray,
-                                   GdkMonitor *mon, NotificationsList *self) {
+static void on_message_tray_hidden(MessageTray *tray, NotificationsList *self) {
     g_debug("notifications_list.c:on_message_tray_hidden() called");
     apply_scrolling_policy(self, true);
 }
@@ -371,10 +368,6 @@ static void notifications_list_init_layout(NotificationsList *self) {
                      G_CALLBACK(on_media_players_changed), self);
     g_signal_connect(mps, "media-player-removed",
                      G_CALLBACK(media_players_on_media_player_removed), self);
-
-    MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_connect(mtm, "message-tray-hidden",
-                     G_CALLBACK(on_message_tray_hidden), self);
 }
 
 void notifications_list_reinitialize(NotificationsList *self) {
@@ -384,8 +377,8 @@ void notifications_list_reinitialize(NotificationsList *self) {
     NotificationsService *service = notifications_service_get_global();
     g_signal_handlers_disconnect_by_func(service, on_notifications_added, self);
 
-    MessageTrayMediator *mtm = message_tray_get_global_mediator();
-    g_signal_handlers_disconnect_by_func(mtm, on_message_tray_hidden, self);
+    MessageTray *mt = message_tray_get_global();
+    g_signal_handlers_disconnect_by_func(mt, on_message_tray_hidden, self);
 
     // remove all NotificationGroups, unrefing each one.
     g_hash_table_remove_all(self->notification_groups);
@@ -417,4 +410,12 @@ gboolean notifications_list_is_dnd(NotificationsList *self) {
 
 GtkWidget *notifications_list_get_widget(NotificationsList *self) {
     return GTK_WIDGET(self->container);
+}
+
+void notification_list_connect_message_tray_signals(NotificationsList *self,
+                                                    MessageTray *tray) {
+    g_signal_connect(tray, "message-tray-hidden",
+                     G_CALLBACK(on_message_tray_hidden), self);
+
+    notification_osd_connect_message_tray_signals(self->osd, tray);
 }

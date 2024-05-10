@@ -16,20 +16,20 @@ static void quick_settings_grid_button_on_reveal(
         "quick_settings_grid_button.c:quick_settings_grid_button_on_reveal() "
         "called");
 
-    QuickSettingsMediator *qsm = quick_settings_get_global_mediator();
+    QuickSettings *qs = quick_settings_get_global();
 
     if (gtk_revealer_get_child_revealed(self->revealer)) {
         gtk_revealer_set_reveal_child(self->revealer, false);
 
-        quick_settings_mediator_req_shrink(qsm);
-        quick_settings_mediator_req_set_focus(qsm, false);
+        quick_settings_shrink(qs);
+        quick_settings_set_focused(qs, false);
 
         if (self->on_reveal) self->on_reveal(self, false);
     } else {
         // emit will-reveal signal on behalf of our cluster
         g_signal_emit_by_name(self->cluster, "will-reveal", self);
 
-        quick_settings_mediator_req_set_focus(qsm, true);
+        quick_settings_set_focused(qs, true);
 
         gtk_revealer_set_reveal_child(self->revealer, true);
         if (self->on_reveal) self->on_reveal(self, true);

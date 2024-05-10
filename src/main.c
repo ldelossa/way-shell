@@ -6,7 +6,6 @@
 #include "./osd/osd.h"
 #include "./output_switcher/output_switcher.h"
 #include "./panel/message_tray/message_tray.h"
-#include "./panel/message_tray/message_tray_mediator.h"
 #include "./panel/panel.h"
 #include "./services/brightness_service/brightness_service.h"
 #include "./services/clock_service.h"
@@ -135,9 +134,6 @@ static void activate(AdwApplication *app, gpointer user_data) {
     workspace_switcher_activate(app, user_data);
     g_debug("main.c: activate(): workspace_switcher subsystems activated");
 
-    panel_activate(app, user_data);
-    g_debug("main.c: activate(): panel subsystems activated");
-
     message_tray_activate(app, user_data);
     g_debug("main.c: activate(): message_tray subsystems activated");
 
@@ -147,12 +143,18 @@ static void activate(AdwApplication *app, gpointer user_data) {
     osd_activate(app, user_data);
     g_debug("main.c: activate(): osd subsystems activated");
 
+    panel_activate(app, user_data);
+    g_debug("main.c: activate(): panel subsystems activated");
+
+
     // Subsystem mediator connections //
 
     g_debug("main.c: activate(): connecting mediator signals");
+
+    // the panel mediator tracks multiple panels and routes cross cutting
+    // signals across disconnected components, such as hiding one component that
+    // should not be visible when a other, decoupled, component is shown.
     panel_mediator_connect(panel_get_global_mediator());
-    message_tray_mediator_connect(message_tray_get_global_mediator());
-    quick_settings_mediator_connect(quick_settings_get_global_mediator());
 }
 
 int main(int argc, char *argv[]) {
