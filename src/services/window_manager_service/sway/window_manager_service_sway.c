@@ -138,6 +138,11 @@ static void handle_ipc_event_workspaces(WMServiceSway *self,
     if (event->type == WMWORKSPACE_EVENT_CREATED) {
         launch_on_workspace_new_script(event->workspace.name);
     }
+    if (event->type == WMWORKSPACE_EVENT_URGENT &&
+        g_settings_get_boolean(self->settings, "focus-urgent-workspace")) {
+        // switch to workspace
+        wm_service_sway_focus_workspace(self, &event->workspace);
+    }
 
     if (event->type == WMWORKSPACE_EVENT_FOCUSED) {
         if (self->focused_workspace) g_free(self->focused_workspace);

@@ -104,6 +104,7 @@ void quick_settings_set_hidden(QuickSettings *self) {
     // this is required, since external callers will call this method as expect
     // a no-op of there is no attached self->panel.
     if (!self || !self->win) {
+        g_debug("quick_settings.c:quick_settings_set_hidden() no-op.");
         return;
     }
 
@@ -112,6 +113,8 @@ void quick_settings_set_hidden(QuickSettings *self) {
     anim_state = adw_animation_get_state(self->animation);
     if (anim_state != ADW_ANIMATION_IDLE &&
         anim_state != ADW_ANIMATION_FINISHED) {
+        g_debug("quick_settings.c:quick_settings_set_hidden() anim_state: %d",
+                anim_state);
         return;
     }
 

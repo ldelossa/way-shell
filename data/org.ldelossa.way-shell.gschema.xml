@@ -101,6 +101,22 @@
             Request restart to take effect.
             </description>
         </key>
+        <key name="focus-urgent-workspace" type="b">
+            <default>false</default>
+            <summary>Whether to focus workspaces that are set to urgent</summary>
+            <description>
+            Way-Shell will automatically focus workspaces which become urgent
+            when this configuration is set to true.
+
+            Workspaces are marked urgent when an application requests to be
+            focused. This typically occurs when the app first opens and when
+            the app requests focus.
+
+            In practice, enabling this setting provides a more traditional feel
+            when launching apps or clicking notifications, as Way-Shell informs
+            the window manager to focus the app generating these events.
+            </description>
+        </key>
     </schema>
 
     <!--notification related settings-->
