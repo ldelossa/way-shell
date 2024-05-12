@@ -138,6 +138,7 @@ static void quick_settings_init_underlay(QuickSettings *self) {
     self->underlay = ADW_WINDOW(adw_window_new());
     gtk_widget_add_css_class(GTK_WIDGET(self->underlay), "underlay");
     gtk_layer_init_for_window(GTK_WINDOW(self->underlay));
+    gtk_layer_set_namespace(GTK_WINDOW(self->underlay), "way-shell-quick-settings-underlay");
     gtk_layer_set_layer((GTK_WINDOW(self->underlay)),
                         GTK_LAYER_SHELL_LAYER_TOP);
 
@@ -199,6 +200,7 @@ static void quick_settings_init_layout(QuickSettings *self) {
 
     // configure layer shell properties of window.
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-quick-settings");
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
     gtk_widget_set_name(GTK_WIDGET(self->win), "quick-settings");
 

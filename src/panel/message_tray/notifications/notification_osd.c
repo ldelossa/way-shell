@@ -174,6 +174,7 @@ static void notifications_osd_init_layout(NotificationsOSD *self) {
 
     // configure layershell, top layer and center
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-notifications-osd");
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
     gtk_widget_set_name(GTK_WIDGET(self->win), "notifications-osd");
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);

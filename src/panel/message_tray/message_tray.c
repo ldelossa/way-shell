@@ -140,6 +140,7 @@ static void message_tray_init_underlay(MessageTray *self) {
     self->underlay = ADW_WINDOW(adw_window_new());
     gtk_widget_add_css_class(GTK_WIDGET(self->underlay), "underlay");
     gtk_layer_init_for_window(GTK_WINDOW(self->underlay));
+    gtk_layer_set_namespace(GTK_WINDOW(self->underlay), "way-shell-message-tray-underlay");
     gtk_layer_set_layer((GTK_WINDOW(self->underlay)),
                         GTK_LAYER_SHELL_LAYER_TOP);
 
@@ -193,6 +194,7 @@ static void message_tray_init_layout(MessageTray *self) {
     // configure layer shell properties for window
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
+    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-message-tray");
     gtk_widget_set_name(GTK_WIDGET(self->win), "message-tray");
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 8);

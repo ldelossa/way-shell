@@ -245,6 +245,7 @@ static void app_switcher_init_layout(AppSwitcher *self) {
 
     // configure layershell, no anchors will place window in center.
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-switcher");
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
     gtk_layer_set_anchor((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_EDGE_TOP,
                          true);

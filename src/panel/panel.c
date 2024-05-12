@@ -112,6 +112,7 @@ static void panel_init_layout(Panel *self) {
     // depedencies expect the panel to always have a valid monitor.
     self->win = ADW_WINDOW(adw_window_new());
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-panel");
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
     gtk_layer_auto_exclusive_zone_enable(GTK_WINDOW(self->win));
     gtk_layer_set_anchor(GTK_WINDOW(self->win), 0, 1);

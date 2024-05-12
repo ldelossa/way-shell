@@ -64,6 +64,7 @@ static void dialog_overlay_init_layout(DialogOverlay *self) {
 
     // configure layershell, full screen overlay
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
+    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-dialog");
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_LEFT,
                          true);

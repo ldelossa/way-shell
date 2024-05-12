@@ -34,7 +34,7 @@ I'd love any community members to contribute their own methods of installation
 even if its just documentation.
 
 Way-Shell depends on the following packages (Fedora 40).
-Please note that Fedora 40 packages the latest wireplumber libraries (wireplumber-0.5) and Way-Shell will fail to build if a previous version is being linked. 
+Please note that Fedora 40 packages the latest wireplumber libraries (wireplumber-0.5) and Way-Shell will fail to build if a previous version is being linked.
 
     libadwaita-devel \
     upower-devel \
@@ -130,6 +130,31 @@ support the following keybinds.
 | UpArrow | next item |
 | DownArrow  | previous item |
 | Esc | Clear search, close widget if search is empty |
+
+### Integrating with SwayFX
+
+The [SwayFX](https://github.com/WillPower3309/swayfx) project provides some extra eye candy for Sway.
+
+Way-Shell components can integrate with SwayFX settings for some added visual effects.
+
+For instance:
+
+![image](https://private-user-images.githubusercontent.com/5642902/329865738-7513ab53-321f-48f0-9a8d-65cfed177683.png?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3MTU1MzIyMjgsIm5iZiI6MTcxNTUzMTkyOCwicGF0aCI6Ii81NjQyOTAyLzMyOTg2NTczOC03NTEzYWI1My0zMjFmLTQ4ZjAtOWE4ZC02NWNmZWQxNzc2ODMucG5nP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI0MDUxMiUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNDA1MTJUMTYzODQ4WiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9ZWZkYTQ5NDZhNDIzZDVmOGY1NWZmOTU1ZDQyZGY2MDJhMGFlZTU4Mzk3NzUzYjY3ODI4ZWUwNDkzYzI0ODE3YiZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QmYWN0b3JfaWQ9MCZrZXlfaWQ9MCZyZXBvX2lkPTAifQ.-eJgqmObn4sBaUBxvBmT-xjjSv6f40yTvoDq2OGRXEU)
+
+```
+corner_radius 6
+shadows enable
+default_dim_inactive 0.05
+layer_effects "way-shell-message-tray-underlay" blur enable; shadows enable;
+layer_effects "way-shell-message-tray" shadows enable; corner_radius 20
+layer_effects "way-shell-quick-settings-underlay" blur enable; shadows enable;
+layer_effects "way-shell-quick-settings" shadows enable; corner_radius 20
+layer_effects "way-shell-switcher" shadows enable; corner_radius 20
+layer_effects "way-shell-quick-switcher" shadows enable; corner_radius 20
+layer_effects "way-shell-dialog" blur enable; shadows enable;
+```
+
+Feel free to adjust these to your liking.
 
 ## Road to v1.0
 
