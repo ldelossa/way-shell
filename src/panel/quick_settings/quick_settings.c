@@ -113,9 +113,7 @@ void quick_settings_set_hidden(QuickSettings *self) {
     anim_state = adw_animation_get_state(self->animation);
     if (anim_state != ADW_ANIMATION_IDLE &&
         anim_state != ADW_ANIMATION_FINISHED) {
-        g_debug("quick_settings.c:quick_settings_set_hidden() anim_state: %d",
-                anim_state);
-        return;
+        adw_animation_reset(self->animation);
     }
 
     // reverse animation

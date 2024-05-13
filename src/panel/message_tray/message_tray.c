@@ -117,7 +117,7 @@ void message_tray_set_hidden(MessageTray *self) {
     anim_state = adw_animation_get_state(self->animation);
     if (anim_state != ADW_ANIMATION_IDLE &&
         anim_state != ADW_ANIMATION_FINISHED) {
-        return;
+        adw_animation_reset(self->animation);
     }
 
     // reverse animation
