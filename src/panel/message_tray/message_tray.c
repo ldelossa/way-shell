@@ -140,7 +140,8 @@ static void message_tray_init_underlay(MessageTray *self) {
     self->underlay = ADW_WINDOW(adw_window_new());
     gtk_widget_add_css_class(GTK_WIDGET(self->underlay), "underlay");
     gtk_layer_init_for_window(GTK_WINDOW(self->underlay));
-    gtk_layer_set_namespace(GTK_WINDOW(self->underlay), "way-shell-message-tray-underlay");
+    gtk_layer_set_namespace(GTK_WINDOW(self->underlay),
+                            "way-shell-message-tray-underlay");
     gtk_layer_set_layer((GTK_WINDOW(self->underlay)),
                         GTK_LAYER_SHELL_LAYER_TOP);
 
@@ -270,9 +271,17 @@ void message_tray_reinitialize(MessageTray *self) {
 }
 
 static void message_tray_init(MessageTray *self) {
+    // this is kinda hacky, but we an set the global variable as we init.
+    // MessageTray is always a singleton and we don't create multiple instances.
+    //
+    // this makes constructing dependent components which require the global
+    // variable to be set function properly.
+    global = self;
+
     // create dependent widgets
     self->notifications_list = g_object_new(NOTIFICATIONS_LIST_TYPE, NULL);
-    self->calendar = g_object_new(CALENDAR_TYPE, NULL);
+
+    g_object_unref(self->calendar);
 
     // setup the layout
     message_tray_init_layout(self);
@@ -282,11 +291,7 @@ static void message_tray_init(MessageTray *self) {
 MessageTray *message_tray_get_global() { return global; };
 
 void message_tray_activate(AdwApplication *app, gpointer user_data) {
-    MessageTray *tray = g_object_new(MESSAGE_TRAY_TYPE, NULL);
-    global = tray;
-
-    notification_list_connect_message_tray_signals(tray->notifications_list,
-                                                   tray);
+    g_object_new(MESSAGE_TRAY_TYPE, NULL);
 };
 
 static void animation_open_done(AdwAnimation *animation, MessageTray *tray) {

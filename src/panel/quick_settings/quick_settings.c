@@ -230,10 +230,17 @@ static void on_window_destroy(GtkWindow *win, QuickSettings *self) {
 };
 
 static void quick_settings_init(QuickSettings *self) {
-    // initialize depedent widgets
+    // this is kinda hacky, but we an set the global variable as we init.
+    // QuickSettings is always a singleton and we don't create multiple
+    // instances.
+    //
+    // this makes constructing dependent components which require the global
+    // variable to be set function properly.
+    global = self;
+
+    // initialize dependent widgets
     self->header = g_object_new(QUICK_SETTINGS_HEADER_TYPE, NULL);
     self->qs_grid = g_object_new(QUICK_SETTINGS_GRID_TYPE, NULL);
-
     quick_settings_init_layout(self);
 };
 
@@ -291,14 +298,17 @@ void quick_settings_reinitialize(QuickSettings *self) {
     // reinitialize dependent widgets
     quick_settings_grid_reinitialize(self->qs_grid);
     quick_settings_header_reinitialize(self->header);
-    quick_settings_scales_reinitialize(self->scales);
+
+    // unref scales, they are simply enough to be recreated on the following
+    // layout reinit.
+    g_object_unref(self->scales);
 
     // reinit our layout
     quick_settings_init_layout(self);
 }
 
 void quick_settings_activate(AdwApplication *app, gpointer user_data) {
-    global = g_object_new(QUICK_SETTINGS_TYPE, NULL);
+    g_object_new(QUICK_SETTINGS_TYPE, NULL);
 };
 
 void quick_settings_shrink(QuickSettings *qs) {

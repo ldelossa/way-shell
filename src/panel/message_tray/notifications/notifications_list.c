@@ -368,6 +368,11 @@ static void notifications_list_init_layout(NotificationsList *self) {
                      G_CALLBACK(on_media_players_changed), self);
     g_signal_connect(mps, "media-player-removed",
                      G_CALLBACK(media_players_on_media_player_removed), self);
+
+    MessageTray *mt = message_tray_get_global();
+
+    g_signal_connect(mt, "message-tray-hidden",
+                     G_CALLBACK(on_message_tray_hidden), self);
 }
 
 void notifications_list_reinitialize(NotificationsList *self) {
@@ -412,10 +417,3 @@ GtkWidget *notifications_list_get_widget(NotificationsList *self) {
     return GTK_WIDGET(self->container);
 }
 
-void notification_list_connect_message_tray_signals(NotificationsList *self,
-                                                    MessageTray *tray) {
-    g_signal_connect(tray, "message-tray-hidden",
-                     G_CALLBACK(on_message_tray_hidden), self);
-
-    notification_osd_connect_message_tray_signals(self->osd, tray);
-}

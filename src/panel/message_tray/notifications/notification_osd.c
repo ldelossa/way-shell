@@ -206,6 +206,15 @@ static void notifications_osd_init_layout(NotificationsOSD *self) {
     g_signal_connect(ns, "notification-closed",
                      G_CALLBACK(on_notifications_removed), self);
 
+
+    MessageTray *mt = message_tray_get_global();
+    g_signal_connect(mt, "message-tray-visible", G_CALLBACK(on_tray_visible),
+                     self);
+    g_signal_connect(mt, "message-tray-hidden", G_CALLBACK(on_tray_hidden),
+                     self);
+    g_signal_connect(mt, "message-tray-will-show",
+                     G_CALLBACK(on_tray_will_show), self);
+
     adw_window_set_content(self->win, GTK_WIDGET(self->revealer));
 }
 
@@ -230,14 +239,4 @@ static void notifications_osd_init(NotificationsOSD *self) {
 void notification_osd_set_notification_list(NotificationsOSD *self,
                                             NotificationsList *list) {
     self->list = list;
-}
-
-void notification_osd_connect_message_tray_signals(NotificationsOSD *self,
-                                                   MessageTray *mt) {
-    g_signal_connect(mt, "message-tray-visible", G_CALLBACK(on_tray_visible),
-                     self);
-    g_signal_connect(mt, "message-tray-hidden", G_CALLBACK(on_tray_hidden),
-                     self);
-    g_signal_connect(mt, "message-tray-will-show",
-                     G_CALLBACK(on_tray_will_show), self);
 }

@@ -473,28 +473,6 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     gtk_box_append(self->container, GTK_WIDGET(self->brightness_container));
 }
 
-void quick_settings_scales_reinitialize(QuickSettingsScales *self) {
-    // disconnect from signals
-    WirePlumberService *wp = wire_plumber_service_get_global();
-
-    g_signal_handlers_disconnect_by_func(
-        wp, G_CALLBACK(on_default_source_change), self);
-
-    g_signal_handlers_disconnect_by_func(wp, G_CALLBACK(on_default_sink_change),
-                                         self);
-
-    g_signal_handlers_disconnect_by_func(wp, G_CALLBACK(on_default_sink_change),
-                                         self);
-
-    // re-init layout
-    quick_settings_scales_init_layout(self);
-
-    // run callbacks manually to set values
-    on_default_sink_change(wp, wire_plumber_service_get_default_sink(wp), self);
-    on_default_source_change(wp, wire_plumber_service_get_default_source(wp),
-                             self);
-}
-
 static void quick_settings_scales_init(QuickSettingsScales *self) {
     g_debug("quick_settings_scales.c:quick_settings_scales_init() called.");
     quick_settings_scales_init_layout(self);
@@ -511,12 +489,6 @@ void quick_settings_scales_disable_audio_scales(QuickSettingsScales *self,
                                                 gboolean disable) {
     WirePlumberService *wp = wire_plumber_service_get_global();
     if (!wp) return;
-
-    // hide audio scales
-    // gtk_widget_set_visible(GTK_WIDGET(self->default_sink_container),
-    // !disable);
-    // gtk_widget_set_visible(GTK_WIDGET(self->default_source_container),
-    //                        !disable);
 
     // close revealer
     gtk_revealer_set_reveal_child(self->audio_scales_revealer, !disable);

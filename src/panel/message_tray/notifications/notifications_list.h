@@ -18,6 +18,3 @@ GtkWidget *notifications_list_get_widget(NotificationsList *self);
 gboolean notifications_list_is_dnd(NotificationsList *self);
 
 void notifications_list_reinitialize(NotificationsList *self);
-
-void notification_list_connect_message_tray_signals(NotificationsList *self,
-                                                    MessageTray *tray);
