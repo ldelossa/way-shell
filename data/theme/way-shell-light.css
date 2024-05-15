@@ -844,48 +844,48 @@ statuspage {
 #quick-settings.focused #quick-settings-header {
     color: shade(@text-general, .4);
 }
-#quick-settings.focused scale slider {
+#quick-settings.focused #quick-settings-scales scale slider {
     background: shade(@scale-trough, .4);
 }
-#quick-settings.focused scale trough {
+#quick-settings.focused #quick-settings-scales scale trough {
     background: shade(@scale-trough, .4);
 }
-#quick-settings.focused scale trough highlight {
+#quick-settings.focused #quick-settings-scales scale trough highlight {
     background: shade(@scale-trough-highlight, .4);
 }
 
 #quick-settings.focused .quick-settings-grid-button-toggle {
-    background: shade(@panel-button-hover, .5);
+    background: shade(@quick-settings-button, .5);
     color: shade(@text-general, .5);
 }
 
 #quick-settings.focused .quick-settings-grid-button-toggle:hover {
-    background: shade(@panel-button-hover, .8);
+    background: shade(@quick-settings-button, .8);
     color: shade(@text-general, .8);
 }
 
 #quick-settings.focused .quick-settings-grid-button-toggle.no-revealer {
-    background: shade(@panel-button-hover, .5);
+    background: shade(@quick-settings-button, .5);
     color: shade(@text-general, .5);
 }
 
 #quick-settings.focused .quick-settings-grid-button-toggle.no-revealer:hover {
-    background: shade(@panel-button-hover, .8);
+    background: shade(@quick-settings-button, .8);
     color: shade(@text-general, .8);
 }
 
 #quick-settings.focused .quick-settings-grid-button-reveal-hidden {
-    background: shade(@panel-button-hover, .5);
+    background: shade(@quick-settings-button, .5);
     color: shade(@text-general, .5);
 }
 
 #quick-settings.focused .quick-settings-grid-button-reveal-hidden:hover {
-    background: shade(@panel-button-hover, .8);
+    background: shade(@quick-settings-button, .8);
     color: shade(@text-general, .8);
 }
 
 #quick-settings.focused .quick-settings-grid-button-reveal-visible {
-    background: shade(@panel-button-hover, .5);
+    background: shade(@quick-settings-button, .5);
     color: shade(@text-general, .5);
 }
 
