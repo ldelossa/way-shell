@@ -136,7 +136,8 @@ static void quick_settings_init_underlay(QuickSettings *self) {
     self->underlay = ADW_WINDOW(adw_window_new());
     gtk_widget_add_css_class(GTK_WIDGET(self->underlay), "underlay");
     gtk_layer_init_for_window(GTK_WINDOW(self->underlay));
-    gtk_layer_set_namespace(GTK_WINDOW(self->underlay), "way-shell-quick-settings-underlay");
+    gtk_layer_set_namespace(GTK_WINDOW(self->underlay),
+                            "way-shell-quick-settings-underlay");
     gtk_layer_set_layer((GTK_WINDOW(self->underlay)),
                         GTK_LAYER_SHELL_LAYER_TOP);
 
@@ -170,21 +171,6 @@ static void on_mixer_revealed(QuickSettingsHeader *header, gboolean revealed,
     } else {
         quick_settings_scales_disable_audio_scales(self->scales, false);
     }
-};
-
-static void on_quick_settings_req_open(QuickSettings *self) {
-    g_debug("quick_settings.c.c:on_quick_settings_open() called.");
-    quick_settings_set_visible(self);
-};
-
-static void on_quick_settings_req_close(QuickSettings *self) {
-    g_debug("quick_settings.c.c:quick_settings_close() called.");
-    quick_settings_set_hidden(self);
-};
-
-static void on_quick_settings_req_shrink(QuickSettings *self) {
-    g_debug("quick_settings.c.c:quick_settings_shrink() called.");
-    quick_settings_shrink(self);
 };
 
 static void quick_settings_init_layout(QuickSettings *self) {
@@ -236,14 +222,6 @@ static void quick_settings_init_layout(QuickSettings *self) {
     // connect to header's mixer-revealed signal
     g_signal_connect(self->header, "mixer-revealed",
                      G_CALLBACK(on_mixer_revealed), self);
-
-    // connect to request signals
-    g_signal_connect(self, "quick-settings-req-open",
-                     G_CALLBACK(on_quick_settings_req_open), NULL);
-    g_signal_connect(self, "quick-settings-req-close",
-                     G_CALLBACK(on_quick_settings_req_close), NULL);
-    g_signal_connect(self, "quick-settings-req-shrink",
-                     G_CALLBACK(on_quick_settings_req_shrink), NULL);
 }
 
 static void on_window_destroy(GtkWindow *win, QuickSettings *self) {
