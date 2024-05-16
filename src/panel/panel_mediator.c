@@ -3,6 +3,7 @@
 #include "../activities/activities.h"
 #include "../output_switcher/output_switcher.h"
 #include "../workspace_switcher/workspace_switcher.h"
+#include "./../osd/osd.h"
 #include "./message_tray/message_tray.h"
 #include "panel.h"
 #include "quick_settings/quick_settings.h"
@@ -49,6 +50,9 @@ static void hide_intelligent(gpointer component) {
     if (component != ws) workspace_switcher_hide(ws);
     if (component != os) output_switcher_hide(os);
     if (component != a) activities_hide(a);
+
+    // hide osds in any case
+    osd_set_hidden(osd_get_global());
 }
 
 static void on_message_tray_visible(MessageTray *tray) {

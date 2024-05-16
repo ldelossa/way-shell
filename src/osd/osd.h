@@ -13,3 +13,7 @@ G_END_DECLS
 void osd_reinitialize(OSD *self);
 
 void osd_activate(AdwApplication *app, gpointer user_data);
+
+OSD *osd_get_global();
+
+void osd_set_hidden(OSD *self);
