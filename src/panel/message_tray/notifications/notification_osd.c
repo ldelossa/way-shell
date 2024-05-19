@@ -125,6 +125,16 @@ static void on_child_revealed(GObject *object, GParamSpec *pspec,
 
 void notification_osd_reinitialize(NotificationsOSD *self);
 
+static void shrink(NotificationsOSD *self) {
+    gtk_window_set_default_size(GTK_WINDOW(self->win), 440, 100);
+}
+
+static void on_notification_widget_collapsed(NotificationWidget *widget,
+                                             NotificationsOSD *self) {
+    g_debug("notification_osd.c:on_notification_widget_collapsed() called");
+    shrink(self);
+}
+
 static void on_notification_added(NotificationsService *ns,
                                   GPtrArray *notifications, guint32 id,
                                   guint32 index, NotificationsOSD *self) {
@@ -152,6 +162,9 @@ static void on_notification_added(NotificationsService *ns,
     gtk_label_set_max_width_chars(summary, 30);
     gtk_label_set_max_width_chars(body, 30);
 
+    g_signal_connect(new, "notification-collapsed",
+                     G_CALLBACK(on_notification_widget_collapsed), self);
+
     gtk_box_append(self->container, notification_widget_get_widget(new));
 
     gtk_window_present(GTK_WINDOW(self->win));
@@ -174,11 +187,12 @@ static void notifications_osd_init_layout(NotificationsOSD *self) {
 
     // configure layershell, top layer and center
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
-    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-notifications-osd");
+    gtk_layer_set_namespace(GTK_WINDOW(self->win),
+                            "way-shell-notifications-osd");
     gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
     gtk_widget_set_name(GTK_WIDGET(self->win), "notifications-osd");
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, true);
-    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 0);
+    gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_TOP, 10);
     gtk_widget_set_visible(GTK_WIDGET(self->win), false);
 
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
@@ -205,7 +219,6 @@ static void notifications_osd_init_layout(NotificationsOSD *self) {
                      G_CALLBACK(on_notification_added), self);
     g_signal_connect(ns, "notification-closed",
                      G_CALLBACK(on_notifications_removed), self);
-
 
     MessageTray *mt = message_tray_get_global();
     g_signal_connect(mt, "message-tray-visible", G_CALLBACK(on_tray_visible),

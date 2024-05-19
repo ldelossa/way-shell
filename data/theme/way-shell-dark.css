@@ -323,7 +323,11 @@ label.day-number.today:focus {
   background: linear-gradient(to bottom, shade(@scrolled-window-undershoot, .1), transparent);
 }
 
-#notifications-osd .notification-widget-container,
+#notifications-osd .notification-widget-container {
+  background-color: @notification-background;
+  border-radius: 10px;
+}
+
 #notifications-list .notification-widget-container {
   background-color: @transparent;
   padding: 2px;
@@ -331,7 +335,6 @@ label.day-number.today:focus {
   margin-bottom: 4px;
 }
 
-#notifications-osd .notification-widget,
 #notifications-list .notification-widget {
   background-color: @notification-background;
   border-radius: 10px;
