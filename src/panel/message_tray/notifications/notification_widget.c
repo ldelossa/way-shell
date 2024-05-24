@@ -172,14 +172,6 @@ static void notification_widget_dispose(GObject *gobject) {
     g_debug("notification_widget.c:notification_widget_dispose() called: %p",
             self);
 
-    // remove signal handlers
-    g_signal_handlers_disconnect_by_func(self->button, on_notification_clicked,
-                                         self);
-    g_signal_handlers_disconnect_by_func(self->header_dismiss,
-                                         on_dismiss_clicked, self);
-    g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_enter, self);
-    g_signal_handlers_disconnect_by_func(self->ctrl, on_pointer_leave, self);
-
     MessageTray *mt = message_tray_get_global();
     g_signal_handlers_disconnect_by_func(mt, on_message_tray_will_hide, self);
 
