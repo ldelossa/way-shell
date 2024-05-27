@@ -17,6 +17,34 @@ typedef struct _ActivitiesAppWidget {
 } ActivitiesAppWidget;
 G_DEFINE_TYPE(ActivitiesAppWidget, activities_app_widget, G_TYPE_OBJECT);
 
+// fork off a new process in a new session group making it independent of
+// our app.
+//
+// then, launch the desired application and kill the forked process.
+// this orphans the launched process and the kernel reparents it under PID 1.
+static void launch_with_fork(GAppInfo *app_info) {
+    pid_t pid = fork();
+    if (pid == -1) {
+        g_warning("Failed to fork: %s", strerror(errno));
+        return;
+    }
+
+    if (pid == 0) {
+    	GError *error = NULL;
+        if (setsid() == -1) {
+            g_warning("Failed to setsid: %s", strerror(errno));
+			exit(1);
+        }
+        // launch the app
+        g_app_info_launch(app_info, NULL, NULL, &error);
+        if (error) {
+            g_warning("Failed to launch app: %s", error->message);
+			exit(1);
+        }
+        exit(0);
+    }
+}
+
 // stub out dispose, finalize, class_init and init methods.
 static void activities_app_widget_dispose(GObject *object) {
     G_OBJECT_CLASS(activities_app_widget_parent_class)->dispose(object);
@@ -34,13 +62,17 @@ static void activities_app_widget_class_init(ActivitiesAppWidgetClass *klass) {
 
 static void launch_app_on_click(GtkButton *button, ActivitiesAppWidget *self) {
     GAppInfo *app_info = activities_app_widget_get_app_info(self);
-    GError *error = NULL;
-    g_app_info_launch(app_info, NULL, NULL, &error);
-    if (error) {
-        g_warning("Failed to launch app: %s", error->message);
-        g_error_free(error);
+    if (!app_info) {
         return;
     }
+    launch_with_fork(app_info);
+    // GError *error = NULL;
+    // g_app_info_launch(app_info, NULL, NULL, &error);
+    // if (error) {
+    //     g_warning("Failed to launch app: %s", error->message);
+    //     g_error_free(error);
+    //     return;
+    // }
 
     // close Activities if opened
     Activities *activities = activities_get_global();

@@ -3,6 +3,14 @@ Description=Runs way-shell once sway session target is reached
 
 [Service]
 Type=Exec
+# This is required when Way-Shell runs under systemd.
+#
+# Way-Shell launches other apps and these apps join the same control group,
+# even if a forked (daemonized) launch is performed.
+#
+# This directive tells systemd to only kill the main process when Way-Shell is
+# restarted or crashes, avoiding the killing of any launched apps.
+KillMode=process
 ExecStart=/usr/local/bin/way-shell
 
 [Install]
