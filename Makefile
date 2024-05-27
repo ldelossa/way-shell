@@ -1,3 +1,8 @@
+PREFIX ?= /usr
+BINDIR ?= $(PREFIX)/bin
+SCHEMADIR ?= $(PREFIX)/share/glib-2.0/schemas
+USERUNITDIR ?= $(PREFIX)/lib/systemd/user
+
 CC := gcc
 DEPS := libadwaita-1 \
 		upower-glib \
@@ -19,9 +24,7 @@ SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
 
-all: wlr-protocols gschema gresources way-shell lib/cmd_tree/cmd_tree.o way-sh/way-sh
-
-install: all gschema
+all: wlr-protocols gresources way-shell way-sh/way-sh
 
 way-shell: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LIBS)
@@ -35,11 +38,6 @@ lib/cmd_tree/cmd_tree.c:
 gresources:
 	glib-compile-resources --generate-source --target src/gresources.c gresources.xml
 	glib-compile-resources --generate-header --target src/gresources.h gresources.xml
-
-.PHONY:
-gschema: ./data/org.ldelossa.way-shell.gschema.xml
-	sudo cp data/org.ldelossa.way-shell.gschema.xml /usr/share/glib-2.0/schemas/
-	sudo glib-compile-schemas /usr/share/glib-2.0/schemas/
 
 .PHONY:
 wlr-protocols:
@@ -91,10 +89,15 @@ dbus-codegen:
 	./data/dbus-interfaces/org.mpris.MediaPlayer2.xml
 
 .PHONY:
+install-gschema:
+	glib-compile-schemas $(DESTDIR)$(SCHEMADIR)
+
+.PHONY:
 install:
-	sudo rm -rf /usr/local/bin/{way-shell,way-sh}
-	sudo cp ./way-shell /usr/local/bin
-	sudo cp ./way-sh/way-sh /usr/local/bin
+	install -D ./way-shell $(DESTDIR)$(BINDIR)/way-shell
+	install -D ./way-sh/way-sh $(DESTDIR)$(BINDIR)/way-sh
+	install -D data/org.ldelossa.way-shell.gschema.xml $(DESTDIR)$(SCHEMADIR)/org.ldelossa.way-shell.gschema.xml
+	install -D contrib/systemd/way-shell.service $(DESTDIR)$(USERUNITDIR)/way-shell.service
 
 clean:
 	find . -name "*.o" -type f -exec rm -f {} \;

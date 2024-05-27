@@ -11,7 +11,7 @@ Type=Exec
 # This directive tells systemd to only kill the main process when Way-Shell is
 # restarted or crashes, avoiding the killing of any launched apps.
 KillMode=process
-ExecStart=/usr/local/bin/way-shell
+ExecStart=/usr/bin/way-shell
 
 [Install]
 WantedBy=sway-session.target
