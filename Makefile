@@ -47,6 +47,8 @@ wlr-protocols:
 	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland_service/wlr-foreign-toplevel-management-unstable-v1.c
 	wayland-scanner client-header < ./data/wlr-protocols/unstable/wlr-input-inhibitor-unstable-v1.xml > ./src/services/wayland_service/wlr-input-inhibitor-unstable-v1.h
 	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-input-inhibitor-unstable-v1.xml > ./src/services/wayland_service/wlr-input-inhibitor-unstable-v1.c
+	wayland-scanner client-header ./data/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.h
+	wayland-scanner private-code ./data/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.c
 
 .PHONY:
 way-sh/way-sh:
@@ -87,11 +89,6 @@ dbus-codegen:
 	--interface-prefix org.mpris. \
 	--output-directory ./src/services/media_player_service \
 	./data/dbus-interfaces/org.mpris.MediaPlayer2.xml
-
-.PHONY:
-wayland-protocols:
-	wayland-scanner client-header ./lib/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.h
-	wayland-scanner private-code ./lib/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.c
 
 .PHONY:
 install:
