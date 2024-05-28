@@ -7,7 +7,7 @@ Summary: A Gnome-like desktop shell for Wayland compositors.
 License: MIT
 
 URL: https://github.com/ldelossa/way-shell
-Source0: https://github.com/ldelossa/way-shell/archive/refs/heads/copr-repo.tar.gz
+Source0: https://github.com/ldelossa/way-shell/archive/refs/tags/v0.0.1.tar.gz
 
 BuildRequires: gcc
 BuildRequires: make
