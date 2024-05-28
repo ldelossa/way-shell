@@ -1,5 +1,7 @@
 # Way-Shell
 
+[![Copr build status](https://copr.fedorainfracloud.org/coprs/ldelossa/Way-Shell/package/way-shell/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/ldelossa/Way-Shell/package/way-shell/)
+
 A Gnome inspired desktop shell for Wayland compositors/window managers written
 in C and Gtk4.
 
@@ -23,56 +25,17 @@ issues.
 
 The demo above is using [SwayFX](https://github.com/WillPower3309/swayfx) which I really enjoy.
 
-## Installing and Running Way-Shell
+## Installing and Running Way-Shell 
 
-I'll focus on Fedora since this my daily driver distro.
+A [copr](https://copr.fedorainfracloud.org/coprs/ldelossa/Way-Shell/) exists for installing Way-Shell on Fedora. 
 
-I believe the instructions here can be translated for other distros with a bit
-of effort.
+Way-Shell currently targets Fedora 40 and will not work with previous version. 
 
-I'd love any community members to contribute their own methods of installation
-even if its just documentation.
+Other distros will need to build Way-Shell from source. 
 
-Way-Shell depends on the following packages (Fedora 40).
-Please note that Fedora 40 packages the latest wireplumber libraries (wireplumber-0.5) and Way-Shell will fail to build if a previous version is being linked.
+The repository is rather self contained and the dependencies are listed at the top of the Makefile.
 
-    libadwaita-devel \
-    upower-devel \
-    wireplumber-devel \
-    json-glib-devel \
-    NetworkManager-libnm-devel \
-    pulseaudio-libs-devel \
-    meson \
-    cmake \
-    gtk-doc
-
-Way-Shell also depends on [gtk4-layer-shell](https://github.com/wmww/gtk4-layer-shell)
-which isn't currently packaged for Fedora.
-
-Currently, the easiest way to run Way-Shell is to use a [toolbox](https://github.com/containers/toolbox).
-
-A makefile exists in `contrib/toolbox/fedora` which will automate the setup
-of a sway-shell toolbox container. Just run 'make' in that directory after you
-installed toolbox.
-
-You may need to adjust the container's `FROM` statement to match your Fedora
-version.
-
-Running inside a toolbox is not perfect tho.
-
-Inside the toolbox we can't resolve application icons so the mixer panel will
-show a generic 'media' icon for audio sources.
-
-You'll also need to interface with DConf inside the container.
-
-Given the docker file in that folder you could always just run those steps
-or, a translation of those steps for your distro, and install Way-Shell on your
-host machine.
-
-Eventually, I hope to get proper deb/rpm packaging for this project but its not
-on my immediate radar.
-
-Contributions welcome!
+Contributions are very welcome if you're using Way-Shell on a distro other then Fedora!
 
 ## Video Demonstration
 
