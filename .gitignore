@@ -3,3 +3,5 @@ compile_commands.json
 way-shell
 .gdb_history
 way-sh/way-sh
+src/gresources.c
+src/gresources.h

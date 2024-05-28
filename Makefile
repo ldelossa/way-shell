@@ -24,6 +24,7 @@ LIBS += $(shell pkg-config --libs $(DEPS))
 SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
 OBJS += lib/cmd_tree/cmd_tree.o
+OBJS += src/gresources.o
 
 all: wlr-protocols gresources way-shell way-sh/way-sh
 
@@ -39,6 +40,7 @@ lib/cmd_tree/cmd_tree.c:
 gresources:
 	glib-compile-resources --generate-source --target src/gresources.c gresources.xml
 	glib-compile-resources --generate-header --target src/gresources.h gresources.xml
+	$(CC) $(CFLAGS) -c src/gresources.c -o src/gresources.o $(LIBS)
 
 .PHONY:
 wlr-protocols:
@@ -103,4 +105,5 @@ install:
 clean:
 	find . -name "*.o" -type f -exec rm -f {} \;
 	rm -rf way-shell
+	rm -rf src/gresources.*
 	make -C way-sh/ clean
