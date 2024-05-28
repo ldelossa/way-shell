@@ -14,11 +14,12 @@ DEPS := libadwaita-1 \
 		libpulse-mainloop-glib \
 		wayland-client \
 		wayland-protocols \
-		gio-unix-2.0
+		gio-unix-2.0 \
+		gtk4-layer-shell-0
 CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
 # order is important here, if libwayland is linked before gtk4 layer shell
 # bad things happen.
-LIBS := "-lgtk4-layer-shell" "-lm"
+LIBS := "-lm"
 LIBS += $(shell pkg-config --libs $(DEPS))
 SOURCES := $(shell find src/ -type f -name *.c)
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
