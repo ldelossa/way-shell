@@ -2,7 +2,7 @@
 
 #include <adwaita.h>
 
-#include "../gresources.h"
+#include "../../gresources.h"
 #include "gtk/gtkcssprovider.h"
 
 #define CONFIG_DIR "way-shell"

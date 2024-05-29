@@ -6,7 +6,7 @@
 
 #include "../../activities/activities.h"
 #include "../../app_switcher/app_switcher.h"
-#include "../../gresources.h"
+#include "../../../gresources.h"
 #include "../../output_switcher/output_switcher.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"

@@ -22,7 +22,7 @@
 #include "./services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./services/wireplumber_service.h"
 #include "./workspace_switcher/workspace_switcher.h"
-#include "gresources.h"
+#include "../gresources.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
