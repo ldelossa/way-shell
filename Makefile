@@ -99,7 +99,7 @@ install:
 	install -D ./way-shell $(DESTDIR)$(BINDIR)/way-shell
 	install -D ./way-sh/way-sh $(DESTDIR)$(BINDIR)/way-sh
 	install -D data/org.ldelossa.way-shell.gschema.xml $(DESTDIR)$(SCHEMADIR)/org.ldelossa.way-shell.gschema.xml
-	install -D contrib/systemd/way-shell.service $(DESTDIR)$(USERUNITDIR)/way-shell.service
+	install -D -m 0644 contrib/systemd/way-shell.service $(DESTDIR)$(USERUNITDIR)/way-shell.service
 
 clean:
 	find . -name "*.o" -type f -exec rm -f {} \;
