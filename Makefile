@@ -18,8 +18,8 @@ DEPS := libadwaita-1 \
 		wayland-client \
 		wayland-protocols \
 		gio-unix-2.0
-CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
-LIBS := "-lm"
+CFLAGS += $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
+LIBS := $(LDFLAGS) "-lm"
 LIBS += $(shell pkg-config --libs $(DEPS))
 SOURCES := $(shell find src/ -type f -name "*.c")
 OBJS := $(patsubst %.c, %.o, $(SOURCES))
