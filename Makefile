@@ -4,7 +4,10 @@ SCHEMADIR ?= $(PREFIX)/share/glib-2.0/schemas
 USERUNITDIR ?= $(PREFIX)/lib/systemd/user
 
 CC := gcc
+# depedency order matters here.
+# Gtk4LayerShell must be linked before any wayland libraries
 DEPS := libadwaita-1 \
+		gtk4-layer-shell-0 \
 		upower-glib \
 		wireplumber-0.5 \
 		json-glib-1.0 \
@@ -14,8 +17,7 @@ DEPS := libadwaita-1 \
 		libpulse-mainloop-glib \
 		wayland-client \
 		wayland-protocols \
-		gio-unix-2.0 \
-		gtk4-layer-shell-0
+		gio-unix-2.0 
 CFLAGS := $(shell pkg-config --cflags $(DEPS)) -g3 -Wall
 # order is important here, if libwayland is linked before gtk4 layer shell
 # bad things happen.
