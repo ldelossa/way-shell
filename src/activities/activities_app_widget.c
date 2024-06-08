@@ -4,6 +4,7 @@
 #include <gio/gio.h>
 
 #include "./activities.h"
+#include "glib.h"
 
 typedef struct _ActivitiesAppWidget {
     GObject parent_instance;
@@ -30,16 +31,16 @@ static void launch_with_fork(GAppInfo *app_info) {
     }
 
     if (pid == 0) {
-    	GError *error = NULL;
+        GError *error = NULL;
         if (setsid() == -1) {
             g_warning("Failed to setsid: %s", strerror(errno));
-			exit(1);
+            exit(1);
         }
         // launch the app
         g_app_info_launch(app_info, NULL, NULL, &error);
         if (error) {
             g_warning("Failed to launch app: %s", error->message);
-			exit(1);
+            exit(1);
         }
         exit(0);
     }
@@ -61,11 +62,22 @@ static void activities_app_widget_class_init(ActivitiesAppWidgetClass *klass) {
 }
 
 static void launch_app_on_click(GtkButton *button, ActivitiesAppWidget *self) {
+    GError *error = NULL;
     GAppInfo *app_info = activities_app_widget_get_app_info(self);
     if (!app_info) {
         return;
     }
-    launch_with_fork(app_info);
+
+    const char *id = g_app_info_get_id(app_info);
+    // Gnome apps seem to not open when forked, perform a normal launch.
+    if (g_str_has_prefix(id, "org.gnome")) {
+        g_app_info_launch(app_info, NULL, NULL, &error);
+        if (error) {
+            g_warning("Failed to launch app: %s", error->message);
+        }
+    } else {
+        launch_with_fork(app_info);
+    }
 
     // close Activities if opened
     Activities *activities = activities_get_global();
