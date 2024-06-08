@@ -8,6 +8,7 @@
 #include "../services/window_manager_service/sway/window_manager_service_sway.h"
 #include "../services/window_manager_service/window_manager_service.h"
 #include "./activities_app_widget.h"
+#include "gtk/gtk.h"
 #include "gtk/gtkrevealer.h"
 
 static Activities *global = NULL;
@@ -290,6 +291,11 @@ static void on_search_changed(GtkSearchEntry *entry, Activities *self) {
 static void on_search_entry_activate(GtkSearchEntry *entry, Activities *self) {
     GList *selected_list =
         gtk_flow_box_get_selected_children(self->search_result_flbox);
+
+    if (!selected_list) {
+        return;
+    }
+
     // get first GtkFlowBoxChild in list
     GtkFlowBoxChild *selected = GTK_FLOW_BOX_CHILD(selected_list->data);
     if (!selected) return;
@@ -459,6 +465,9 @@ void activities_hide(Activities *self) {
     gtk_revealer_set_reveal_child(self->revealer, false);
 
     gtk_editable_set_text(GTK_EDITABLE(self->search_entry), "");
+
+	gtk_flow_box_unselect_all(self->search_result_flbox);
+
     on_search_stop(self->search_entry, self);
 }
 

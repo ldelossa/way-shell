@@ -66,13 +66,6 @@ static void launch_app_on_click(GtkButton *button, ActivitiesAppWidget *self) {
         return;
     }
     launch_with_fork(app_info);
-    // GError *error = NULL;
-    // g_app_info_launch(app_info, NULL, NULL, &error);
-    // if (error) {
-    //     g_warning("Failed to launch app: %s", error->message);
-    //     g_error_free(error);
-    //     return;
-    // }
 
     // close Activities if opened
     Activities *activities = activities_get_global();
