@@ -4,7 +4,7 @@
 #include <wayland-client-core.h>
 #include <wayland-client.h>
 
-enum WaylandType { WL_REGISTRY, WL_SEAT };
+enum WaylandType { WL_REGISTRY, WL_SEAT, WL_OUTPUT };
 
 typedef struct _WaylandHeader {
     enum WaylandType type;

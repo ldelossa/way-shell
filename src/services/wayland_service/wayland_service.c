@@ -12,7 +12,13 @@
 
 static WaylandService *global = NULL;
 
-enum signals { top_level_changed, top_level_removed, signals_n };
+enum signals {
+    top_level_changed,
+    top_level_removed,
+    output_added,
+    output_removed,
+    signals_n
+};
 
 struct _WaylandService {
     GObject parent_instance;
@@ -26,12 +32,20 @@ struct _WaylandService {
     gboolean shortcuts_inhitibed;
     GdkToplevel *shorcuts_inhibited_toplevel;
 
+    // inventorys globals by their uint 'name' value provided when listening
+    // for changes to global objects on the registry.
+    GHashTable *globals;
+
     // WaylandSeat structs mapped by wl_seat pointers
     GHashTable *seats;
 
     // WaylandWLRForeignTopLevel structs mapped by
     // zwlr_foreign_top_level_handle_v1 structs
     GHashTable *toplevels;
+
+    // WaylandOutput structs mapped to wl_output pointers
+    GHashTable *outputs;
+
     // Monitors org.ldelossa.way-shell.window-manager.ignored-toplevels-app-ids
     // and org.ldelossa.way-shell.window-manager.ignored-toplevels-titles
     GSettings *settings;
@@ -66,6 +80,14 @@ static void wayland_service_class_init(WaylandServiceClass *klass) {
     service_signals[top_level_removed] = g_signal_new(
         "top-level-removed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0,
         NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+    service_signals[output_added] = g_signal_new(
+        "output-added", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0, NULL,
+        NULL, NULL, G_TYPE_NONE, 2, G_TYPE_HASH_TABLE, G_TYPE_POINTER);
+
+    service_signals[output_removed] = g_signal_new(
+        "output-removed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0, NULL,
+        NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 };
 
 gboolean on_fd_read(gint fd, GIOCondition condition, gpointer user_data) {
@@ -335,6 +357,102 @@ static const struct zwlr_foreign_toplevel_manager_v1_listener
         .finished = toplevel_mgr_finished,
 };
 
+static void wl_output_handle_description(void *data, struct wl_output *output,
+                                         const char *description) {
+    g_debug("wayland_service.c:wl_output_handle_description(): description: %s",
+            description);
+
+    WaylandService *self = (WaylandService *)data;
+    WaylandOutput *output_data = g_hash_table_lookup(self->outputs, output);
+    output_data->desc = g_strdup(description);
+
+    g_debug(
+        "wayland_service.c:wl_output_handle_description(): output_data->desc: "
+        "%s",
+        output_data->desc);
+}
+
+static void wl_output_handle_done(void *data, struct wl_output *output) {
+    g_debug("wayland_service.c:wl_output_handle_done(): output done");
+
+    WaylandService *self = (WaylandService *)data;
+    WaylandOutput *output_data = g_hash_table_lookup(self->outputs, output);
+
+    if (!output_data) {
+        return;
+    }
+
+    output_data->initialized = TRUE;
+
+    g_signal_emit(self, service_signals[output_added], 0, self->outputs,
+                  output);
+
+    g_debug(
+        "wayland_service.c:wl_output_handle_done(): output_data->name: %s, "
+        "output_data->desc: %s, output_data->make: %s, output_data->model: %s",
+        output_data->name, output_data->desc, output_data->make,
+        output_data->model);
+}
+
+static void wl_output_handle_geometry(void *data, struct wl_output *output,
+                                      int32_t x, int32_t y,
+                                      int32_t physical_width,
+                                      int32_t physical_height, int32_t subpixel,
+                                      const char *make, const char *model,
+                                      int32_t transform) {
+    g_debug(
+        "wayland_service.c:wl_output_handle_geometry(): x: %d, y: %d, "
+        "physical_width: %d, physical_height: %d, subpixel: %d, make: %s, "
+        "model: %s, transform: %d",
+        x, y, physical_width, physical_height, subpixel, make, model,
+        transform);
+
+    WaylandService *self = (WaylandService *)data;
+    WaylandOutput *output_data = g_hash_table_lookup(self->outputs, output);
+    output_data->make = g_strdup(make);
+    output_data->model = g_strdup(model);
+
+    g_debug(
+        "wayland_service.c:wl_output_handle_geometry(): output_data->make: %s, "
+        "output_data->model: %s",
+        output_data->make, output_data->model);
+}
+
+static void wl_output_handle_mode(void *data, struct wl_output *output,
+                                  uint32_t flags, int32_t width, int32_t height,
+                                  int32_t refresh) {
+    g_debug(
+        "wayland_service.c:wl_output_handle_mode(): flags: %d, width: %d, "
+        "height: %d, refresh: %d",
+        flags, width, height, refresh);
+}
+
+static void wl_output_handle_name(void *data, struct wl_output *output,
+                                  const char *name) {
+    g_debug("wayland_service.c:wl_output_handle_name(): name: %s", name);
+
+    WaylandService *self = (WaylandService *)data;
+    WaylandOutput *output_data = g_hash_table_lookup(self->outputs, output);
+    output_data->name = g_strdup(name);
+
+    g_debug("wayland_service.c:wl_output_handle_name(): output_data->name: %s",
+            output_data->name);
+}
+
+static void wl_output_handle_scale(void *data, struct wl_output *output,
+                                   int32_t scale) {
+    g_debug("wayland_service.c:wl_output_handle_scale(): scale: %d", scale);
+}
+
+static const struct wl_output_listener wl_output_listener = {
+    .description = wl_output_handle_description,
+    .done = wl_output_handle_done,
+    .geometry = wl_output_handle_geometry,
+    .mode = wl_output_handle_mode,
+    .name = wl_output_handle_name,
+    .scale = wl_output_handle_scale,
+};
+
 static void registry_handle_global(void *data, struct wl_registry *registry,
                                    uint32_t name, const char *interface,
                                    uint32_t version) {
@@ -353,6 +471,7 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
         seat->header.type = WL_SEAT;
         seat->seat = wayland_seat;
         seat->name = NULL;
+        g_hash_table_insert(self->globals, GUINT_TO_POINTER(name), seat);
         g_hash_table_insert(self->seats, wayland_seat, seat);
         wl_seat_add_listener(wayland_seat, &seat_listener, self);
     }
@@ -366,6 +485,58 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
         zwlr_foreign_toplevel_manager_v1_add_listener(
             toplevel_mgr, &toplevel_mgr_listener, self);
     }
+
+    // register wl_output listener
+    if (strcmp(interface, "wl_output") == 0) {
+        struct wl_output *wayland_output =
+            wl_registry_bind(registry, name, &wl_output_interface, version);
+        WaylandOutput *output = g_new0(WaylandOutput, 1);
+        output->header.type = WL_OUTPUT;
+        output->output = wayland_output;
+        output->name = NULL;
+        output->desc = NULL;
+        output->make = NULL;
+        output->model = NULL;
+        output->initialized = FALSE;
+        g_hash_table_insert(self->outputs, wayland_output, output);
+        g_hash_table_insert(self->globals, GUINT_TO_POINTER(name), output);
+        wl_output_add_listener(wayland_output, &wl_output_listener, self);
+    }
+}
+
+static void wayland_seat_remove(WaylandService *self, WaylandSeat *seat) {
+    g_debug("wayland_service.c:wayland_seat_remove(): seat: %s", seat->name);
+
+    // remove from seats hash table
+    g_hash_table_remove(self->seats, seat->seat);
+
+	// release seat from wayland
+	wl_seat_release(seat->seat);
+
+    // free seat
+    g_free(seat->name);
+    g_free(seat);
+};
+
+static void wayland_output_remove(WaylandService *self, WaylandOutput *output) {
+    g_debug("wayland_service.c:wayland_output_remove(): output: %s",
+            output->name);
+
+    // emit remove signal with output before we free it
+    g_signal_emit(self, service_signals[output_removed], 0, output);
+
+    // remove from outputs hash table
+    g_hash_table_remove(self->outputs, output->output);
+
+	// release output from wayland
+	wl_output_release(output->output);
+
+    // free output
+    g_free(output->name);
+    g_free(output->desc);
+    g_free(output->make);
+    g_free(output->model);
+    g_free(output);
 }
 
 static void registry_handle_global_remove(void *data,
@@ -373,6 +544,29 @@ static void registry_handle_global_remove(void *data,
                                           uint32_t name) {
     g_debug("wayland_service.c:registry_handle_global_remove(): name: %d",
             name);
+
+    WaylandService *self = (WaylandService *)data;
+
+    WaylandHeader *header =
+        g_hash_table_lookup(self->globals, GUINT_TO_POINTER(name));
+    if (!header) return;
+
+    switch (header->type) {
+        case WL_REGISTRY:
+            break;
+        case WL_SEAT:
+            wayland_seat_remove(self, (WaylandSeat *)header);
+            break;
+        case WL_OUTPUT:
+            wayland_output_remove(self, (WaylandOutput *)header);
+            break;
+    }
+
+    // remove from globals after interface specific cleanup above.
+    g_hash_table_remove(self->globals, GUINT_TO_POINTER(name));
+
+	// flush display to sync changes.
+	wl_display_flush(self->display);
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -437,8 +631,10 @@ static void wayland_service_init(WaylandService *self) {
     self->registry = wl_display_get_registry(self->display);
 
     // setup hash tables
+    self->globals = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->seats = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->toplevels = g_hash_table_new(g_direct_hash, g_direct_equal);
+    self->outputs = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->ignored_toplevel_app_ids = g_hash_table_new(g_str_hash, g_str_equal);
     self->ignored_toplevel_titles = g_hash_table_new(g_str_hash, g_str_equal);
 
