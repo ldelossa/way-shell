@@ -8,6 +8,7 @@
 #include "./../services/wayland_service/wayland_service.h"
 #include "./app_switcher_app_widget.h"
 #include "gdk/gdkkeysyms.h"
+#include "gtk/gtk.h"
 
 static AppSwitcher *global = NULL;
 
@@ -16,15 +17,13 @@ enum signals { signals_n };
 typedef struct _AppSwitcher {
     GObject parent_instance;
     AdwWindow *win;
-    GPtrArray *app_widgets;
     GtkBox *app_widget_list;
     GtkEventController *key_controller;
-    // tracks which widget should be set as focused.
+    int widget_n;
     gint focused_index;
-    // tracks the most recently activated widget.
-    gint last_activated_index;
-    // tracks the penultimate most recently activated widget.
-    gint previously_activated_index;
+    gchar *last_activated_app;
+    gpointer last_activated_instance;
+    gboolean select_alternative_app;
 } AppSwitcher;
 
 static guint app_switcher_signals[signals_n] = {0};
@@ -50,9 +49,6 @@ static void app_switcher_init_layout(AppSwitcher *self);
 static void on_window_destroy(GtkWindow *win, AppSwitcher *self) {
     g_debug("activities.c:on_window_destroy called");
 
-    // empty app_widgets array
-    g_ptr_array_set_size(self->app_widgets, 0);
-
     WaylandService *wayland = wayland_service_get_global();
     wayland_wlr_shortcuts_inhibitor_destroy(wayland);
 
@@ -61,113 +57,106 @@ static void on_window_destroy(GtkWindow *win, AppSwitcher *self) {
     app_switcher_init_layout(self);
 }
 
-gint app_switcher_find_widget_by_app_id(AppSwitcher *self, gchar *app_id,
-                                        AppSwitcherAppWidget **widget) {
-    AppSwitcherAppWidget *found = NULL;
-    WaylandWLRForeignTopLevel *toplevel = NULL;
-    for (gint i = 0; i < self->app_widgets->len; i++) {
-        found = g_ptr_array_index(self->app_widgets, i);
-        gchar *found_app_id = app_switcher_app_widget_get_app_id(found);
-        if (g_strcmp0(app_id, found_app_id) == 0) {
-            *widget = found;
-            return i;
+AppSwitcherAppWidget *app_switcher_get_widget_at_index(AppSwitcher *self,
+                                                       int i) {
+    int ii = 0;
+
+    AppSwitcherAppWidget *app_widget = NULL;
+
+    GtkWidget *w =
+        gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+    while (w) {
+        if (ii == i) {
+            app_widget = g_object_get_data(G_OBJECT(w), "app-widget");
+            break;
         }
+        w = gtk_widget_get_next_sibling(w);
+        ii++;
     }
-    return -1;
+
+    return app_widget;
 }
 
-static void app_switcher_sync_display_widgets(AppSwitcher *self) {
-    g_ptr_array_set_size(self->app_widgets, 0);
+gint app_switcher_find_widget_by_app_id(AppSwitcher *self, gchar *app_id,
+                                        AppSwitcherAppWidget **widget) {
+    int ii = 0;
 
-    AppSwitcherAppWidget *prev = NULL;
-    if (self->previously_activated_index >= 0)
-        prev = g_ptr_array_index(self->app_widgets,
-                                 self->previously_activated_index);
+    AppSwitcherAppWidget *app_widget = NULL;
 
-    AppSwitcherAppWidget *last = NULL;
-    if (self->last_activated_index >= 0)
-        last = g_ptr_array_index(self->app_widgets, self->last_activated_index);
-
-    GtkWidget *child =
+    GtkWidget *w =
         gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+    while (w) {
+        app_widget = g_object_get_data(G_OBJECT(w), "app-widget");
 
-    while (child) {
-        AppSwitcherAppWidget *app_widget =
-            g_object_get_data(G_OBJECT(child), "app-widget");
-
-        g_ptr_array_add(self->app_widgets, app_widget);
-
-        if (prev && app_widget == prev) {
-            self->previously_activated_index = self->app_widgets->len - 1;
+        if (strcmp(app_switcher_app_widget_get_app_id(app_widget), app_id) ==
+            0) {
+            *widget = app_widget;
+            return ii;
         }
-        if (last && app_widget == last)
-            self->last_activated_index = self->app_widgets->len - 1;
 
-        child = gtk_widget_get_next_sibling(child);
+        w = gtk_widget_get_next_sibling(w);
+        ii++;
     }
+
+    return -1;
 }
 
 static void app_switcher_activate_widget_at_index(AppSwitcher *self,
                                                   gint index) {
-    if (index < 0 || index >= self->app_widgets->len) {
+    AppSwitcherAppWidget *widget =
+        app_switcher_get_widget_at_index(self, index);
+    if (!widget) {
         return;
     }
-
-    AppSwitcherAppWidget *widget = g_ptr_array_index(self->app_widgets, index);
     app_switcher_app_widget_activate(widget);
 }
 
 static void on_top_level_changed(WaylandService *wayland, GPtrArray *toplevels,
                                  WaylandWLRForeignTopLevel *toplevel,
                                  AppSwitcher *self) {
-    if (toplevel->app_id == NULL) return;
-
     AppSwitcherAppWidget *app_widget = NULL;
-    gint index =
-        app_switcher_find_widget_by_app_id(self, toplevel->app_id, &app_widget);
+    app_switcher_find_widget_by_app_id(self, toplevel->app_id, &app_widget);
 
     if (!app_widget) {
         g_debug(
             "app_switcher.c:on_top_level_changed: creating new widget: %s "
             "title: %s",
             toplevel->app_id, toplevel->title);
-        app_widget = g_object_new(APP_SWITCHER_APP_WIDGET_TYPE, NULL);
-        app_switcher_app_widget_add_toplevel(app_widget, toplevel);
 
-        g_ptr_array_add(self->app_widgets, app_widget);
-        index = self->app_widgets->len - 1;
+        app_widget = g_object_new(APP_SWITCHER_APP_WIDGET_TYPE, NULL);
 
         gtk_box_append(self->app_widget_list,
                        app_switcher_app_widget_get_widget(app_widget));
+
+        self->widget_n++;
     }
 
-    // if a toplevel was activated we want to move it to the front of the
-    // app-switcher and move the previous accessed app to the second position.
+    app_switcher_app_widget_add_toplevel(app_widget, toplevel);
+
     if (toplevel->activated) {
-        if (self->last_activated_index >= 0) {
-            self->previously_activated_index = self->last_activated_index;
-            AppSwitcherAppWidget *prev = g_ptr_array_index(
-                self->app_widgets, self->previously_activated_index);
+        gtk_box_reorder_child_after(
+            self->app_widget_list,
+            app_switcher_app_widget_get_widget(app_widget), NULL);
 
-            if (index == self->last_activated_index) {
-                app_switcher_app_widget_add_toplevel(app_widget, toplevel);
-            }
-
-            gtk_box_reorder_child_after(
-                self->app_widget_list, app_switcher_app_widget_get_widget(prev),
-                NULL);
+        // a bit subtle but this checks to see if the latest activated app
+        // matches the previously activated app, but a different instance of it.
+        //
+        // in this case, the next time the app-switcher opens, we don't want to
+        // automatically focus the previous activiated app.
+        // this ensures that if you activate instances of the same app the
+        // app-switcher will open to select the previous instance of the app,
+        // instead of the previously activated (separate) app.
+        if (self->last_activated_app) {
+            if (strcmp(self->last_activated_app, toplevel->app_id) == 0 &&
+                self->last_activated_instance != toplevel->toplevel)
+                self->select_alternative_app = false;
+            else
+                self->select_alternative_app = true;
+            g_free(self->last_activated_app);
         }
 
-        self->last_activated_index = index;
-        AppSwitcherAppWidget *last =
-            g_ptr_array_index(self->app_widgets, self->last_activated_index);
-        gtk_box_reorder_child_after(self->app_widget_list,
-                                    app_switcher_app_widget_get_widget(last),
-                                    NULL);
-
-        // our data model and our displayed widget list maybe out of sync since
-        // we moved the displayed widgets around, sync it.
-        app_switcher_sync_display_widgets(self);
+        self->last_activated_app = g_strdup(toplevel->app_id);
+        self->last_activated_instance = toplevel->toplevel;
     }
 }
 
@@ -182,8 +171,7 @@ static void on_top_level_removed(WaylandService *wayland,
     }
 
     AppSwitcherAppWidget *widget = NULL;
-    gint index =
-        app_switcher_find_widget_by_app_id(self, toplevel->app_id, &widget);
+    app_switcher_find_widget_by_app_id(self, toplevel->app_id, &widget);
 
     if (!widget) return;
 
@@ -194,40 +182,7 @@ static void on_top_level_removed(WaylandService *wayland,
     gtk_box_remove(self->app_widget_list,
                    app_switcher_app_widget_get_widget(widget));
 
-    // get last activated index
-    AppSwitcherAppWidget *last =
-        g_ptr_array_index(self->app_widgets, self->last_activated_index);
-    AppSwitcherAppWidget *prev =
-        g_ptr_array_index(self->app_widgets, self->previously_activated_index);
-
-    g_ptr_array_remove_index(self->app_widgets, index);
-    g_object_unref(widget);
-
-    // if len of app_widgets is zero just hide
-    if (self->app_widgets->len == 0) {
-        app_switcher_hide(self);
-        self->last_activated_index = -1;
-        self->previously_activated_index = -1;
-        return;
-    }
-
-    // if the widget we are pruging is our last activate, and a previously
-    // activated exist, set this as our last
-    if (widget == last && prev) {
-        self->last_activated_index = self->previously_activated_index;
-        self->previously_activated_index = -1;
-    }
-
-    // if the widget we are purging is our last acitvated, and a previously
-    // activated widget does not exist, set last activated index to zero
-    if (widget == last) {
-        self->last_activated_index = 0;
-        self->previously_activated_index = -1;
-    }
-
-    if (widget == prev) {
-        self->previously_activated_index = -1;
-    }
+    self->widget_n--;
 }
 
 static void app_switcher_init_layout(AppSwitcher *self) {
@@ -270,9 +225,13 @@ static void app_switcher_init_layout(AppSwitcher *self) {
 }
 
 void app_switcher_unfocus_widget_all(AppSwitcher *self) {
-    for (guint i = 0; i < self->app_widgets->len; i++) {
-        AppSwitcherAppWidget *widget = g_ptr_array_index(self->app_widgets, i);
+    GtkWidget *w =
+        gtk_widget_get_first_child(GTK_WIDGET(self->app_widget_list));
+    while (w) {
+        AppSwitcherAppWidget *widget =
+            g_object_get_data(G_OBJECT(w), "app-widget");
         app_switcher_app_widget_unset_focus(widget);
+        w = gtk_widget_get_next_sibling(w);
     }
 }
 
@@ -283,28 +242,32 @@ static void app_switcher_unfocus_widget_all_with_focus_reset(
 }
 
 static void app_switcher_focus_widget_at_index(AppSwitcher *self, gint index) {
-    if (index < 0 || index >= self->app_widgets->len) {
-        return;
-    }
     app_switcher_unfocus_widget_all_with_focus_reset(self);
 
     self->focused_index = index;
 
-    AppSwitcherAppWidget *widget = g_ptr_array_index(self->app_widgets, index);
-    app_switcher_app_widget_set_focused(widget);
+    AppSwitcherAppWidget *widget =
+        app_switcher_get_widget_at_index(self, index);
+
+	// don't automatically focus previous instance of selected app, this
+	// avoids the case where switching between two apps also swaps the most
+	// recently activated instances of an app.
+    gboolean select_previous = true;
+    if (self->last_activated_app) {
+        if (strcmp(self->last_activated_app,
+                   app_switcher_app_widget_get_app_id(widget)) != 0)
+            select_previous = false;
+    }
+
+    app_switcher_app_widget_set_focused(widget, select_previous);
 }
 
 static void select_next(AppSwitcher *self) {
     g_debug("app_switcher.c:select_next called");
 
-    // if only one widget present just return
-    if (self->app_widgets->len == 1) {
-        return;
-    }
-
     gint index = self->focused_index;
     index++;
-    if (index >= self->app_widgets->len) {
+    if (index >= self->widget_n) {
         index = 0;
     }
 
@@ -312,19 +275,13 @@ static void select_next(AppSwitcher *self) {
 }
 
 static void select_previous(AppSwitcher *self) {
-    // if only one widget present just return
-    if (self->app_widgets->len == 1) {
-        return;
-    }
-
     gint index = self->focused_index;
     g_debug("app_switcher.c:select_previous: index: %d", index);
     index--;
     if (index < 0) {
-        index = self->app_widgets->len - 1;
+        index = self->widget_n - 1;
     }
 
-    g_debug("app_switcher.c:select_previous: index: %d", index);
     app_switcher_focus_widget_at_index(self, index);
 }
 
@@ -336,7 +293,7 @@ static void select_next_instance(AppSwitcher *self) {
     if (self->focused_index < 0) return;
 
     AppSwitcherAppWidget *widget =
-        g_ptr_array_index(self->app_widgets, self->focused_index);
+        app_switcher_get_widget_at_index(self, self->focused_index);
 
     app_switcher_app_widget_set_focused_next_instance(widget);
 }
@@ -349,7 +306,7 @@ static void select_prev_instance(AppSwitcher *self) {
     if (self->focused_index < 0) return;
 
     AppSwitcherAppWidget *widget =
-        g_ptr_array_index(self->app_widgets, self->focused_index);
+        app_switcher_get_widget_at_index(self, self->focused_index);
 
     app_switcher_app_widget_set_focused_prev_instance(widget);
 }
@@ -404,10 +361,7 @@ static gboolean key_released(GtkEventControllerKey *controller, guint keyval,
 }
 
 static void app_switcher_init(AppSwitcher *self) {
-    self->app_widgets = g_ptr_array_new();
     self->focused_index = -1;
-    self->last_activated_index = -1;
-    self->previously_activated_index = -1;
 
     self->key_controller = gtk_event_controller_key_new();
 
@@ -433,17 +387,13 @@ void app_switcher_activate(AdwApplication *app, gpointer user_data) {
 void app_switcher_show(AppSwitcher *self) {
     g_debug("app_switcher.c:app_switcher_show called");
 
-    if (self->app_widgets->len == 0) {
-        return;
-    }
-
-    if (self->previously_activated_index >= 0) {
-        // focus previously activated
-        app_switcher_focus_widget_at_index(self,
-                                           self->previously_activated_index);
+    if (self->widget_n > 1) {
+        if (self->select_alternative_app)
+            app_switcher_focus_widget_at_index(self, 1);
+        else
+            app_switcher_focus_widget_at_index(self, 0);
     } else {
-        // focus last activated
-        app_switcher_focus_widget_at_index(self, self->last_activated_index);
+        app_switcher_focus_widget_at_index(self, 0);
     }
 
     gtk_window_present(GTK_WINDOW(self->win));
@@ -471,16 +421,6 @@ void app_switcher_toggle(AppSwitcher *self) {
     } else {
         app_switcher_show(self);
     }
-}
-
-void app_switcher_focus_by_app_widget(AppSwitcher *self,
-                                      AppSwitcherAppWidget *widget) {
-    guint index;
-    gboolean found = g_ptr_array_find(self->app_widgets, widget, &index);
-
-    if (!found) return;
-
-    app_switcher_focus_widget_at_index(self, index);
 }
 
 GtkWindow *app_switcher_get_window(AppSwitcher *self) {
