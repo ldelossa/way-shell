@@ -31,6 +31,8 @@ enum IPCCommands : uint32_t {
     IPC_CMD_WORKSPACE_APP_SWITCHER_SHOW,
     IPC_CMD_WORKSPACE_APP_SWITCHER_HIDE,
     IPC_CMD_WORKSPACE_APP_SWITCHER_TOGGLE,
+    IPC_CMD_BLUELIGHT_FILTER_ENABLE,
+    IPC_CMD_BLUELIGHT_FILTER_DISABLE,
 };
 
 typedef struct _IPCHeader {
@@ -141,3 +143,11 @@ typedef struct _IPCWorkspaceAppSwitcherHide {
 typedef struct _IPCWorkspaceAppSwitcherToggle {
     IPCHeader header;
 } IPCWorkspaceAppSwitcherToggle;
+
+typedef struct _IPCBlueLightFilterEnable {
+    IPCHeader header;
+} IPCBlueLightFilterEnable;
+
+typedef struct _IPCBlueLightFilterDisable {
+    IPCHeader header;
+} IPCBlueLightFilterDisable;

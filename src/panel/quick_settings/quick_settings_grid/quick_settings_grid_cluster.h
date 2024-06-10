@@ -62,3 +62,4 @@ QuickSettingsGridButton *quick_settings_grid_cluster_get_left_button(
 QuickSettingsGridButton *quick_settings_grid_cluster_get_right_button(
     QuickSettingsGridCluster *self);
 
+void quick_settings_grid_cluster_realize_size(QuickSettingsGridCluster *self);

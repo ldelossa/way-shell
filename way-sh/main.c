@@ -51,6 +51,7 @@ static void build_command_tree() {
     cmd_tree_node_t *workspace_switcher = workspace_switcher_cmd();
     cmd_tree_node_t *workspace_app_switcher = workspace_app_switcher_cmd();
     cmd_tree_node_t *output_switcher = output_switcher_cmd();
+    cmd_tree_node_t *bluelight_filter = bluelight_filter_cmd();
 
     cmd_tree_node_add_child(&root_cmd, message_tray);
     cmd_tree_node_add_child(&root_cmd, volume);
@@ -61,6 +62,7 @@ static void build_command_tree() {
     cmd_tree_node_add_child(&root_cmd, workspace_switcher);
     cmd_tree_node_add_child(&root_cmd, workspace_app_switcher);
     cmd_tree_node_add_child(&root_cmd, output_switcher);
+    cmd_tree_node_add_child(&root_cmd, bluelight_filter);
 }
 
 int main(int argc, char **argv) {

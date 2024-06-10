@@ -5,6 +5,7 @@
 #include "../../../services/logind_service/logind_service.h"
 #include "../../../services/network_manager_service.h"
 #include "../../../services/power_profiles_service/power_profiles_service.h"
+#include "./quick_settings_grid_night_light/quick_settings_grid_night_light.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "nm-dbus-interface.h"
@@ -150,6 +151,9 @@ static void quick_settings_grid_add_button(QuickSettingsGrid *self,
     // the cluster owns this button now, will notify us when it is removed,
     // and will clean the button's memory.
     quick_settings_grid_cluster_add_button(cluster, side, button);
+
+    // adjust button sizes.
+    quick_settings_grid_cluster_realize_size(cluster);
 }
 
 static void on_network_manager_change(NetworkManagerService *nm,
@@ -259,6 +263,12 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
         quick_settings_grid_add_button(
             self, (QuickSettingsGridButton *)inhibitor_button);
     }
+
+    // add night light button
+    QuickSettingsGridNightLightButton *night_light_button =
+        quick_settings_grid_night_light_button_init();
+    quick_settings_grid_add_button(
+        self, (QuickSettingsGridButton *)night_light_button);
 
     // add theme button
     QuickSettingsGridOneThemeButton *theme_button =

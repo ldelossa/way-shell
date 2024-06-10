@@ -4,9 +4,9 @@
 #include <sys/socket.h>
 #include <sys/un.h>
 
+#include "../../../gresources.h"
 #include "../../activities/activities.h"
 #include "../../app_switcher/app_switcher.h"
-#include "../../../gresources.h"
 #include "../../output_switcher/output_switcher.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
@@ -416,6 +416,32 @@ static gboolean ip_cmd_workspace_app_switcher_toggle() {
     return true;
 }
 
+static gboolean ipc_command_bluelight_filter_enable() {
+    g_debug("ipc_service.c:ipc_command_bluelight_filter_enable()");
+
+    WaylandService *w = wayland_service_get_global();
+    if (!w) {
+        return false;
+    }
+
+    wayland_wlr_bluelight_filter(w, 3100);
+
+    return true;
+}
+
+static gboolean ipc_command_bluelight_filter_disable() {
+    g_debug("ipc_service.c:ipc_command_bluelight_filter_disable()");
+
+    WaylandService *w = wayland_service_get_global();
+    if (!w) {
+        return false;
+    }
+
+    wayland_wlr_bluelight_filter_destroy(w);
+
+    return true;
+}
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -594,6 +620,18 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_WORKSPACE_APP_SWITCHER_TOGGLE");
             ret = ip_cmd_workspace_app_switcher_toggle();
+            break;
+        case IPC_CMD_BLUELIGHT_FILTER_ENABLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_BLUELIGHT_FILTER_ENABLE");
+            ret = ipc_command_bluelight_filter_enable();
+            break;
+        case IPC_CMD_BLUELIGHT_FILTER_DISABLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_BLUELIGHT_FILTER_DISABLE");
+            ret = ipc_command_bluelight_filter_disable();
             break;
         default:
             goto skip_resp;

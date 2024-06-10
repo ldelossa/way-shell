@@ -612,7 +612,7 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button-toggle.off:hover {
-  background-color: @pane-button-hover;
+  background-color: @panel-button-hover;
 }
 
 #quick-settings .quick-settings-grid-button-toggle.off:active {

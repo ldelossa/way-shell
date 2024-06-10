@@ -1,14 +1,20 @@
 #include "wayland_service.h"
 
 #include <adwaita.h>
+#include <fcntl.h>
 #include <gdk/wayland/gdkwayland.h>
 #include <glib-2.0/glib-unix.h>
 #include <sys/cdefs.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <wayland-client-core.h>
 #include <wayland-client-protocol.h>
 #include <wayland-client.h>
 
 #include "./wlr-foreign-toplevel-management-unstable-v1.h"
+#include "./wlr-gamma-control-unstable-v1.h"
+#include "colorramp.h"
 
 static WaylandService *global = NULL;
 
@@ -17,16 +23,25 @@ enum signals {
     top_level_removed,
     output_added,
     output_removed,
+    gamma_control_enabled,
+    gamma_control_disabled,
     signals_n
 };
 
 struct _WaylandService {
     GObject parent_instance;
+
+    // file descriptor for wayland socket
     int fd;
 
+    // wayland display
     struct wl_display *display;
 
+    // wayland registry
     struct wl_registry *registry;
+
+    // wlr gamma control manager for adjusting gamma
+    struct zwlr_gamma_control_manager_v1 *gamma_control_manager;
 
     // keyboard short inhibitor
     gboolean shortcuts_inhitibed;
@@ -45,6 +60,13 @@ struct _WaylandService {
 
     // WaylandOutput structs mapped to wl_output pointers
     GHashTable *outputs;
+
+    // Whether gamma is being controlled
+    gboolean gamma_control_enabled;
+    // List of created gamma controllers
+    GHashTable *gamma_controllers;
+    // The last seen temperature
+    double temperature;
 
     // Monitors org.ldelossa.way-shell.window-manager.ignored-toplevels-app-ids
     // and org.ldelossa.way-shell.window-manager.ignored-toplevels-titles
@@ -88,6 +110,14 @@ static void wayland_service_class_init(WaylandServiceClass *klass) {
     service_signals[output_removed] = g_signal_new(
         "output-removed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0, NULL,
         NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+    service_signals[gamma_control_enabled] =
+        g_signal_new("gamma-control-enabled", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
+
+    service_signals[gamma_control_disabled] =
+        g_signal_new("gamma-control-disabled", G_TYPE_FROM_CLASS(klass),
+                     G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 0);
 };
 
 gboolean on_fd_read(gint fd, GIOCondition condition, gpointer user_data) {
@@ -372,6 +402,8 @@ static void wl_output_handle_description(void *data, struct wl_output *output,
         output_data->desc);
 }
 
+void wayland_wlr_bluelight_filter(WaylandService *self, double temperature);
+
 static void wl_output_handle_done(void *data, struct wl_output *output) {
     g_debug("wayland_service.c:wl_output_handle_done(): output done");
 
@@ -383,6 +415,11 @@ static void wl_output_handle_done(void *data, struct wl_output *output) {
     }
 
     output_data->initialized = TRUE;
+
+    // if gamma controls are enabled, we should apply it to the new monitor
+    if (self->gamma_control_enabled) {
+        wayland_wlr_bluelight_filter(self, self->temperature);
+    }
 
     g_signal_emit(self, service_signals[output_added], 0, self->outputs,
                   output);
@@ -502,6 +539,12 @@ static void registry_handle_global(void *data, struct wl_registry *registry,
         g_hash_table_insert(self->globals, GUINT_TO_POINTER(name), output);
         wl_output_add_listener(wayland_output, &wl_output_listener, self);
     }
+
+    // register zwlr_gamma_control_manager_v1
+    if (strcmp(interface, "zwlr_gamma_control_manager_v1") == 0) {
+        self->gamma_control_manager = wl_registry_bind(
+            registry, name, &zwlr_gamma_control_manager_v1_interface, version);
+    }
 }
 
 static void wayland_seat_remove(WaylandService *self, WaylandSeat *seat) {
@@ -510,8 +553,8 @@ static void wayland_seat_remove(WaylandService *self, WaylandSeat *seat) {
     // remove from seats hash table
     g_hash_table_remove(self->seats, seat->seat);
 
-	// release seat from wayland
-	wl_seat_release(seat->seat);
+    // release seat from wayland
+    wl_seat_release(seat->seat);
 
     // free seat
     g_free(seat->name);
@@ -528,8 +571,8 @@ static void wayland_output_remove(WaylandService *self, WaylandOutput *output) {
     // remove from outputs hash table
     g_hash_table_remove(self->outputs, output->output);
 
-	// release output from wayland
-	wl_output_release(output->output);
+    // release output from wayland
+    wl_output_release(output->output);
 
     // free output
     g_free(output->name);
@@ -565,8 +608,8 @@ static void registry_handle_global_remove(void *data,
     // remove from globals after interface specific cleanup above.
     g_hash_table_remove(self->globals, GUINT_TO_POINTER(name));
 
-	// flush display to sync changes.
-	wl_display_flush(self->display);
+    // flush display to sync changes.
+    wl_display_flush(self->display);
 }
 
 static const struct wl_registry_listener registry_listener = {
@@ -635,6 +678,7 @@ static void wayland_service_init(WaylandService *self) {
     self->seats = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->toplevels = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->outputs = g_hash_table_new(g_direct_hash, g_direct_equal);
+    self->gamma_controllers = g_hash_table_new(g_direct_hash, g_direct_equal);
     self->ignored_toplevel_app_ids = g_hash_table_new(g_str_hash, g_str_equal);
     self->ignored_toplevel_titles = g_hash_table_new(g_str_hash, g_str_equal);
 
@@ -696,7 +740,6 @@ void wayland_wlr_foreign_toplevel_close(WaylandService *self,
                                         WaylandWLRForeignTopLevel *toplevel) {
     g_debug("wayland_service.c:wayland_wlr_foreign_toplevel_close()");
     zwlr_foreign_toplevel_handle_v1_close(toplevel->toplevel);
-    // flush
     wl_display_flush(self->display);
 }
 
@@ -704,7 +747,6 @@ void wayland_wlr_foreign_toplevel_maximize(
     WaylandService *self, WaylandWLRForeignTopLevel *toplevel) {
     g_debug("wayland_service.c:wayland_wlr_foreign_toplevel_maximize()");
     zwlr_foreign_toplevel_handle_v1_set_maximized(toplevel->toplevel);
-    // flush
     wl_display_flush(self->display);
 }
 
@@ -755,4 +797,176 @@ void wayland_wlr_shortcuts_inhibitor_destroy(WaylandService *self) {
         "restoring system shortcuts");
 
     gdk_toplevel_restore_system_shortcuts(self->shorcuts_inhibited_toplevel);
+}
+
+static void wayland_wlr_gamma_control_apply(WaylandService *self,
+                                            WaylandWLRGammaControl *ctrl) {
+    g_debug("wayland_service.c:wayland_wlr_gamma_control_apply() called");
+    // when we get here we must have the gamma ramp table size known
+    if (ctrl->gamma_size == 0) return;
+
+    // get the total size needed for the gamma table.
+    size_t table_size = ctrl->gamma_size * 3 * sizeof(uint16_t);
+
+    // create unique name for our shared memory gamma table.
+    char shm_name[255];
+    snprintf(shm_name, 255, "/way-shell-ephemeral-gamma-table-%d", rand());
+
+    // we'll create a memory backed fd and share with Wayland.
+    int fd = shm_open(shm_name, O_RDWR | O_CREAT, 0666);
+    if (fd < 0) {
+        g_error(
+            "wayland_service.c:wayland_wlr_gamma_control_apply() shm_open "
+            "failed: %s",
+            strerror(errno));
+    }
+
+    if (ftruncate(fd, table_size) < 0) {
+        g_error(
+            "wayland_service.c:wayland_wlr_gamma_control_apply() ftruncate "
+            "failed: %s",
+            strerror(errno));
+    }
+
+    uint16_t *table =
+        mmap(NULL, table_size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
+    if (table == MAP_FAILED) {
+        g_error(
+            "wayland_service.c:wayland_wlr_gamma_control_apply() mmap failed: "
+            "%s",
+            strerror(errno));
+    }
+
+    // fill gammma table.
+    uint16_t *r = table;
+    uint16_t *g = table + ctrl->gamma_size;
+    uint16_t *b = table + (ctrl->gamma_size * 2);
+
+    /* Initialize gamma ramps to pure state */
+    for (int i = 0; i < ctrl->gamma_size; i++) {
+        uint16_t value = (double)i / ctrl->gamma_size * (UINT16_MAX + 1);
+        r[i] = value;
+        g[i] = value;
+        b[i] = value;
+    }
+
+    colorramp_fill(r, g, b, ctrl->gamma_size, ctrl->temperature);
+
+    zwlr_gamma_control_v1_set_gamma(ctrl->control, fd);
+
+    munmap(table, table_size);
+    shm_unlink(shm_name);
+    close(fd);
+
+    ctrl->gamma_table_fd = fd;
+}
+
+static void zwlr_gamma_control_handle_size(
+    void *data, struct zwlr_gamma_control_v1 *control, uint32_t size) {
+    g_debug("wayland_service.c:zwlr_gamma_control_handle_size(): size: %d",
+            size);
+
+    WaylandService *self = (WaylandService *)data;
+
+    WaylandWLRGammaControl *ctrl =
+        g_hash_table_lookup(self->gamma_controllers, control);
+    if (!ctrl) return;
+
+    ctrl->gamma_size = size;
+
+    if (self->gamma_control_enabled) {
+        wayland_wlr_gamma_control_apply(self, ctrl);
+    }
+
+    wl_display_flush(self->display);
+
+    g_debug(
+        "wayland_service.c:zwlr_gamma_control_handle_size(): ctrl->gamma_size: "
+        "%d",
+        ctrl->gamma_size);
+}
+
+static void zlwr_gamma_control_handle_failed(
+    void *data, struct zwlr_gamma_control_v1 *ctrl) {
+    g_debug("wayland_service.c:zlwr_gamma_control_handle_failed(): failed");
+    WaylandService *self = (WaylandService *)data;
+    g_hash_table_remove(self->gamma_controllers, ctrl);
+    zwlr_gamma_control_v1_destroy(ctrl);
+    wl_display_flush(self->display);
+}
+
+static const struct zwlr_gamma_control_v1_listener gamma_control_listener = {
+    .gamma_size = zwlr_gamma_control_handle_size,
+    .failed = zlwr_gamma_control_handle_failed,
+};
+
+void wayland_wlr_bluelight_filter(WaylandService *self, double temperature) {
+    g_debug("wayland_service.c:wayland_wlr_bluelight_filter(): intensity: %f",
+            temperature);
+
+    if (self->gamma_control_enabled) {
+        for (GList *l = g_hash_table_get_values(self->gamma_controllers); l;
+             l = l->next) {
+            WaylandWLRGammaControl *ctrl = l->data;
+            ctrl->temperature = temperature;
+            wayland_wlr_gamma_control_apply(self, ctrl);
+        }
+    }
+
+    self->gamma_control_enabled = true;
+    self->temperature = temperature;
+
+    // iterate over wl_outputs
+    GList *outputs = g_hash_table_get_values(self->outputs);
+    for (GList *l = outputs; l; l = l->next) {
+        WaylandOutput *output = l->data;
+
+        WaylandWLRGammaControl *ctrl =
+            g_malloc0(sizeof(WaylandWLRGammaControl));
+
+        ctrl->header.type = WLR_GAMMA_CONTROL;
+
+        ctrl->output = output->output;
+
+        ctrl->temperature = temperature;
+
+        ctrl->gamma_size = 0;
+
+        ctrl->gamma_table_fd = -1;
+
+        ctrl->control = zwlr_gamma_control_manager_v1_get_gamma_control(
+            self->gamma_control_manager, output->output);
+
+        // add listener
+        zwlr_gamma_control_v1_add_listener(ctrl->control,
+                                           &gamma_control_listener, self);
+
+        g_hash_table_insert(self->gamma_controllers, ctrl->control, ctrl);
+    }
+
+    wl_display_flush(self->display);
+
+    g_signal_emit(self, service_signals[gamma_control_enabled], 0);
+}
+
+void wayland_wlr_bluelight_filter_destroy(WaylandService *self) {
+    if (!self->gamma_control_enabled) return;
+
+    for (GList *l = g_hash_table_get_values(self->gamma_controllers); l;
+         l = l->next) {
+        WaylandWLRGammaControl *ctrl = l->data;
+        zwlr_gamma_control_v1_destroy(ctrl->control);
+    }
+
+    g_hash_table_remove_all(self->gamma_controllers);
+
+    wl_display_flush(self->display);
+
+    self->gamma_control_enabled = false;
+
+    g_signal_emit(self, service_signals[gamma_control_disabled], 0);
+}
+
+gboolean wayland_wlr_gamma_control_enabled(WaylandService *self) {
+    return self->gamma_control_enabled;
 }

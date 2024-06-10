@@ -4,7 +4,7 @@
 #include <wayland-client-core.h>
 #include <wayland-client.h>
 
-enum WaylandType { WL_REGISTRY, WL_SEAT, WL_OUTPUT };
+enum WaylandType { WL_REGISTRY, WL_SEAT, WL_OUTPUT, WLR_GAMMA_CONTROL };
 
 typedef struct _WaylandHeader {
     enum WaylandType type;
@@ -47,6 +47,16 @@ typedef struct _WaylandOutput {
     gboolean initialized;
 } WaylandOutput;
 
+// domain representation of a wlr-gamma-control-unstable-v1
+typedef struct _WaylandWLRGammaControl {
+    WaylandHeader header;
+    struct zwlr_gamma_control_v1 *control;
+    struct wl_output *output;
+    uint32_t gamma_size;
+    int gamma_table_fd;
+    int temperature;
+} WaylandWLRGammaControl;
+
 G_BEGIN_DECLS
 
 struct _WaylandService;
@@ -74,3 +84,12 @@ void wayland_wlr_shortcuts_inhibitor_create(WaylandService *self,
                                             GtkWidget *widget);
 
 void wayland_wlr_shortcuts_inhibitor_destroy(WaylandService *self);
+
+// Apply a bluelight filter effect to all outputs
+void wayland_wlr_bluelight_filter(WaylandService *self, double temperature);
+
+// Destroy the bluelight filter effect
+void wayland_wlr_bluelight_filter_destroy(WaylandService *self);
+
+// Whether the gamma control is enabled
+gboolean wayland_wlr_gamma_control_enabled(WaylandService *self);
