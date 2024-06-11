@@ -56,6 +56,7 @@ static void quick_settings_grid_night_light_menu_init_layout(
         gtk_scale_add_mark(self->temp_slider, i, GTK_POS_BOTTOM, str);
         g_free(str);
     }
+    gtk_scale_add_mark(self->temp_slider, 6800, GTK_POS_BOTTOM, "68K");
 
 	gtk_range_set_value(GTK_RANGE(self->temp_slider), 3000);
 
