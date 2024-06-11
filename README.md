@@ -31,6 +31,8 @@ A [copr](https://copr.fedorainfracloud.org/coprs/ldelossa/Way-Shell/) exists for
 
 Way-Shell currently targets Fedora 40 and will not work with previous version. 
 
+An [AUR package](https://aur.archlinux.org/packages/way-shell-git) also exists for Arch-based distros, which can be installed with any AUR helper, or with `makepkg` if you're feeling lucky.
+
 Other distros will need to build Way-Shell from source. 
 
 The repository is rather self contained and the dependencies are listed at the top of the Makefile.
