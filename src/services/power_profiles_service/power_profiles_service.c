@@ -2,8 +2,8 @@
 
 #include <adwaita.h>
 
-#include "power_profiles_dbus.h"
 #include "../../services/dbus_service.h"
+#include "power_profiles_dbus.h"
 
 static PowerProfilesService *global = NULL;
 
@@ -50,18 +50,17 @@ static void power_profiles_service_class_init(
 static void power_profiles_service_dbus_connect(PowerProfilesService *self) {
     GError *error = NULL;
 
-	DBUSService *dbus = dbus_service_get_global();
-	self->conn = dbus_service_get_system_bus(dbus);
+    DBUSService *dbus = dbus_service_get_global();
+    self->conn = dbus_service_get_system_bus(dbus);
 
     self->dbus = dbus_power_profiles_proxy_new_sync(
         self->conn, G_DBUS_PROXY_FLAGS_NONE, "net.hadess.PowerProfiles",
         "/net/hadess/PowerProfiles", NULL, &error);
+
     if (!self->dbus)
-        g_error(
-            "power_profiles_service.c:power_profiles_service_dbus_connect(): "
-            "error: "
-            "export dbus interface: %s",
-            error->message);
+        self->enabled = false;
+    else
+        self->enabled = true;
 }
 
 static void on_power_profiles_service_active_profile_change(
@@ -86,7 +85,8 @@ static void on_power_profiles_service_active_profile_change(
 static void on_power_profiles_service_profiles_change(
     DbusPowerProfiles *dbus, GParamSpec *pspec, PowerProfilesService *self) {
     g_debug(
-        "power_profiles_service.c:on_power_profiles_service_profiles_change() "
+        "power_profiles_service.c:on_power_profiles_service_profiles_"
+        "change() "
         "called");
 
     for (guint i = 0; i < self->profiles->len; i++) {
@@ -96,8 +96,7 @@ static void on_power_profiles_service_profiles_change(
 
     // extract profile strings from from 'aa{sv}'
     GVariant *profiles = dbus_power_profiles_get_profiles(dbus);
-	if (!profiles)
-		return;
+    if (!profiles) return;
 
     if (!g_variant_is_of_type(profiles, G_VARIANT_TYPE("aa{sv}"))) {
         g_error("Variant is not of type 'aa{sv}'");
@@ -156,8 +155,10 @@ int power_profiles_service_global_init(void) {
 
 PowerProfilesService *power_profiles_service_get_global() {
     g_debug(
-        "power_profiles_service.c:power_profiles_service_get_global() called");
-    return global;
+        "power_profiles_service.c:power_profiles_service_get_global() "
+        "called");
+    if (global->enabled) return global;
+    return NULL;
 }
 
 GArray *power_profiles_service_get_profiles(PowerProfilesService *self) {
@@ -179,14 +180,14 @@ void power_profiles_service_set_profile(PowerProfilesService *self,
 const gchar *power_profiles_service_get_active_profile(
     PowerProfilesService *self) {
     g_debug(
-        "power_profiles_service.c:power_profiles_service_get_active_profile() "
+        "power_profiles_service.c:power_profiles_service_get_active_"
+        "profile() "
         "called");
     return g_strdup(self->active_profile);
 }
 
 const char *power_profiles_service_profile_to_icon(const char *profile) {
-	if (!profile)
-        return "power-profile-balanced-symbolic";
+    if (!profile) return "power-profile-balanced-symbolic";
 
     if (strcmp(profile, "performance") == 0) {
         return "power-profile-performance-symbolic";
