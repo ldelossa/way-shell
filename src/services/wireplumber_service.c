@@ -334,7 +334,7 @@ static void on_mixer_changed(void *_, guint id, WirePlumberService *self) {
         header->type == WIRE_PLUMBER_SERVICE_TYPE_SOURCE) {
         WirePlumberServiceNode *node = (WirePlumberServiceNode *)header;
 
-        float old_volume = node->volume;
+        double old_volume = node->volume;
         gboolean old_mute = node->mute;
 
         g_debug(
@@ -791,7 +791,6 @@ void on_mixer_api_nodes_api(GObject *source_object, GAsyncResult *res,
 
     wp_object_activate(WP_OBJECT(self->mixer_api), WP_PLUGIN_FEATURE_ENABLED,
                        NULL, (GAsyncReadyCallback)on_plugin_activate, self);
-
 }
 
 gboolean wire_plumber_service_connect(WirePlumberService *self) {
@@ -856,7 +855,6 @@ gboolean wire_plumber_service_connect(WirePlumberService *self) {
     // activation)
     g_signal_connect_swapped(self->om, "installed", G_CALLBACK(on_installed),
                              self);
-
 
     wire_plumber_service_init_pulseaudio(self);
 
