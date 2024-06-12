@@ -628,6 +628,11 @@ static void on_wire_plumber_service_node_changed(
         "quick_settings_header_mixer_menu_option.c:on_wire_plumber_node_"
         "changed_event() called.");
 
+    // we will potentially update our scale positions do block the
+    // on_scale_value_changed function to not loop
+    g_signal_handlers_block_by_func(GTK_RANGE(self->volume_scale),
+                                    G_CALLBACK(on_scale_value_changed), self);
+
     if (self->node->id != header->id) return;
 
     self->node = header;
@@ -648,6 +653,10 @@ static void on_wire_plumber_service_node_changed(
         default:
             break;
     }
+
+    // unblock our blocked signal
+    g_signal_handlers_unblock_by_func(GTK_RANGE(self->volume_scale),
+                                      G_CALLBACK(on_scale_value_changed), self);
 }
 
 void quick_settings_header_mixer_menu_option_set_node(

@@ -138,6 +138,7 @@ static void on_default_sink_changed(WirePlumberService *wp,
 
     // set audio scale
     gtk_range_set_value(GTK_RANGE(self->volume_scale), sink->volume);
+    if (sink->mute) gtk_range_set_value(GTK_RANGE(self->volume_scale), 0.0);
 
     gtk_widget_set_visible(GTK_WIDGET(self->brightness_osd), false);
     gtk_widget_set_visible(GTK_WIDGET(self->volume_osd), true);
@@ -225,7 +226,7 @@ void osd_init_layout(OSD *self) {
     gtk_image_set_pixel_size(self->volume_icon, 32);
 
     self->volume_scale = GTK_SCALE(
-        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.1, 1.0, 0.05));
+        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0.0, 1.0, 0.05));
     gtk_widget_set_hexpand(GTK_WIDGET(self->volume_scale), true);
     gtk_widget_set_sensitive(GTK_WIDGET(self->volume_scale), false);
 

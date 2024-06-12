@@ -83,12 +83,33 @@ static void quick_settings_scales_class_init(QuickSettingsScalesClass *klass) {
         "quick_settings_scales.c:quick_settings_scales_class_init() called.");
 };
 
+static void on_source_scale_value_changed(GtkRange *range,
+                                          QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_sink_scale_value_changed() called.");
+
+    gdouble r = gtk_range_get_value(range);
+    WirePlumberService *wp = wire_plumber_service_get_global();
+    WirePlumberServiceNode *default_source =
+        wire_plumber_service_get_default_source(wp);
+    if (!default_source) return;
+    wire_plumber_service_set_volume(wp, default_source, r);
+    // manually map icon since we turn off wire plumber events in here
+    gchar *icon = wire_plumber_service_map_source_vol_icon(r, false);
+    gtk_image_set_from_icon_name(self->default_source_icon, icon);
+}
+
 static void on_default_source_change(WirePlumberService *wp,
                                      WirePlumberServiceNode *source,
                                      QuickSettingsScales *self) {
     g_debug("quick_settings_scales.c:on_default_source_change() called.");
 
     if (!source) return;
+
+    // we are going to update our sliders here, so block the event
+    // which would occur when the slider is changed
+    g_signal_handlers_block_by_func(GTK_RANGE(self->default_source_scale),
+                                    G_CALLBACK(on_source_scale_value_changed),
+                                    self);
 
     if (source->state == WP_NODE_STATE_RUNNING) {
         gtk_widget_set_visible(GTK_WIDGET(self->default_source_container),
@@ -110,44 +131,11 @@ static void on_default_source_change(WirePlumberService *wp,
     else
         gtk_range_set_value(GTK_RANGE(self->default_source_scale),
                             self->active_source_node->volume);
-}
 
-static void on_default_sink_change(WirePlumberService *wp,
-                                   WirePlumberServiceNode *sink,
-                                   QuickSettingsScales *self) {
-    g_debug("quick_settings_scales.c:on_default_sink_change() called.");
-
-    if (!sink) return;
-    // set scale to sink's volume
-    gtk_range_set_value(GTK_RANGE(self->default_sink_scale), sink->volume);
-
-    gchar *icon =
-        wire_plumber_service_map_sink_vol_icon(sink->volume, sink->mute);
-
-    self->default_sink_node = sink;
-
-    gtk_image_set_from_icon_name(self->default_sink_icon, icon);
-
-    if (sink->mute)
-        gtk_range_set_value(GTK_RANGE(self->default_sink_scale), 0);
-    else
-        gtk_range_set_value(GTK_RANGE(self->default_sink_scale),
-                            self->default_sink_node->volume);
-}
-
-static void on_source_scale_value_changed(GtkRange *range,
-                                          QuickSettingsScales *self) {
-    g_debug("quick_settings_scales.c:on_sink_scale_value_changed() called.");
-
-    gdouble r = gtk_range_get_value(range);
-    WirePlumberService *wp = wire_plumber_service_get_global();
-    WirePlumberServiceNode *default_source =
-        wire_plumber_service_get_default_source(wp);
-    if (!default_source) return;
-    wire_plumber_service_set_volume(wp, default_source, r);
-    // manually map icon since we turn off wire plumber events in here
-    gchar *icon = wire_plumber_service_map_source_vol_icon(r, false);
-    gtk_image_set_from_icon_name(self->default_source_icon, icon);
+	// unblock our blocked signal
+	g_signal_handlers_unblock_by_func(GTK_RANGE(self->default_source_scale),
+									  G_CALLBACK(on_source_scale_value_changed),
+									  self);
 }
 
 static void on_sink_scale_value_changed(GtkRange *range,
@@ -163,6 +151,41 @@ static void on_sink_scale_value_changed(GtkRange *range,
     // manually map icon since we turn off wire plumber events in here
     gchar *icon = wire_plumber_service_map_sink_vol_icon(r, false);
     gtk_image_set_from_icon_name(self->default_sink_icon, icon);
+}
+
+static void on_default_sink_change(WirePlumberService *wp,
+                                   WirePlumberServiceNode *sink,
+                                   QuickSettingsScales *self) {
+    g_debug("quick_settings_scales.c:on_default_sink_change() called.");
+
+    if (!sink) return;
+
+    // we are going to update our sliders here, so block the event
+    // which would occur when the slider is changed
+    g_signal_handlers_block_by_func(GTK_RANGE(self->default_sink_scale),
+                                    G_CALLBACK(on_sink_scale_value_changed),
+                                    self);
+
+    // set scale to sink's volume
+    gtk_range_set_value(GTK_RANGE(self->default_sink_scale), sink->volume);
+
+    gchar *icon =
+        wire_plumber_service_map_sink_vol_icon(sink->volume, sink->mute);
+
+    self->default_sink_node = sink;
+
+    gtk_image_set_from_icon_name(self->default_sink_icon, icon);
+
+    if (sink->mute)
+        gtk_range_set_value(GTK_RANGE(self->default_sink_scale), 0);
+    else
+        gtk_range_set_value(GTK_RANGE(self->default_sink_scale),
+                            self->default_sink_node->volume);
+
+    // unblock our blocked signal
+    g_signal_handlers_unblock_by_func(GTK_RANGE(self->default_sink_scale),
+                                      G_CALLBACK(on_sink_scale_value_changed),
+                                      self);
 }
 
 static void on_brightness_scale_changed(GtkRange *range,
@@ -366,13 +389,13 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
 
     self->default_source_container =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->default_source_container),
+    gtk_widget_set_name(GTK_WIDGET(self->default_source_scale),
                         "default-source-container");
 
     // start source as hidden
     gtk_widget_set_visible(GTK_WIDGET(self->default_source_container), false);
 
-    gtk_widget_add_controller(GTK_WIDGET(self->default_source_scale),
+    gtk_widget_add_controller(GTK_WIDGET(self->default_source_container),
                               GTK_EVENT_CONTROLLER(self->default_source_ctlr));
 
     self->default_source_scale = GTK_SCALE(

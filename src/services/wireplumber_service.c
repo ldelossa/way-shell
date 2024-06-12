@@ -177,7 +177,12 @@ static void wire_plumber_service_fill_audio_stream(
     g_variant_lookup(mixer_values, "step", "b", &node->step);
     g_variant_lookup(mixer_values, "base", "d", &node->base);
 
-    // convert volume to cubic
+    // when we receive the volume its a percentage (0.0-1.0) cubed.
+    // for example, when you do a `wpctl set-volume [node] 0.2` the volume we
+    // pickup from the API is (0.2^3) = 0.000008
+    //
+    // its easier to work with decimals between 0.0-1.0 so convert this value
+    // to the linear scale by taking the cubed root.
     node->volume = volume_from_linear(node->volume, SCALE_CUBIC);
 
     node->media_class = g_strdup(wp_pipewire_object_get_property(
@@ -228,6 +233,14 @@ static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
     g_variant_lookup(mixer_values, "step", "b", &node->step);
     g_variant_lookup(mixer_values, "base", "d", &node->base);
 
+    // when we receive the volume its a percentage (0.0-1.0) cubed.
+    // for example, when you do a `wpctl set-volume [node] 0.2` the volume we
+    // pickup from the API is (0.2^3) = 0.000008
+    //
+    // its easier to work with decimals between 0.0-1.0 so convert this value
+    // to the linear scale by taking the cubed root.
+    node->volume = volume_from_linear(node->volume, SCALE_CUBIC);
+
     node->media_class = g_strdup(wp_pipewire_object_get_property(
         WP_PIPEWIRE_OBJECT(proxy), PW_KEY_MEDIA_CLASS));
     node->name = g_strdup(wp_pipewire_object_get_property(
@@ -244,6 +257,14 @@ static void wire_plumber_service_fill_node(WirePlumberServiceNode *node,
     if (g_strcmp0(node->media_class, "Audio/Source") == 0) {
         node->type = WIRE_PLUMBER_SERVICE_TYPE_SOURCE;
     }
+
+    // debug volume
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_fill_node() id: %d, name: "
+        "%s, media_class: %s, volume: %f, mute: %d, step: %f, base: %f, state: "
+        "%d",
+        node->id, node->name, node->media_class, node->volume, node->mute,
+        node->step, node->base, node->state);
 }
 
 static void wire_plumber_service_fill_link(WirePlumberServiceLink *link,
@@ -1065,7 +1086,7 @@ GHashTable *wire_plumber_service_get_db(WirePlumberService *self) {
 
 void wire_plumber_service_set_volume(WirePlumberService *self,
                                      const WirePlumberServiceNode *node,
-                                     float volume) {
+                                     double volume) {
     g_debug(
         "wireplumber_service.c:wire_plumber_service_set_volume() called: %f",
         volume);
@@ -1076,7 +1097,11 @@ void wire_plumber_service_set_volume(WirePlumberService *self,
     GVariant *variant = NULL;
     gboolean res = FALSE;
 
-    g_variant_builder_add(&b, "{sv}", "volume", g_variant_new_double(volume));
+    // our volume is in a linear scale for ease of use, but mixer-api wants it
+    // in a cubic scale, to take the cube of our linear volume before encoding
+    g_variant_builder_add(
+        &b, "{sv}", "volume",
+        g_variant_new_double(volume_to_linear(volume, SCALE_CUBIC)));
     variant = g_variant_builder_end(&b);
 
     g_signal_emit_by_name(self->mixer_api, "set-volume", node->id, variant,
@@ -1093,13 +1118,15 @@ void wire_plumber_service_volume_up(WirePlumberService *self,
 
     if (!node) return;
 
-    if (node->volume == 1.0) {
+    if (node->volume >= 1.0) {
         g_debug(
             "wireplumber_service.c:wire_plumber_service_volume_up() volume is "
             "already at max");
         return;
     }
-    float volume = node->volume + .05;
+    double volume = node->volume + .05;
+    g_debug("wireplumber_service.c:wire_plumber_service_volume_up() volume: %f",
+            volume);
     wire_plumber_service_set_volume(self, node, volume);
 }
 
@@ -1109,13 +1136,16 @@ void wire_plumber_service_volume_down(WirePlumberService *self,
 
     if (!node) return;
 
-    if (node->volume == 0.0) {
+    if (node->volume <= 0.0) {
         g_debug(
             "wireplumber_service.c:wire_plumber_service_volume_down() volume "
             "is already at min");
         return;
     }
-    float volume = node->volume - .05;
+    double volume = node->volume - .05;
+    g_debug(
+        "wireplumber_service.c:wire_plumber_service_volume_down() volume: %f",
+        volume);
     wire_plumber_service_set_volume(self, node, volume);
 }
 

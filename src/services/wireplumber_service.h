@@ -175,7 +175,7 @@ WirePlumberService *wire_plumber_service_get_global(void);
 
 void wire_plumber_service_set_volume(WirePlumberService *self,
                                      const WirePlumberServiceNode *node,
-                                     float volume);
+                                     double volume);
 
 void wire_plumber_service_volume_up(WirePlumberService *self,
                                     const WirePlumberServiceNode *node);
