@@ -39,7 +39,6 @@ typedef struct _QuickSettingsHeaderMixerMenuOption {
     GtkLabel *node_name;
     GtkImage *icon;
     GtkImage *active_icon;
-    GtkEventControllerMotion *ctlr;
     GtkScale *volume_scale;
     GtkLabel *link;
     GtkRevealer *revealer;
@@ -98,53 +97,40 @@ static void on_option_click(GtkButton *button,
     }
 }
 
+static void on_wire_plumber_service_node_changed(
+    WirePlumberService *wps, WirePlumberServiceNodeHeader *header,
+    QuickSettingsHeaderMixerMenuOption *self);
+
+static void block_wire_plumber_node_changed_signals(
+    QuickSettingsHeaderMixerMenuOption *self, gboolean block) {
+    if (block)
+        g_signal_handlers_block_by_func(
+            wire_plumber_service_get_global(),
+            G_CALLBACK(on_wire_plumber_service_node_changed), self);
+    else
+        g_signal_handlers_unblock_by_func(
+            wire_plumber_service_get_global(),
+            G_CALLBACK(on_wire_plumber_service_node_changed), self);
+}
+
 static void on_scale_value_changed(GtkRange *range,
                                    QuickSettingsHeaderMixerMenuOption *self) {
     g_debug(
         "quick_settings_header_mixer_menu_option.c:on_scale_value_changed() "
         "called.");
 
+    // we are going to change our scales, so ignore the next node changed
+    // event
+    block_wire_plumber_node_changed_signals(self, true);
+
     // get value of scale and set volume of node
     double value = gtk_range_get_value(range);
     wire_plumber_service_set_volume(wire_plumber_service_get_global(),
                                     (WirePlumberServiceNode *)self->node,
                                     value);
-}
 
-static void on_volume_scale_enter(GtkEventControllerMotion *ctlr, double x,
-                                  double y,
-                                  QuickSettingsHeaderMixerMenuOption *self) {
-    g_debug(
-        "quick_settings_header_mixer_menu_option.c:on_volume_scale_enter() "
-        "called.");
-
-    // pause node-changed events
-    WirePlumberService *wp = wire_plumber_service_get_global();
-
-    g_signal_handlers_block_by_func(
-        wp, G_CALLBACK(on_wire_plumber_service_node_changed), self);
-
-    // unblock gtk scale handler
-    g_signal_handlers_unblock_by_func(GTK_RANGE(self->volume_scale),
-                                      G_CALLBACK(on_scale_value_changed), self);
-}
-
-static void on_volume_scale_leave(GtkEventControllerMotion *ctlr, double x,
-                                  double y,
-                                  QuickSettingsHeaderMixerMenuOption *self) {
-    g_debug(
-        "quick_settings_header_mixer_menu_option.c:on_volume_scale_leave() "
-        "called.");
-
-    // pause node-changed events
-    WirePlumberService *wp = wire_plumber_service_get_global();
-
-    // unblock gtk scale handler
-    g_signal_handlers_block_by_func(GTK_RANGE(self->volume_scale),
-                                    G_CALLBACK(on_scale_value_changed), self);
-
-    g_signal_handlers_unblock_by_func(
-        wp, G_CALLBACK(on_wire_plumber_service_node_changed), self);
+    // unblock the node changed event
+    block_wire_plumber_node_changed_signals(self, false);
 }
 
 static void quick_settings_header_mixer_menu_option_init_layout(
@@ -182,24 +168,12 @@ static void quick_settings_header_mixer_menu_option_init_layout(
 
     // create volume scale
     self->volume_scale = GTK_SCALE(
-        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1.0, .5));
+        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1.0, .05));
     gtk_widget_set_hexpand(GTK_WIDGET(self->volume_scale), true);
 
     // wire scale into handler
     g_signal_connect(self->volume_scale, "value-changed",
                      G_CALLBACK(on_scale_value_changed), self);
-
-    // create motion controller for handling mouse in/out events on scale
-    self->ctlr = GTK_EVENT_CONTROLLER_MOTION(gtk_event_controller_motion_new());
-    gtk_widget_add_controller(GTK_WIDGET(self->volume_scale),
-                              GTK_EVENT_CONTROLLER(self->ctlr));
-
-    // wire into motion controller's enter event
-    g_signal_connect(self->ctlr, "enter", G_CALLBACK(on_volume_scale_enter),
-                     self);
-
-    g_signal_connect(self->ctlr, "leave", G_CALLBACK(on_volume_scale_leave),
-                     self);
 
     // add button_contents as button child
     gtk_button_set_child(self->button, GTK_WIDGET(self->button_contents));
@@ -235,6 +209,7 @@ static void on_widget_destroy(GtkWidget *widget,
 static void quick_settings_header_mixer_menu_option_init(
     QuickSettingsHeaderMixerMenuOption *self) {
     quick_settings_header_mixer_menu_option_init_layout(self);
+
     // attach pointer to self to container's data
     g_object_set_data(G_OBJECT(self->container), "option", self);
 
@@ -621,6 +596,18 @@ static void set_output_stream(QuickSettingsHeaderMixerMenuOption *self,
     set_stream_common(self, node);
 }
 
+static void block_volume_scale_changed_signals(
+    QuickSettingsHeaderMixerMenuOption *self, gboolean block) {
+    if (block)
+        g_signal_handlers_block_by_func(GTK_RANGE(self->volume_scale),
+                                        G_CALLBACK(on_scale_value_changed),
+                                        self);
+    else
+        g_signal_handlers_unblock_by_func(GTK_RANGE(self->volume_scale),
+                                          G_CALLBACK(on_scale_value_changed),
+                                          self);
+}
+
 static void on_wire_plumber_service_node_changed(
     WirePlumberService *wps, WirePlumberServiceNodeHeader *header,
     QuickSettingsHeaderMixerMenuOption *self) {
@@ -628,14 +615,13 @@ static void on_wire_plumber_service_node_changed(
         "quick_settings_header_mixer_menu_option.c:on_wire_plumber_node_"
         "changed_event() called.");
 
-    // we will potentially update our scale positions do block the
-    // on_scale_value_changed function to not loop
-    g_signal_handlers_block_by_func(GTK_RANGE(self->volume_scale),
-                                    G_CALLBACK(on_scale_value_changed), self);
-
     if (self->node->id != header->id) return;
 
     self->node = header;
+
+    // we will potentially update our scale positions do block the
+    // on_scale_value_changed function to not loop
+    block_volume_scale_changed_signals(self, true);
 
     switch (self->node->type) {
         case WIRE_PLUMBER_SERVICE_TYPE_SINK:
@@ -655,8 +641,7 @@ static void on_wire_plumber_service_node_changed(
     }
 
     // unblock our blocked signal
-    g_signal_handlers_unblock_by_func(GTK_RANGE(self->volume_scale),
-                                      G_CALLBACK(on_scale_value_changed), self);
+    block_volume_scale_changed_signals(self, false);
 }
 
 void quick_settings_header_mixer_menu_option_set_node(
