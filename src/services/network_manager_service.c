@@ -3,12 +3,13 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
+#include "glib-object.h"
 #include "nm-core-types.h"
 #include "nm-dbus-interface.h"
 
 static NetworkManagerService *global = NULL;
 
-enum signals { changed, signals_n };
+enum signals { changed, networking_enabled, signals_n };
 
 struct _NetworkManagerService {
     GObject parent_instance;
@@ -47,6 +48,9 @@ static void network_manager_service_class_init(
     signals[changed] =
         g_signal_new("changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
                      NULL, NULL, NULL, G_TYPE_NONE, 0);
+    signals[networking_enabled] = g_signal_new(
+        "networking-enabled-changed", G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
 };
 
 static void on_changed(NMClient *client, GParamSpec *spec,
@@ -103,6 +107,18 @@ static void on_changed(NMClient *client, GParamSpec *spec,
     g_signal_emit(self, signals[changed], 0);
 };
 
+static void on_networking_enabled_changed(NMClient *client, GParamSpec *_,
+                                          NetworkManagerService *self) {
+    gboolean enabled = nm_client_networking_get_enabled(client);
+
+    // emit signals
+    if (enabled) {
+        g_signal_emit(self, signals[networking_enabled], 0, true);
+    } else {
+        g_signal_emit(self, signals[networking_enabled], 0, false);
+    }
+}
+
 static void network_manager_service_init(NetworkManagerService *self) {
     GError *error;
 
@@ -116,6 +132,8 @@ static void network_manager_service_init(NetworkManagerService *self) {
     on_changed(self->client, NULL, self);
 
     g_signal_connect(self->client, "notify", G_CALLBACK(on_changed), self);
+    g_signal_connect(self->client, "notify::networking-enabled",
+                     G_CALLBACK(on_networking_enabled_changed), self);
 };
 
 const GPtrArray *network_manager_service_get_devices(
@@ -420,31 +438,19 @@ void network_manager_service_ap_disconnect(NetworkManagerService *self,
                                           on_wifi_disconnect, self);
 }
 
-void on_wireless_enabled_changed(GObject *source_object, GAsyncResult *res,
-                                 gpointer data) {
-    g_debug("network_manager_service.c:on_wireless_enabled_changed() called");
-
-    GError *error = NULL;
-    NMClient *client = NM_CLIENT(source_object);
-    nm_client_dbus_set_property_finish(client, res, &error);
-
-    if (error) {
-        g_debug(
-            "network_manager_service.c:on_wireless_enabled_changed() failed to "
-            "set wireless enabled: %s",
-            error->message);
-        g_error_free(error);
-        return;
-    }
-}
-
 void network_manager_service_wireless_enable(NetworkManagerService *self,
                                              gboolean enabled) {
-    // make a GVariant from the passed in gboolean value
-    GVariant *value = g_variant_new_boolean(enabled);
-
-    // nm_client_wireless_set_enabled(self->client, enabled);
-    nm_client_dbus_set_property(self->client, NM_DBUS_PATH, NM_DBUS_INTERFACE,
-                                "WirelessEnabled", value, 1000, NULL,
-                                on_wireless_enabled_changed, self);
+    g_object_set(G_OBJECT(self->client), "wireless-enabled", enabled, NULL);
 }
+
+void network_manager_service_networking_enable(NetworkManagerService *self,
+                                               gboolean enabled) {
+    g_object_set(G_OBJECT(self->client), "networking-enabled", enabled, NULL);
+}
+
+gboolean network_manager_service_get_networking_enabled(
+    NetworkManagerService *self) {
+    gboolean enabled = false;
+    enabled = nm_client_networking_get_enabled(self->client);
+    return enabled;
+};

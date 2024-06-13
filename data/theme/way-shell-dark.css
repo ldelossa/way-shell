@@ -846,6 +846,18 @@ label.day-number.today:focus {
     color: shade(@text-general, .5);
 }
 
+#quick-settings.focused .quick-settings-grid-button-toggle.off {
+  background-color: shade(@panel-button-active, .5);
+}
+
+#quick-settings.focused .quick-settings-grid-button-toggle.off:hover {
+  background-color: shade(@panel-button-hover, .6);
+}
+
+#quick-settings.focused .quick-settings-grid-button-toggle.off:active {
+  background-color: shade(@panel-button-active, .5)
+}
+
 /*
  * Activities Widget
  */

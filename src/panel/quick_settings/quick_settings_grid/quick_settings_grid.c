@@ -5,6 +5,7 @@
 #include "../../../services/logind_service/logind_service.h"
 #include "../../../services/network_manager_service.h"
 #include "../../../services/power_profiles_service/power_profiles_service.h"
+#include "./quick_settings_grid_airplane_mode_button.h"
 #include "./quick_settings_grid_night_light/quick_settings_grid_night_light.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
@@ -269,6 +270,12 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
         quick_settings_grid_night_light_button_init();
     quick_settings_grid_add_button(
         self, (QuickSettingsGridButton *)night_light_button);
+
+    // add airplane mode button
+    QuickSettingsGridAirplaneModeButton *airplane_mode_button =
+        quick_settings_grid_airplane_mode_button_init();
+    quick_settings_grid_add_button(
+        self, (QuickSettingsGridButton *)airplane_mode_button);
 
     // add theme button
     QuickSettingsGridOneThemeButton *theme_button =

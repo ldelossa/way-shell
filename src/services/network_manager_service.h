@@ -53,6 +53,16 @@ void network_manager_service_ap_join(NetworkManagerService *self,
                                      const char *password);
 
 void network_manager_service_ap_disconnect(NetworkManagerService *self,
-                                             NMDeviceWifi *dev);
+                                           NMDeviceWifi *dev);
 
-void network_manager_service_wireless_enable(NetworkManagerService *self, gboolean enabled);
+void network_manager_service_wireless_enable(NetworkManagerService *self,
+                                             gboolean enabled);
+
+void network_manager_service_networking_enable(NetworkManagerService *self,
+                                               gboolean enabled);
+
+void network_manager_service_networking_enable(NetworkManagerService *self,
+                                               gboolean enabled);
+
+gboolean network_manager_service_get_networking_enabled(
+    NetworkManagerService *self);

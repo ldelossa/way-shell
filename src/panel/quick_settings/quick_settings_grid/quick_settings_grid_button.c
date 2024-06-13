@@ -3,7 +3,9 @@
 #include <adwaita.h>
 
 #include "../quick_settings.h"
+#include "./quick_settings_grid_airplane_mode_button.h"
 #include "./quick_settings_grid_idle_inhibitor.h"
+#include "./quick_settings_grid_night_light/quick_settings_grid_night_light.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_theme.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
@@ -196,6 +198,13 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
         case QUICK_SETTINGS_BUTTON_THEME:
             quick_settings_grid_theme_button_free(
                 (QuickSettingsGridOneThemeButton *)self);
+        case QUICK_SETTINGS_BUTTON_NIGHT_LIGHT:
+            quick_settings_grid_night_light_button_free(
+                (QuickSettingsGridNightLightButton *)self);
+            break;
+        case QUICK_SETTINGS_BUTTON_AIRPLANE_MODE:
+            quick_settings_grid_airplane_mode_button_free(
+                (QuickSettingsGridAirplaneModeButton *)self);
             break;
     }
 }
