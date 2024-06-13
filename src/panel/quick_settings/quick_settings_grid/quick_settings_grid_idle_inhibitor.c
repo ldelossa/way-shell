@@ -1,4 +1,3 @@
-
 #include "./quick_settings_grid_idle_inhibitor.h"
 
 #include <adwaita.h>
