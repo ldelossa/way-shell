@@ -5,7 +5,18 @@
 #include "../../../services/theme_service.h"
 #include "quick_settings_grid_button.h"
 
+/* old
 static void on_clicked(GtkButton *button, QuickSettingsGridButton *self) {
+    ThemeService *ts = theme_service_get_global();
+    enum ThemeServiceTheme theme = theme_service_get_theme(ts);
+    if (theme == THEME_LIGHT) {
+        theme_service_set_dark_theme(ts, TRUE);
+    } else {
+        theme_service_set_light_theme(ts, TRUE);
+    }
+}*/
+
+static void on_toggle_button_clicked(GtkButton *button, QuickSettingsGridButton *self) {
     ThemeService *ts = theme_service_get_global();
     enum ThemeServiceTheme theme = theme_service_get_theme(ts);
     if (theme == THEME_LIGHT) {
@@ -18,16 +29,16 @@ static void on_clicked(GtkButton *button, QuickSettingsGridButton *self) {
 static void on_theme_changed(ThemeService *ts, enum ThemeServiceTheme theme,
                              QuickSettingsGridButton *self) {
     if (theme == THEME_LIGHT) {
-        gtk_label_set_text(self->title, "Dark Style");
+        quick_settings_grid_button_set_toggled(self->button, false);
     } else {
-        gtk_label_set_text(self->title, "Light Style");
+    	quick_settings_grid_button_set_toggled(self->button, true);
     }
 }
 
 void quick_settings_grid_theme_button_init_layout(
     QuickSettingsGridOneThemeButton *self) {
     quick_settings_grid_button_init(
-        &self->button, QUICK_SETTINGS_BUTTON_THEME, "Dark Style", NULL,
+        &self->button, QUICK_SETTINGS_BUTTON_THEME, "Dark Mode", NULL,
         "preferences-desktop-appearance-symbolic", NULL, NULL);
 
     ThemeService *ts = theme_service_get_global();
@@ -35,10 +46,10 @@ void quick_settings_grid_theme_button_init_layout(
     on_theme_changed(ts, theme, &self->button);
 
     g_signal_connect(ts, "theme-changed", G_CALLBACK(on_theme_changed),
-                     &self->button);
+                     &self->button.toggle);
 
     // wire button click
-    g_signal_connect(self->button.toggle, "clicked", G_CALLBACK(on_clicked),
+    g_signal_connect(self->button.toggle, "clicked", G_CALLBACK(on_toggle_button_clicked),
                      self);
 }
 
