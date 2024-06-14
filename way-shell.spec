@@ -1,13 +1,13 @@
 %define _userunitdir /usr/lib/systemd/user
 
 Name: way-shell
-Version: 0.0.1
+Version: 0.0.2
 Release: 1%{?dist}
 Summary: A Gnome-like desktop shell for Wayland compositors.
 License: MIT
 
 URL: https://github.com/ldelossa/way-shell
-Source0: https://github.com/ldelossa/way-shell/archive/refs/tags/v0.0.1.tar.gz
+Source0: https://github.com/ldelossa/way-shell/archive/refs/tags/v0.0.2.tar.gz
 
 BuildRequires: gcc
 BuildRequires: make
