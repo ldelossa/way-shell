@@ -125,7 +125,8 @@ static gboolean ipc_cmd_brightness_up() {
             "service");
         return false;
     }
-    brightness_service_up(b);
+    if (!brightness_service_has_backlight_brightness(b)) return false;
+    brightness_service_backlight_up(b);
     return true;
 }
 
@@ -138,7 +139,8 @@ static gboolean ipc_cmd_brightness_down() {
             "service");
         return false;
     }
-    brightness_service_down(b);
+    if (!brightness_service_has_backlight_brightness(b)) return false;
+    brightness_service_backlight_down(b);
     return true;
 }
 
@@ -442,6 +444,40 @@ static gboolean ipc_command_bluelight_filter_disable() {
     return true;
 }
 
+static gboolean ipc_command_keyboard_brightness_up() {
+    g_debug("ipc_service.c:ipc_command_keyboard_brightness_up()");
+
+    BrightnessService *b = brightness_service_get_global();
+    if (!b) {
+        g_critical(
+            "ipc_service.c:brightness_service_keyboard_backlight_down() failed "
+            "to get brightness "
+            "service");
+        return false;
+    }
+    if (!brightness_service_has_keyboard_brightness(b)) return false;
+    brightness_service_keyboard_up(b);
+    return true;
+}
+
+static gboolean ipc_command_keyboard_brightness_down() {
+    g_debug("ipc_service.c:ipc_command_keyboard_brightness_down()");
+
+    BrightnessService *b = brightness_service_get_global();
+    if (!b) {
+        g_critical(
+            "ipc_service.c:brightness_service_keyboard_backlight_down() failed "
+            "to get brightness "
+            "service");
+        return false;
+    }
+
+    if (!brightness_service_has_keyboard_brightness(b)) return false;
+
+    brightness_service_keyboard_down(b);
+    return true;
+}
+
 static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                                 gpointer user_data) {
     uint8_t buff[4096];
@@ -632,6 +668,18 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "ipc_service.c:on_ipc_readable() received "
                 "IPC_CMD_BLUELIGHT_FILTER_DISABLE");
             ret = ipc_command_bluelight_filter_disable();
+            break;
+        case IPC_CMD_KEYBOARD_BRIGHTNESS_UP:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_KEYBOARD_BRIGHTNESS_UP");
+            ret = ipc_command_keyboard_brightness_up();
+            break;
+        case IPC_CMD_KEYBOARD_BRIGHTNESS_DOWN:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_KEYBOARD_BRIGHTNESS_DOWN");
+            ret = ipc_command_keyboard_brightness_down();
             break;
         default:
             goto skip_resp;

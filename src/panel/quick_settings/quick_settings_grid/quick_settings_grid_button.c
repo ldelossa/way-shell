@@ -9,6 +9,7 @@
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_theme.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
+#include "./quick_settings_keyboard_brightness/quick_settings_grid_keyboard_brightness.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_ethernet.h"
 
@@ -205,6 +206,10 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
         case QUICK_SETTINGS_BUTTON_AIRPLANE_MODE:
             quick_settings_grid_airplane_mode_button_free(
                 (QuickSettingsGridAirplaneModeButton *)self);
+            break;
+        case QUICK_SETTINGS_BUTTON_KEYBOARD_BRIGHTNESS:
+            quick_settings_grid_keyboard_brightness_button_free(
+                (QuickSettingsGridKeyboardBrightnessButton *)self);
             break;
     }
 }

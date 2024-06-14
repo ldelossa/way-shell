@@ -6,18 +6,27 @@
 #include <sys/inotify.h>
 
 #include "../logind_service/logind_service.h"
+#include "glib-object.h"
 #include "glib-unix.h"
 
 static BrightnessService *global = NULL;
 
-enum signals { brightness_changed, signals_n };
+enum signals { brightness_changed, keyboard_brightness_changed, signals_n };
 
 struct _BrightnessService {
+    // display brightness
     GObject parent_instance;
-    guint32 brightness;
-    guint32 max_brightness;
-    GFile *device_path;
-    GSettings *backlight_dir;
+    guint32 backlight_brightness;
+    guint32 max_backlight_brightness;
+    GFile *backlight_device_path;
+    GSettings *systems_settings;
+    gboolean has_backlight_brightness;
+
+    // keyboard brightness
+    guint32 keyboard_brightness;
+    guint32 keyboard_max_brightness;
+    GFile *keyboard_device_path;
+    gboolean has_keyboard_brightness;
 };
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(BrightnessService, brightness_service, G_TYPE_OBJECT);
@@ -32,7 +41,7 @@ static void brightness_service_dispose(GObject *object) {
 }
 static void brightness_service_finalize(GObject *object) {
     BrightnessService *self = BRIGHTNESS_SERVICE(object);
-    g_clear_object(&self->device_path);
+    g_clear_object(&self->backlight_device_path);
     G_OBJECT_CLASS(brightness_service_parent_class)->finalize(object);
 }
 static void brightness_service_class_init(BrightnessServiceClass *klass) {
@@ -43,12 +52,17 @@ static void brightness_service_class_init(BrightnessServiceClass *klass) {
     signals[brightness_changed] = g_signal_new(
         "brightness-changed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0,
         NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_FLOAT);
+
+    signals[keyboard_brightness_changed] = g_signal_new(
+        "keyboard-brightness-changed", G_TYPE_FROM_CLASS(klass),
+        G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_UINT);
 }
 
-static void get_current_brightness(BrightnessService *self) {
+static void get_current_backlight_brightness(BrightnessService *self) {
     gchar *brightness_str = NULL;
 
-    GFile *brightness_file = g_file_get_child(self->device_path, "brightness");
+    GFile *brightness_file =
+        g_file_get_child(self->backlight_device_path, "brightness");
 
     if (!g_file_load_contents(brightness_file, NULL, &brightness_str, NULL,
                               NULL, NULL)) {
@@ -57,10 +71,29 @@ static void get_current_brightness(BrightnessService *self) {
             "file");
     }
 
-    self->brightness = g_ascii_strtoull(brightness_str, NULL, 10);
+    self->backlight_brightness = g_ascii_strtoull(brightness_str, NULL, 10);
 
     g_debug("brightness_service.c:on_fd_write(): brightness: %u",
-            self->brightness);
+            self->backlight_brightness);
+}
+
+static void get_current_keyboard_brightness(BrightnessService *self) {
+    gchar *brightness_str = NULL;
+
+    GFile *brightness_file =
+        g_file_get_child(self->keyboard_device_path, "brightness");
+
+    if (!g_file_load_contents(brightness_file, NULL, &brightness_str, NULL,
+                              NULL, NULL)) {
+        g_debug(
+            "brightness_service.c:on_fd_write(): failed to read brightness "
+            "file");
+    }
+
+    self->keyboard_brightness = g_ascii_strtoull(brightness_str, NULL, 10);
+
+    g_debug("brightness_service.c:on_fd_write(): brightness: %u",
+            self->keyboard_brightness);
 }
 
 static void on_backlight_directory_changed(GSettings *settings, gchar *key,
@@ -68,29 +101,32 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
     g_debug("brightness_service.c:on_backlight_directory_changed(): called");
 
     BrightnessService *self = user_data;
-    g_clear_object(&self->device_path);
+    g_clear_object(&self->backlight_device_path);
 
     // join the path /sys/class/backlight/ with the settings value and make
     // it a GFile*
-    self->device_path = g_file_new_for_path(g_build_filename(
+    self->backlight_device_path = g_file_new_for_path(g_build_filename(
         "/sys/class/backlight", g_settings_get_string(settings, key), NULL));
 
     // debug device path
     g_debug(
         "brightness_service.c:on_backlight_directory_changed(): device path: "
         "%s",
-        g_file_get_path(self->device_path));
+        g_file_get_path(self->backlight_device_path));
 
     // ensure device path exists
-    if (!g_file_query_exists(self->device_path, NULL)) {
+    if (!g_file_query_exists(self->backlight_device_path, NULL)) {
         g_warning(
             "brightness_service.c:on_backlight_directory_changed(): backlight "
             "directory does not exist");
-        g_clear_object(&self->device_path);
+        g_clear_object(&self->backlight_device_path);
+        self->has_backlight_brightness = false;
         return;
     }
+    self->has_backlight_brightness = true;
 
-    GFile *brightness_file = g_file_get_child(self->device_path, "brightness");
+    GFile *brightness_file =
+        g_file_get_child(self->backlight_device_path, "brightness");
     g_debug(
         "brightness_service.c:on_backlight_directory_changed(): brightness "
         "file: "
@@ -98,7 +134,7 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
         g_file_get_path(brightness_file));
 
     GFile *max_brightness_file =
-        g_file_get_child(self->device_path, "max_brightness");
+        g_file_get_child(self->backlight_device_path, "max_brightness");
     g_debug(
         "brightness_service.c:on_backlight_directory_changed(): max_brightness "
         "file: %s",
@@ -124,7 +160,8 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
         g_error_free(error);
         goto error;
     }
-    self->max_brightness = g_ascii_strtoull(max_brightness_str, NULL, 10);
+    self->max_backlight_brightness =
+        g_ascii_strtoull(max_brightness_str, NULL, 10);
 
     // read current brightness into variable
     gchar *brightness_str = NULL;
@@ -137,32 +174,131 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
         g_error_free(error);
         goto error;
     }
-    self->brightness = g_ascii_strtoull(brightness_str, NULL, 10);
+    self->backlight_brightness = g_ascii_strtoull(brightness_str, NULL, 10);
 
-    get_current_brightness(self);
+    get_current_backlight_brightness(self);
 
     // emit initial brightness event
-    g_signal_emit(
-        self, signals[brightness_changed], 0,
-        compute_brightness_percent(self->brightness, self->max_brightness));
+    g_signal_emit(self, signals[brightness_changed], 0,
+                  compute_brightness_percent(self->backlight_brightness,
+                                             self->max_backlight_brightness));
 
     return;
 
 error:
-    g_clear_object(&self->device_path);
+    g_clear_object(&self->backlight_device_path);
+    g_clear_object(&brightness_file);
+    g_clear_object(&max_brightness_file);
+    return;
+}
+
+static void on_backlight_keyboard_changed(GSettings *settings, gchar *key,
+                                          gpointer user_data) {
+    g_debug("brightness_service.c:on_backlight_keyboard_changed(): called");
+
+    BrightnessService *self = user_data;
+    g_clear_object(&self->keyboard_device_path);
+
+    // join the path /sys/class/leds/ with the settings value and make
+    // it a GFile*
+    self->keyboard_device_path = g_file_new_for_path(g_build_filename(
+        "/sys/class/leds", g_settings_get_string(settings, key), NULL));
+
+    // debug device path
+    g_debug(
+        "brightness_service.c:on_backlight_keyboard_changed(): device path: "
+        "%s",
+        g_file_get_path(self->keyboard_device_path));
+
+    // ensure device path exists
+    if (!g_file_query_exists(self->keyboard_device_path, NULL)) {
+        g_warning(
+            "brightness_service.c:on_backlight_keyboard_changed(): keyboard "
+            "directory does not exist");
+        g_clear_object(&self->keyboard_device_path);
+        self->has_keyboard_brightness = false;
+        return;
+    }
+    self->has_keyboard_brightness = true;
+
+    GFile *brightness_file =
+        g_file_get_child(self->keyboard_device_path, "brightness");
+    g_debug(
+        "brightness_service.c:on_backlight_keyboard_changed(): brightness"
+        "file: "
+        "%s",
+        g_file_get_path(brightness_file));
+
+    GFile *max_brightness_file =
+        g_file_get_child(self->keyboard_device_path, "max_brightness");
+    g_debug(
+        "brightness_service.c:on_backlight_keyboard_changed(): max_brightness "
+        "file: %s",
+        g_file_get_path(max_brightness_file));
+
+    // ensure brightness_file exists
+    if (!g_file_query_exists(brightness_file, NULL)) {
+        g_warning(
+            "brightness_service.c:on_backlight_keyboard_changed(): "
+            "brightness "
+            "file does not exist");
+        goto error;
+    }
+
+    // read max_brightness_file into variable
+    GError *error = NULL;
+    gchar *max_brightness_str = NULL;
+    if (!g_file_load_contents(max_brightness_file, NULL, &max_brightness_str,
+                              NULL, NULL, &error)) {
+        g_warning(
+            "brightness_service.c:on_backlight_keyboard_changed(): failed to "
+            "read max_brightness file: %s",
+            error->message);
+        g_error_free(error);
+        goto error;
+    }
+    self->keyboard_max_brightness =
+        g_ascii_strtoull(max_brightness_str, NULL, 10);
+
+    // read current brightness into variable
+    gchar *brightness_str = NULL;
+    if (!g_file_load_contents(brightness_file, NULL, &brightness_str, NULL,
+                              NULL, &error)) {
+        g_warning(
+            "brightness_service.c:on_backlight_keyboard_changed(): failed to"
+            "read brightness file: %s",
+            error->message);
+        g_error_free(error);
+        goto error;
+    }
+    self->keyboard_brightness = g_ascii_strtoull(brightness_str, NULL, 10);
+
+    get_current_keyboard_brightness(self);
+
+    // emit initial brightness event
+    g_signal_emit(self, signals[keyboard_brightness_changed], 0,
+                  self->keyboard_brightness);
+
+    return;
+
+error:
+    g_clear_object(&self->keyboard_device_path);
     g_clear_object(&brightness_file);
     g_clear_object(&max_brightness_file);
     return;
 }
 
 static void brightness_service_init(BrightnessService *self) {
-    self->backlight_dir = g_settings_new("org.ldelossa.way-shell.system");
+    self->systems_settings = g_settings_new("org.ldelossa.way-shell.system");
 
-    on_backlight_directory_changed(self->backlight_dir, "backlight-directory",
-                                   self);
+    on_backlight_directory_changed(self->systems_settings,
+                                   "backlight-directory", self);
+
+    on_backlight_keyboard_changed(self->systems_settings,
+                                  "keyboard-backlight-directory", self);
 
     // connect to setting's change.
-    g_signal_connect(self->backlight_dir, "changed::backlight-directory",
+    g_signal_connect(self->systems_settings, "changed::backlight-directory",
                      G_CALLBACK(on_backlight_directory_changed), self);
 }
 
@@ -176,85 +312,181 @@ int brightness_service_global_init(void) {
     return 0;
 }
 
-void brightness_service_up(BrightnessService *self) {
+void brightness_service_backlight_up(BrightnessService *self) {
     LogindService *logind = logind_service_get_global();
 
-    get_current_brightness(self);
+    get_current_backlight_brightness(self);
 
     // add 1000 to current brightness
-    self->brightness += 1000;
+    self->backlight_brightness += 1000;
 
     // if brightness is over max brightness clamp it to max brightness
-    if (self->brightness > self->max_brightness)
-        self->brightness = self->max_brightness;
+    if (self->backlight_brightness > self->max_backlight_brightness)
+        self->backlight_brightness = self->max_backlight_brightness;
 
     // use logind service to set backlight
     if (logind_service_session_set_brightness(
             logind, "backlight",
-            g_settings_get_string(self->backlight_dir, "backlight-directory"),
-            self->brightness) != 0)
+            g_settings_get_string(self->systems_settings,
+                                  "backlight-directory"),
+            self->backlight_brightness) != 0)
         return;
 
     // send signal with new brightness
-    g_signal_emit(
-        self, signals[brightness_changed], 0,
-        compute_brightness_percent(self->brightness, self->max_brightness));
+    g_signal_emit(self, signals[brightness_changed], 0,
+                  compute_brightness_percent(self->backlight_brightness,
+                                             self->max_backlight_brightness));
 }
 
-void brightness_service_down(BrightnessService *self) {
+void brightness_service_backlight_down(BrightnessService *self) {
     LogindService *logind = logind_service_get_global();
 
-    get_current_brightness(self);
+    get_current_backlight_brightness(self);
 
-    gint32 brightness = self->brightness - 1000;
+    gint32 brightness = self->backlight_brightness - 1000;
 
     // subtract 1000 from current brightness
-    self->brightness -= 1000;
+    self->backlight_brightness -= 1000;
 
     // if brightness is under 0 clamp it to 0
-    self->brightness = (brightness < 0) ? 0 : brightness;
+    self->backlight_brightness = (brightness < 0) ? 0 : brightness;
 
     // use logind service to set backlight
     if (logind_service_session_set_brightness(
             logind, "backlight",
-            g_settings_get_string(self->backlight_dir, "backlight-directory"),
-            self->brightness) != 0)
+            g_settings_get_string(self->systems_settings,
+                                  "backlight-directory"),
+            self->backlight_brightness) != 0)
         return;
 
     // send signal with new brightness
-    g_signal_emit(
-        self, signals[brightness_changed], 0,
-        compute_brightness_percent(self->brightness, self->max_brightness));
+    g_signal_emit(self, signals[brightness_changed], 0,
+                  compute_brightness_percent(self->backlight_brightness,
+                                             self->max_backlight_brightness));
 }
 
-void brightness_service_set(BrightnessService *self, float percent) {
+void brightness_service_set_backlight(BrightnessService *self, float percent) {
     LogindService *logind = logind_service_get_global();
 
     // clamp percent to 0.0 - 1.0
     percent = CLAMP(percent, 0.0, 1.0);
 
     // calculate new brightness
-    guint32 brightness = (guint32)(self->max_brightness * percent);
+    guint32 brightness = (guint32)(self->max_backlight_brightness * percent);
 
     // use logind service to set backlight
     if (logind_service_session_set_brightness(
             logind, "backlight",
-            g_settings_get_string(self->backlight_dir, "backlight-directory"),
+            g_settings_get_string(self->systems_settings,
+                                  "backlight-directory"),
             brightness) != 0)
         return;
 
     // send signal with new brightness
-    g_signal_emit(
-        self, signals[brightness_changed], 0,
-        compute_brightness_percent(self->brightness, self->max_brightness));
+    g_signal_emit(self, signals[brightness_changed], 0,
+                  compute_brightness_percent(self->backlight_brightness,
+                                             self->max_backlight_brightness));
 }
 
-float brightness_service_get_brightness(BrightnessService *self) {
-    return (float)self->brightness / (float)self->max_brightness;
+float brightness_service_get_backlight(BrightnessService *self) {
+    return (float)self->backlight_brightness /
+           (float)self->max_backlight_brightness;
 }
 
 gchar *brightness_service_map_icon(BrightnessService *self) {
     return "display-brightness-symbolic";
 }
 
+void brightness_service_keyboard_up(BrightnessService *self) {
+    LogindService *logind = logind_service_get_global();
+
+    get_current_keyboard_brightness(self);
+
+    self->keyboard_brightness += 1;
+
+    // if brightness exceeds max brightness, we actually want to turn off the
+    // backlight. This works well for most modern laptops which only have a
+    // single backlight button
+    if (self->keyboard_brightness > self->keyboard_max_brightness)
+        self->keyboard_brightness = 0;
+
+    // use logind service to set backlight
+    if (logind_service_session_set_brightness(
+            logind, "leds",
+            g_settings_get_string(self->systems_settings,
+                                  "keyboard-backlight-directory"),
+            self->keyboard_brightness) != 0)
+        return;
+
+    // send signal with new brightness
+    g_signal_emit(self, signals[keyboard_brightness_changed], 0,
+                  self->keyboard_brightness);
+}
+
+void brightness_service_keyboard_down(BrightnessService *self) {
+    LogindService *logind = logind_service_get_global();
+
+    get_current_keyboard_brightness(self);
+
+    gint32 brightness = self->keyboard_brightness - 1;
+
+    // subtract 1000 from current brightness
+    self->keyboard_brightness -= 1;
+
+    // if brightness is under 0 then we actually want to turn the brightness to
+    // max.
+    // This works well for most modern laptops which only have a single
+    // backlight button
+    self->keyboard_brightness =
+        (brightness < 0) ? self->keyboard_max_brightness : brightness;
+
+    // use logind service to set backlight
+    if (logind_service_session_set_brightness(
+            logind, "leds",
+            g_settings_get_string(self->systems_settings,
+                                  "keyboard-backlight-directory"),
+            self->keyboard_brightness) != 0)
+        return;
+
+    // send signal with new brightness
+    g_signal_emit(self, signals[keyboard_brightness_changed], 0,
+                  self->keyboard_brightness);
+}
+
+void brightness_service_set_keyboard(BrightnessService *self, uint32_t value) {
+    LogindService *logind = logind_service_get_global();
+
+    // ensure value is not larger then max
+    if (value > self->keyboard_max_brightness) return;
+
+    // use logind service to set backlight
+    if (logind_service_session_set_brightness(
+            logind, "leds",
+            g_settings_get_string(self->systems_settings,
+                                  "keyboard-backlight-directory"),
+            value) != 0)
+        return;
+
+    self->keyboard_brightness = value;
+
+    // send signal with new brightness
+    g_signal_emit(self, signals[keyboard_brightness_changed], 0, value);
+}
+
+uint32_t brightness_service_get_keyboard(BrightnessService *self) {
+    return self->keyboard_brightness;
+}
+
+uint32_t brightness_service_get_keyboard_max(BrightnessService *self) {
+    return self->keyboard_max_brightness;
+}
+
 BrightnessService *brightness_service_get_global() { return global; }
+
+gboolean brightness_service_has_backlight_brightness(BrightnessService *self) {
+    return self->has_backlight_brightness;
+}
+
+gboolean brightness_service_has_keyboard_brightness(BrightnessService *self) {
+    return self->has_keyboard_brightness;
+}

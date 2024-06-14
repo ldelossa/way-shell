@@ -290,7 +290,7 @@ static void on_brightness_scale_changed(GtkRange *range,
 
     gdouble r = gtk_range_get_value(range);
     BrightnessService *bs = brightness_service_get_global();
-    brightness_service_set(bs, r);
+    brightness_service_set_backlight(bs, r);
 
     block_brightness_changed_signals(self, false);
 }
@@ -445,47 +445,6 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
     g_signal_connect(wp, "default-sink-changed",
                      G_CALLBACK(on_default_sink_change), self);
 
-    // brightness setup
-    BrightnessService *bs = brightness_service_get_global();
-
-    self->brightness_container =
-        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->brightness_container),
-                        "brightness-container");
-
-    self->brightness_scale = GTK_SCALE(
-        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1, 0.05));
-    gtk_widget_set_hexpand(GTK_WIDGET(self->brightness_scale), true);
-
-    self->brightness_button = GTK_BUTTON(
-        gtk_button_new_from_icon_name(brightness_service_map_icon(bs)));
-
-    self->brightness_icon = GTK_IMAGE(
-        gtk_widget_get_first_child(GTK_WIDGET(self->brightness_button)));
-
-    gtk_box_append(self->brightness_container,
-                   GTK_WIDGET(self->brightness_button));
-    gtk_box_append(self->brightness_container,
-                   GTK_WIDGET(self->brightness_scale));
-
-    // listen for brightness changes
-    g_signal_connect(bs, "brightness-changed", G_CALLBACK(on_brightness_change),
-                     self);
-
-    // get initial brightness value
-    float brightness = brightness_service_get_brightness(bs);
-    gtk_range_set_value(GTK_RANGE(self->brightness_scale), brightness);
-
-    // connect to scale's Range::value-changed signal
-    g_signal_connect(GTK_RANGE(self->default_sink_scale), "value-changed",
-                     G_CALLBACK(on_sink_scale_value_changed), self);
-
-    g_signal_connect(GTK_RANGE(self->default_source_scale), "value-changed",
-                     G_CALLBACK(on_source_scale_value_changed), self);
-
-    g_signal_connect(GTK_RANGE(self->brightness_scale), "value-changed",
-                     G_CALLBACK(on_brightness_scale_changed), self);
-
     // wire up to container
     gtk_box_append(self->audio_scales_revealer_contents,
                    GTK_WIDGET(self->default_sink_container));
@@ -493,7 +452,51 @@ static void quick_settings_scales_init_layout(QuickSettingsScales *self) {
                    GTK_WIDGET(self->default_source_container));
 
     gtk_box_append(self->container, GTK_WIDGET(self->audio_scales_revealer));
-    gtk_box_append(self->container, GTK_WIDGET(self->brightness_container));
+
+    // brightness setup, dependent on whether brightness service is available.
+    BrightnessService *bs = brightness_service_get_global();
+
+    if (brightness_service_has_backlight_brightness(bs)) {
+        self->brightness_container =
+            GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+        gtk_widget_set_name(GTK_WIDGET(self->brightness_container),
+                            "brightness-container");
+
+        self->brightness_scale = GTK_SCALE(
+            gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1, 0.05));
+        gtk_widget_set_hexpand(GTK_WIDGET(self->brightness_scale), true);
+
+        self->brightness_button = GTK_BUTTON(
+            gtk_button_new_from_icon_name(brightness_service_map_icon(bs)));
+
+        self->brightness_icon = GTK_IMAGE(
+            gtk_widget_get_first_child(GTK_WIDGET(self->brightness_button)));
+
+        gtk_box_append(self->brightness_container,
+                       GTK_WIDGET(self->brightness_button));
+        gtk_box_append(self->brightness_container,
+                       GTK_WIDGET(self->brightness_scale));
+
+        // listen for brightness changes
+        g_signal_connect(bs, "brightness-changed",
+                         G_CALLBACK(on_brightness_change), self);
+
+        // get initial brightness value
+        float brightness = brightness_service_get_backlight(bs);
+        gtk_range_set_value(GTK_RANGE(self->brightness_scale), brightness);
+
+        // connect to scale's Range::value-changed signal
+        g_signal_connect(GTK_RANGE(self->default_sink_scale), "value-changed",
+                         G_CALLBACK(on_sink_scale_value_changed), self);
+
+        g_signal_connect(GTK_RANGE(self->default_source_scale), "value-changed",
+                         G_CALLBACK(on_source_scale_value_changed), self);
+
+        g_signal_connect(GTK_RANGE(self->brightness_scale), "value-changed",
+                         G_CALLBACK(on_brightness_scale_changed), self);
+
+        gtk_box_append(self->container, GTK_WIDGET(self->brightness_container));
+    }
 }
 
 static void quick_settings_scales_init(QuickSettingsScales *self) {

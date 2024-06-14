@@ -9,7 +9,7 @@
     <!--system related settings-->
     <schema path="/org/ldelossa/way-shell/system/" id="org.ldelossa.way-shell.system">
         <key name="suspend-method" type="s">
-            <default>'suspend'</default>
+            <default>"suspend"</default>
             <summary>The suspend method used when suspend is invoked from Quick Settings</summary>
             <description>
             The method used to suspend the system. Options are:
@@ -19,13 +19,24 @@
             </description>
         </key>
         <key name="backlight-directory" type="s">
-            <default>'intel_backlight'</default>
+            <default>"intel_backlight"</default>
             <summary>The relative directory of your backlight device file</summary>
             <description>
             The directory located under /sys/class/backlight/ which contains
             the backlight device files such as "brightness" and "max_brightness"
             The default is 'intel_backlight' but this may need to change depending
             on your machine.
+            </description>
+        </key>
+        <key name="keyboard-backlight-directory" type="s">
+            <default>""</default>
+            <summary>The relative directory of your backlight device file</summary>
+            <description>
+            The directory located typically under /sys/class/leds/ which contains
+            the keyboard backlight device files such as "brightness" and "max_brightness"
+			There is no default since this tends to be specific to the manufacturer.
+			For instance Lenovo Thinkpads usually have they keyboard backlight directory
+			idenified as '/sys/class/leds/tpacpi::kbd_backlight'
             </description>
         </key>
         <key name="idle-inhibitor" type="b">

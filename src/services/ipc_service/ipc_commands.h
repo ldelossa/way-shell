@@ -33,6 +33,8 @@ enum IPCCommands : uint32_t {
     IPC_CMD_WORKSPACE_APP_SWITCHER_TOGGLE,
     IPC_CMD_BLUELIGHT_FILTER_ENABLE,
     IPC_CMD_BLUELIGHT_FILTER_DISABLE,
+    IPC_CMD_KEYBOARD_BRIGHTNESS_UP,
+    IPC_CMD_KEYBOARD_BRIGHTNESS_DOWN,
 };
 
 typedef struct _IPCHeader {
@@ -151,3 +153,11 @@ typedef struct _IPCBlueLightFilterEnable {
 typedef struct _IPCBlueLightFilterDisable {
     IPCHeader header;
 } IPCBlueLightFilterDisable;
+
+typedef struct _IPCKeyboardBrightnessUp {
+    IPCHeader header;
+} IPCKeyboardBrightnessUp;
+
+typedef struct _IPCKeyboardBrightnessDown {
+    IPCHeader header;
+} IPCKeyboardBrightnessDown;

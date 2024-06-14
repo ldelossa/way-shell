@@ -12,6 +12,7 @@ enum QuickSettingsButtonType {
     QUICK_SETTINGS_BUTTON_THEME,
     QUICK_SETTINGS_BUTTON_NIGHT_LIGHT,
     QUICK_SETTINGS_BUTTON_AIRPLANE_MODE,
+    QUICK_SETTINGS_BUTTON_KEYBOARD_BRIGHTNESS,
 };
 
 typedef struct _QuickSettingsGridCluster QuickSettingsGridCluster;

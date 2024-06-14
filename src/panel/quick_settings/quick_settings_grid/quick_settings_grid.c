@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 
+#include "../../../services/brightness_service/brightness_service.h"
 #include "../../../services/logind_service/logind_service.h"
 #include "../../../services/network_manager_service.h"
 #include "../../../services/power_profiles_service/power_profiles_service.h"
@@ -9,6 +10,7 @@
 #include "./quick_settings_grid_night_light/quick_settings_grid_night_light.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
+#include "./quick_settings_keyboard_brightness/quick_settings_grid_keyboard_brightness.h"
 #include "nm-dbus-interface.h"
 #include "quick_settings_grid_button.h"
 #include "quick_settings_grid_cluster.h"
@@ -276,6 +278,14 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
         quick_settings_grid_airplane_mode_button_init();
     quick_settings_grid_add_button(
         self, (QuickSettingsGridButton *)airplane_mode_button);
+
+    BrightnessService *bs = brightness_service_get_global();
+    if (bs && brightness_service_has_keyboard_brightness(bs)) {
+        QuickSettingsGridKeyboardBrightnessButton *keyboard_brightness_button =
+            quick_settings_grid_keyboard_brightness_button_init();
+        quick_settings_grid_add_button(
+            self, (QuickSettingsGridButton *)keyboard_brightness_button);
+    }
 
     // add theme button
     QuickSettingsGridOneThemeButton *theme_button =
