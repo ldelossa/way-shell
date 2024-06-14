@@ -29,9 +29,9 @@ static void on_toggle_button_clicked(GtkButton *button, QuickSettingsGridButton 
 static void on_theme_changed(ThemeService *ts, enum ThemeServiceTheme theme,
                              QuickSettingsGridButton *self) {
     if (theme == THEME_LIGHT) {
-        quick_settings_grid_button_set_toggled(self->button, false);
+        quick_settings_grid_button_set_toggled(self, false);
     } else {
-    	quick_settings_grid_button_set_toggled(self->button, true);
+    	quick_settings_grid_button_set_toggled(self, true);
     }
 }
 
@@ -46,7 +46,7 @@ void quick_settings_grid_theme_button_init_layout(
     on_theme_changed(ts, theme, &self->button);
 
     g_signal_connect(ts, "theme-changed", G_CALLBACK(on_theme_changed),
-                     &self->button.toggle);
+                     &self->button);
 
     // wire button click
     g_signal_connect(self->button.toggle, "clicked", G_CALLBACK(on_toggle_button_clicked),
