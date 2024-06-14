@@ -6,6 +6,7 @@
 #include <sys/inotify.h>
 
 #include "../logind_service/logind_service.h"
+#include "gio/gio.h"
 #include "glib-object.h"
 #include "glib-unix.h"
 
@@ -21,12 +22,14 @@ struct _BrightnessService {
     GFile *backlight_device_path;
     GSettings *systems_settings;
     gboolean has_backlight_brightness;
+    GFileMonitor *backlight_file_monitor;
 
     // keyboard brightness
     guint32 keyboard_brightness;
     guint32 keyboard_max_brightness;
     GFile *keyboard_device_path;
     gboolean has_keyboard_brightness;
+    GFileMonitor *keyboard_file_monitor;
 };
 static guint signals[signals_n] = {0};
 G_DEFINE_TYPE(BrightnessService, brightness_service, G_TYPE_OBJECT);
@@ -96,12 +99,26 @@ static void get_current_keyboard_brightness(BrightnessService *self) {
             self->keyboard_brightness);
 }
 
+void backlight_file_changed(GFileMonitor *file_mon, GFile *file,
+                            GFile *other_file, GFileMonitorEvent event_type,
+                            BrightnessService *self) {
+    get_current_backlight_brightness(self);
+    g_signal_emit(self, signals[brightness_changed], 0,
+                  compute_brightness_percent(self->backlight_brightness,
+                                             self->max_backlight_brightness));
+}
+
 static void on_backlight_directory_changed(GSettings *settings, gchar *key,
                                            gpointer user_data) {
     g_debug("brightness_service.c:on_backlight_directory_changed(): called");
 
     BrightnessService *self = user_data;
     g_clear_object(&self->backlight_device_path);
+
+    if (self->backlight_file_monitor) {
+        g_file_monitor_cancel(self->backlight_file_monitor);
+        g_clear_object(&self->backlight_file_monitor);
+    }
 
     // join the path /sys/class/backlight/ with the settings value and make
     // it a GFile*
@@ -163,25 +180,29 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
     self->max_backlight_brightness =
         g_ascii_strtoull(max_brightness_str, NULL, 10);
 
-    // read current brightness into variable
-    gchar *brightness_str = NULL;
-    if (!g_file_load_contents(brightness_file, NULL, &brightness_str, NULL,
-                              NULL, &error)) {
-        g_warning(
-            "brightness_service.c:on_backlight_directory_changed(): failed to "
-            "read brightness file: %s",
-            error->message);
-        g_error_free(error);
-        goto error;
-    }
-    self->backlight_brightness = g_ascii_strtoull(brightness_str, NULL, 10);
-
     get_current_backlight_brightness(self);
 
     // emit initial brightness event
     g_signal_emit(self, signals[brightness_changed], 0,
                   compute_brightness_percent(self->backlight_brightness,
                                              self->max_backlight_brightness));
+
+    // setup file monitor
+    error = NULL;
+    self->backlight_file_monitor =
+        g_file_monitor_file(self->backlight_device_path,
+                            G_FILE_MONITOR_WATCH_HARD_LINKS, NULL, &error);
+    if (error) {
+        g_warning(
+            "brightness_service.c:on_backlight_directory_changed(): failed to "
+            "setup file monitor: %s",
+            error->message);
+        g_error_free(error);
+        goto error;
+    }
+
+    g_signal_connect(self->backlight_file_monitor, "changed",
+                     G_CALLBACK(backlight_file_changed), self);
 
     return;
 
@@ -192,12 +213,25 @@ error:
     return;
 }
 
+void keyboard_file_changed(GFileMonitor *file_mon, GFile *file,
+                           GFile *other_file, GFileMonitorEvent event_type,
+                           BrightnessService *self) {
+    get_current_keyboard_brightness(self);
+    g_signal_emit(self, signals[keyboard_brightness_changed], 0,
+                  self->keyboard_brightness);
+}
+
 static void on_backlight_keyboard_changed(GSettings *settings, gchar *key,
                                           gpointer user_data) {
     g_debug("brightness_service.c:on_backlight_keyboard_changed(): called");
 
     BrightnessService *self = user_data;
     g_clear_object(&self->keyboard_device_path);
+
+    if (self->keyboard_file_monitor) {
+        g_file_monitor_cancel(self->keyboard_file_monitor);
+        g_clear_object(&self->keyboard_file_monitor);
+    }
 
     // join the path /sys/class/leds/ with the settings value and make
     // it a GFile*
@@ -260,24 +294,28 @@ static void on_backlight_keyboard_changed(GSettings *settings, gchar *key,
     self->keyboard_max_brightness =
         g_ascii_strtoull(max_brightness_str, NULL, 10);
 
-    // read current brightness into variable
-    gchar *brightness_str = NULL;
-    if (!g_file_load_contents(brightness_file, NULL, &brightness_str, NULL,
-                              NULL, &error)) {
-        g_warning(
-            "brightness_service.c:on_backlight_keyboard_changed(): failed to"
-            "read brightness file: %s",
-            error->message);
-        g_error_free(error);
-        goto error;
-    }
-    self->keyboard_brightness = g_ascii_strtoull(brightness_str, NULL, 10);
-
     get_current_keyboard_brightness(self);
 
     // emit initial brightness event
     g_signal_emit(self, signals[keyboard_brightness_changed], 0,
                   self->keyboard_brightness);
+
+    // setup file monitor
+    error = NULL;
+    self->keyboard_file_monitor =
+        g_file_monitor_file(self->keyboard_device_path,
+                            G_FILE_MONITOR_WATCH_HARD_LINKS, NULL, &error);
+    if (error) {
+        g_warning(
+            "brightness_service.c:on_backlight_keyboard_changed(): failed to "
+            "setup file monitor: %s",
+            error->message);
+        g_error_free(error);
+        goto error;
+    }
+
+    g_signal_connect(self->keyboard_file_monitor, "changed",
+                     G_CALLBACK(keyboard_file_changed), self);
 
     return;
 
@@ -332,10 +370,8 @@ void brightness_service_backlight_up(BrightnessService *self) {
             self->backlight_brightness) != 0)
         return;
 
-    // send signal with new brightness
-    g_signal_emit(self, signals[brightness_changed], 0,
-                  compute_brightness_percent(self->backlight_brightness,
-                                             self->max_backlight_brightness));
+    // file monitor will catch the change, update our internal state and
+    // send a signal
 }
 
 void brightness_service_backlight_down(BrightnessService *self) {
@@ -359,10 +395,8 @@ void brightness_service_backlight_down(BrightnessService *self) {
             self->backlight_brightness) != 0)
         return;
 
-    // send signal with new brightness
-    g_signal_emit(self, signals[brightness_changed], 0,
-                  compute_brightness_percent(self->backlight_brightness,
-                                             self->max_backlight_brightness));
+    // file monitor will catch the change, update our internal state and
+    // send a signal
 }
 
 void brightness_service_set_backlight(BrightnessService *self, float percent) {
@@ -382,10 +416,8 @@ void brightness_service_set_backlight(BrightnessService *self, float percent) {
             brightness) != 0)
         return;
 
-    // send signal with new brightness
-    g_signal_emit(self, signals[brightness_changed], 0,
-                  compute_brightness_percent(self->backlight_brightness,
-                                             self->max_backlight_brightness));
+    // file monitor will catch the change, update our internal state and
+    // send a signal
 }
 
 float brightness_service_get_backlight(BrightnessService *self) {
@@ -418,9 +450,8 @@ void brightness_service_keyboard_up(BrightnessService *self) {
             self->keyboard_brightness) != 0)
         return;
 
-    // send signal with new brightness
-    g_signal_emit(self, signals[keyboard_brightness_changed], 0,
-                  self->keyboard_brightness);
+    // file monitor will catch the change, update our internal state and
+    // send a signal
 }
 
 void brightness_service_keyboard_down(BrightnessService *self) {
@@ -448,9 +479,8 @@ void brightness_service_keyboard_down(BrightnessService *self) {
             self->keyboard_brightness) != 0)
         return;
 
-    // send signal with new brightness
-    g_signal_emit(self, signals[keyboard_brightness_changed], 0,
-                  self->keyboard_brightness);
+    // file monitor will catch the change, update our internal state and
+    // send a signal
 }
 
 void brightness_service_set_keyboard(BrightnessService *self, uint32_t value) {
@@ -467,10 +497,8 @@ void brightness_service_set_keyboard(BrightnessService *self, uint32_t value) {
             value) != 0)
         return;
 
-    self->keyboard_brightness = value;
-
-    // send signal with new brightness
-    g_signal_emit(self, signals[keyboard_brightness_changed], 0, value);
+    // file monitor will catch the change, update our internal state and
+    // send a signal
 }
 
 uint32_t brightness_service_get_keyboard(BrightnessService *self) {
