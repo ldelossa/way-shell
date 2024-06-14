@@ -56,7 +56,7 @@ Currently Way-Shell only supports Sway but this will change as the project
 matures.
 
 %prep
-%setup -n way-shell-0.0.1
+%setup -n way-shell-0.0.2
 
 %build
 make %{?_smp_mflags}
