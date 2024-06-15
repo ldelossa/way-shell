@@ -18,12 +18,19 @@ typedef struct _OSD {
     AdwAnimation *animation;
     GtkBox *container;
     GtkOverlay *overlay;
+
     GtkBox *volume_osd;
     GtkScale *volume_scale;
     GtkImage *volume_icon;
+
     GtkBox *brightness_osd;
     GtkScale *brightness_scale;
     GtkImage *bightness_icon;
+
+    GtkBox *keyboard_brightness_osd;
+    GtkScale *keyboard_brightness_scale;
+    GtkImage *keyboard_bightness_icon;
+
     gboolean quick_settings_visible;
     guint32 timeout_id;
 } OSD;
@@ -70,6 +77,18 @@ static gboolean timed_dismiss(OSD *self) {
     return false;
 }
 
+static void show_osd(OSD *self, GtkBox *osd) {
+    if (osd != self->brightness_osd)
+        gtk_widget_set_visible(GTK_WIDGET(self->brightness_osd), false);
+    if (osd != self->keyboard_brightness_osd)
+        gtk_widget_set_visible(GTK_WIDGET(self->keyboard_brightness_osd),
+                               false);
+    if (osd != self->volume_osd)
+        gtk_widget_set_visible(GTK_WIDGET(self->volume_osd), false);
+
+    gtk_widget_set_visible(GTK_WIDGET(osd), true);
+}
+
 static void on_brightness_changed(BrightnessService *bs, float percent,
                                   OSD *self) {
     g_debug("osd.c:on_brightness_changed(): called");
@@ -93,8 +112,46 @@ static void on_brightness_changed(BrightnessService *bs, float percent,
     // set brightness scale
     gtk_range_set_value(GTK_RANGE(self->brightness_scale), percent);
 
-    gtk_widget_set_visible(GTK_WIDGET(self->brightness_osd), true);
-    gtk_widget_set_visible(GTK_WIDGET(self->volume_osd), false);
+    show_osd(self, self->brightness_osd);
+
+    // present window
+    if (!gtk_widget_get_visible(GTK_WIDGET(self->win))) {
+        gtk_widget_set_visible(GTK_WIDGET(self->win), true);
+
+        // play animation forward
+        adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->animation),
+                                        false);
+        adw_animation_play(self->animation);
+    } else {
+        // window is present, bump the timed dismiss to later
+        if (self->timeout_id) {
+            g_source_remove(self->timeout_id);
+            self->timeout_id = 0;
+        }
+        self->timeout_id =
+            g_timeout_add_seconds(8, (GSourceFunc)timed_dismiss, self);
+    }
+}
+
+static void on_keyboard_brightness_changed(BrightnessService *bs, guint percent,
+                                           OSD *self) {
+    g_debug("osd.c:on_brightness_changed(): called");
+
+    // if quick settings is currently displayed, don't show brightness OSD, its
+    // redunant
+    QuickSettings *qs = quick_settings_get_global();
+    if (quick_settings_is_visible(qs)) return;
+
+    // if a timeout exists cancel it
+    if (self->timeout_id) {
+        g_source_remove(self->timeout_id);
+        self->timeout_id = 0;
+    }
+
+    // set brightness scale
+    gtk_range_set_value(GTK_RANGE(self->keyboard_brightness_scale), percent);
+
+    show_osd(self, self->keyboard_brightness_osd);
 
     // present window
     if (!gtk_widget_get_visible(GTK_WIDGET(self->win))) {
@@ -140,8 +197,7 @@ static void on_default_sink_changed(WirePlumberService *wp,
     gtk_range_set_value(GTK_RANGE(self->volume_scale), sink->volume);
     if (sink->mute) gtk_range_set_value(GTK_RANGE(self->volume_scale), 0.0);
 
-    gtk_widget_set_visible(GTK_WIDGET(self->brightness_osd), false);
-    gtk_widget_set_visible(GTK_WIDGET(self->volume_osd), true);
+    show_osd(self, self->volume_osd);
 
     // present window
     if (!gtk_widget_get_visible(GTK_WIDGET(self->win))) {
@@ -233,35 +289,75 @@ void osd_init_layout(OSD *self) {
     gtk_box_append(self->volume_osd, GTK_WIDGET(self->volume_icon));
     gtk_box_append(self->volume_osd, GTK_WIDGET(self->volume_scale));
 
-    // create brightness OSD
-    self->brightness_osd = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(self->brightness_osd), "osd-container");
-
-    self->bightness_icon =
-        GTK_IMAGE(gtk_image_new_from_icon_name("display-brightness-symbolic"));
-
-    gtk_image_set_pixel_size(self->bightness_icon, 32);
-
-    self->brightness_scale = GTK_SCALE(
-        gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1.0, 0.05));
-    gtk_widget_set_hexpand(GTK_WIDGET(self->brightness_scale), true);
-    gtk_widget_set_sensitive(GTK_WIDGET(self->brightness_scale), false);
-
-    gtk_box_append(self->brightness_osd, GTK_WIDGET(self->bightness_icon));
-    gtk_box_append(self->brightness_osd, GTK_WIDGET(self->brightness_scale));
-
     // wire into default sink volume changes
     WirePlumberService *wp = wire_plumber_service_get_global();
     g_signal_connect(wp, "default-sink-volume-changed",
                      G_CALLBACK(on_default_sink_changed), self);
 
-    // wire into brightness changes
-    BrightnessService *bs = brightness_service_get_global();
-    g_signal_connect(bs, "brightness-changed",
-                     G_CALLBACK(on_brightness_changed), self);
-
     gtk_overlay_add_overlay(self->overlay, GTK_WIDGET(self->volume_osd));
-    gtk_overlay_add_overlay(self->overlay, GTK_WIDGET(self->brightness_osd));
+
+    BrightnessService *bs = brightness_service_get_global();
+
+    if (brightness_service_has_backlight_brightness(bs)) {
+        // create brightness OSD
+        self->brightness_osd =
+            GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+        gtk_widget_set_name(GTK_WIDGET(self->brightness_osd), "osd-container");
+
+        self->bightness_icon = GTK_IMAGE(
+            gtk_image_new_from_icon_name("display-brightness-symbolic"));
+
+        gtk_image_set_pixel_size(self->bightness_icon, 32);
+
+        self->brightness_scale = GTK_SCALE(
+            gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 1.0, 0.05));
+        gtk_widget_set_hexpand(GTK_WIDGET(self->brightness_scale), true);
+        gtk_widget_set_sensitive(GTK_WIDGET(self->brightness_scale), false);
+
+        gtk_box_append(self->brightness_osd, GTK_WIDGET(self->bightness_icon));
+        gtk_box_append(self->brightness_osd,
+                       GTK_WIDGET(self->brightness_scale));
+
+        // wire into brightness changes
+        g_signal_connect(bs, "brightness-changed",
+                         G_CALLBACK(on_brightness_changed), self);
+
+        gtk_overlay_add_overlay(self->overlay,
+                                GTK_WIDGET(self->brightness_osd));
+    }
+
+    // create keyboard brightness OSD
+    if (brightness_service_has_keyboard_brightness(bs)) {
+        self->keyboard_brightness_osd =
+            GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+        gtk_widget_set_name(GTK_WIDGET(self->keyboard_brightness_osd),
+                            "osd-container");
+
+        self->keyboard_bightness_icon = GTK_IMAGE(
+            gtk_image_new_from_icon_name("keyboard-brightness-symbolic"));
+
+        gtk_image_set_pixel_size(self->keyboard_bightness_icon, 32);
+
+        guint keyboard_max_brightness = brightness_service_get_keyboard_max(bs);
+
+        self->keyboard_brightness_scale = GTK_SCALE(gtk_scale_new_with_range(
+            GTK_ORIENTATION_HORIZONTAL, 0, keyboard_max_brightness, 1));
+        gtk_widget_set_hexpand(GTK_WIDGET(self->keyboard_brightness_scale),
+                               true);
+        gtk_widget_set_sensitive(GTK_WIDGET(self->keyboard_brightness_scale),
+                                 false);
+
+        gtk_box_append(self->keyboard_brightness_osd,
+                       GTK_WIDGET(self->keyboard_bightness_icon));
+        gtk_box_append(self->keyboard_brightness_osd,
+                       GTK_WIDGET(self->keyboard_brightness_scale));
+
+        g_signal_connect(bs, "keyboard-brightness-changed",
+                         G_CALLBACK(on_keyboard_brightness_changed), self);
+
+        gtk_overlay_add_overlay(self->overlay,
+                                GTK_WIDGET(self->keyboard_brightness_osd));
+    }
 
     adw_window_set_content(self->win, GTK_WIDGET(self->overlay));
 }
