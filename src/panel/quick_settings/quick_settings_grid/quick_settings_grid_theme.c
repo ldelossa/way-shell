@@ -5,17 +5,6 @@
 #include "../../../services/theme_service.h"
 #include "quick_settings_grid_button.h"
 
-/* old
-static void on_clicked(GtkButton *button, QuickSettingsGridButton *self) {
-    ThemeService *ts = theme_service_get_global();
-    enum ThemeServiceTheme theme = theme_service_get_theme(ts);
-    if (theme == THEME_LIGHT) {
-        theme_service_set_dark_theme(ts, TRUE);
-    } else {
-        theme_service_set_light_theme(ts, TRUE);
-    }
-}*/
-
 static void on_toggle_button_clicked(GtkButton *button, QuickSettingsGridButton *self) {
     ThemeService *ts = theme_service_get_global();
     enum ThemeServiceTheme theme = theme_service_get_theme(ts);
