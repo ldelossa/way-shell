@@ -138,6 +138,7 @@ Feel free to adjust these to your liking.
 - [x] DConf integration (configuration is driven via dconf)
 - [x] CLI interface (way-sh)
 - [x] Media Player integration (control DBus announced media players)
+- [x] Keyboard backlight detection, OSD, and quick settings button
 - [ ] Bluetooth integration (pair with discoverable bluetooth devices)
 - [x] Themeing (provide CSS override directory, light/dark theme switch button, and allow a script to be ran after the theme is switched)
 - [ ] Figure out proper rpm and deb packaging
