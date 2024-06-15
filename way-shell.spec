@@ -36,6 +36,7 @@ Requires: wireplumber
 Requires: upower
 Requires: power-profiles-daemon
 Requires: systemd
+Requires: wayland-devel
 
 %description
 A Gnome inspired desktop shell for Wayland compositors/window managers written

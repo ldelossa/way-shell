@@ -120,6 +120,12 @@ static void on_backlight_directory_changed(GSettings *settings, gchar *key,
         g_clear_object(&self->backlight_file_monitor);
     }
 
+    // check for empty string.
+    if (strlen(g_settings_get_string(settings, key)) == 0) {
+        self->has_backlight_brightness = false;
+        return;
+    }
+
     // join the path /sys/class/backlight/ with the settings value and make
     // it a GFile*
     self->backlight_device_path = g_file_new_for_path(g_build_filename(
@@ -233,6 +239,12 @@ static void on_backlight_keyboard_changed(GSettings *settings, gchar *key,
         g_clear_object(&self->keyboard_file_monitor);
     }
 
+    // check for empty string.
+    if (strlen(g_settings_get_string(settings, key)) == 0) {
+        self->has_keyboard_brightness = false;
+        return;
+    }
+
     // join the path /sys/class/leds/ with the settings value and make
     // it a GFile*
     self->keyboard_device_path = g_file_new_for_path(g_build_filename(
@@ -328,6 +340,8 @@ error:
 
 static void brightness_service_init(BrightnessService *self) {
     self->systems_settings = g_settings_new("org.ldelossa.way-shell.system");
+    self->has_backlight_brightness = false;
+    self->has_keyboard_brightness = false;
 
     on_backlight_directory_changed(self->systems_settings,
                                    "backlight-directory", self);
