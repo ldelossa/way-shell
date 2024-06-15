@@ -57,10 +57,25 @@ static void power_profiles_service_dbus_connect(PowerProfilesService *self) {
         self->conn, G_DBUS_PROXY_FLAGS_NONE, "net.hadess.PowerProfiles",
         "/net/hadess/PowerProfiles", NULL, &error);
 
-    if (!self->dbus)
+    if (error) {
+        g_warning("Failed to connect to PowerProfiles service: %s",
+                  error->message);
         self->enabled = false;
-    else
-        self->enabled = true;
+        return;
+    }
+
+    // this acts as a 'ping' to see if we actually have a power profiles
+    // daemon running.
+    //
+    // seems like we still get valid pointers and no error when we connet to
+    // the service even if it isn't running.
+    const gchar *active = dbus_power_profiles_get_active_profile(self->dbus);
+    if (!active) {
+        self->enabled = false;
+        return;
+    }
+
+    self->enabled = true;
 }
 
 static void on_power_profiles_service_active_profile_change(
