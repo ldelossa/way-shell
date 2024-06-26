@@ -639,6 +639,13 @@ label.day-number.today:focus {
   color: #ffffff;
 }
 
+#quick-settings .quick-settings-grid-button-reveal-visible.off {
+  background-color: @panel-button-active;
+}
+#quick-settings .quick-settings-grid-button-reveal-visible.off:hover {
+  background-color: @panel-button-hover;
+}
+
 #quick-settings .with-subtitle .quick-settings-grid-button-title {
     margin-top: 2px;
 }
@@ -846,6 +853,13 @@ label.day-number.today:focus {
     color: shade(@text-general, .5);
 }
 
+#quick-settings.focused .quick-settings-grid-button-reveal-visible.off {
+  background-color: shade(@panel-button-active, .5);
+}
+#quick-settings.focused .quick-settings-grid-button-reveal-visible.off:hover {
+  background-color: shade(@panel-button-hover, .5);
+}
+
 #quick-settings.focused .quick-settings-grid-button-toggle.off {
   background-color: shade(@panel-button-active, .5);
 }
@@ -857,6 +871,7 @@ label.day-number.today:focus {
 #quick-settings.focused .quick-settings-grid-button-toggle.off:active {
   background-color: shade(@panel-button-active, .5)
 }
+
 
 /*
  * Activities Widget
