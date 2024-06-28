@@ -13,6 +13,7 @@ struct _PanelClock {
     GtkBox *container;
     GtkButton *button;
     GtkImage *notif;
+    const gchar *clock_format;
     GtkLabel *label;
     gboolean toggled;
     gboolean dnd;
@@ -34,7 +35,7 @@ static void panel_clock_on_notification_changed(NotificationsService *ns,
 }
 
 static void on_tick(ClockService *cs, GDateTime *now, PanelClock *self) {
-    gchar *date = g_date_time_format(now, "%b %d %I:%M");
+    gchar *date = g_date_time_format(now, self->clock_format);
     gtk_label_set_text(self->label, date);
     g_free(date);
 }
@@ -105,9 +106,21 @@ static void panel_clock_on_dnd_changed(GSettings *settings, gchar *key,
 static void panel_clock_init_layout(PanelClock *self) {
     self->toggled = false;
 
+    GSettings *panel_settings = g_settings_new("org.ldelossa.way-shell.panel");
+    self->clock_format =
+        g_settings_get_string(panel_settings, "clock-format");
+
     // set initial value before we wait for clock service
     GDateTime *now = g_date_time_new_now_local();
-    gchar *date = g_date_time_format(now, "%b %d %I:%M");
+    gchar *date = g_date_time_format(now, self->clock_format);
+    if (!date) {
+        g_warning(
+            "clock-format setting \"%s\" is not valid, using default", self->clock_format);
+        g_free(self->clock_format);
+        self->clock_format = g_variant_get_string(
+            g_settings_get_default_value(panel_settings, "clock-format"), NULL);
+        date = g_date_time_format(now, self->clock_format);
+    }
 
     // setup signal to global clock service
     ClockService *cs = clock_service_get_global();
