@@ -13,6 +13,7 @@ struct _Calendar {
     GtkBox *container;
     GtkCalendar *calendar;
     GtkButton *today;
+    AdwActionRow *today_row;
     struct {
         GtkCenterBox *container;
         GtkButton *back;
@@ -75,13 +76,13 @@ static void calendar_handle_clock_tick(ClockService *cs, GDateTime *now,
 
     gtk_label_set_text(self->month_selector.date,
                        g_date_time_format(now, "%B %Y"));
+
     // update the action row title
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(self->today),
+    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(self->today_row),
                                   g_date_time_format(now, "%A"));
     // update the action row subtitle
-    adw_action_row_set_subtitle(ADW_ACTION_ROW(self->today),
+    adw_action_row_set_subtitle(ADW_ACTION_ROW(self->today_row),
                                 g_date_time_format(now, "%B %d %Y"));
-
 
     // make a copy of GDateTime
     self->now = g_date_time_add(now, 0);
@@ -157,11 +158,12 @@ static void calendar_init_today_button(Calendar *self) {
     gtk_widget_set_name(GTK_WIDGET(self->today), "calendar-today");
     gtk_widget_set_hexpand(GTK_WIDGET(self->today), true);
 
-    AdwActionRow *row = ADW_ACTION_ROW(adw_action_row_new());
-    adw_preferences_row_set_title(ADW_PREFERENCES_ROW(row),
-                                  g_date_time_format(self->now, "%A"));
-    adw_action_row_set_subtitle(row, g_date_time_format(self->now, "%B %d %Y"));
-    gtk_button_set_child(self->today, GTK_WIDGET(row));
+    self->today_row = ADW_ACTION_ROW(adw_action_row_new());
+
+    GDateTime *now = g_date_time_new_now_local();
+    calendar_handle_clock_tick(clock_service_get_global(), now, self);
+
+    gtk_button_set_child(self->today, GTK_WIDGET(self->today_row));
 
     // wire up button to click
     g_signal_connect(self->today, "clicked",
@@ -177,7 +179,7 @@ static void on_day_selected(GtkCalendar *calendar, Calendar *self) {
 
 static void calendar_init_calendar(Calendar *self) {
     self->calendar = GTK_CALENDAR(gtk_calendar_new());
-	gtk_widget_set_size_request(GTK_WIDGET(self->calendar), -1, 224);
+    gtk_widget_set_size_request(GTK_WIDGET(self->calendar), -1, 224);
     gtk_calendar_set_show_heading(self->calendar, false);
     gtk_calendar_set_show_week_numbers(self->calendar, false);
     gtk_widget_set_hexpand(GTK_WIDGET(self->calendar), true);
@@ -188,19 +190,18 @@ static void calendar_init_calendar(Calendar *self) {
 }
 
 static void calendar_init(Calendar *self) {
-    self->now = g_date_time_new_now_local();
     self->dirty = FALSE;
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_add_css_class(GTK_WIDGET(self->container), "calendar-area");
-
-    // today button
-    calendar_init_today_button(self);
 
     // month selector
     calendar_init_month_selector(self);
 
     // calendar widget
     calendar_init_calendar(self);
+
+    // today button
+    calendar_init_today_button(self);
 
     // lay it out.
     gtk_box_append(self->container, GTK_WIDGET(self->today));

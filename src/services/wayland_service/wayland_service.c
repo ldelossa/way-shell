@@ -224,15 +224,22 @@ static void toplevel_handle_closed(
         "toplevel->title: %s",
         toplevel->app_id, toplevel->title);
 
-    // allow remove handlers to run before we free the ref.
-    // check ignored sets and if not ignored emit signal
-    if (!g_hash_table_contains(self->ignored_toplevel_app_ids,
-                               toplevel->app_id) &&
-        !g_hash_table_contains(self->ignored_toplevel_titles,
-                               toplevel->title)) {
-        g_signal_emit(self, service_signals[top_level_removed], 0, toplevel);
-    }
+    // a toplevel without a valid app_id and title was never advertised to the
+    // rest of Way-Shell, so no reason to signal its removal.
+    if (!toplevel->app_id || !toplevel->title) goto remove;
 
+    gboolean ignored = false;
+    ignored =
+        g_hash_table_contains(self->ignored_toplevel_app_ids, toplevel->app_id);
+
+    if (!ignored)
+        ignored = g_hash_table_contains(self->ignored_toplevel_titles,
+                                        toplevel->title);
+
+    if (!ignored)
+        g_signal_emit(self, service_signals[top_level_removed], 0, toplevel);
+
+remove:
     // remove it from our inventory
     g_hash_table_remove(self->toplevels, handle);
 
@@ -264,15 +271,23 @@ static void toplevel_handle_done(
         toplevel->app_id, toplevel->title, toplevel->entered,
         toplevel->activated);
 
-    // check ignored sets and if not ignored emit signal
-    if (!g_hash_table_contains(self->ignored_toplevel_app_ids,
-                               toplevel->app_id) &&
-        !g_hash_table_contains(self->ignored_toplevel_titles,
-                               toplevel->title)) {
+    // if we don't have a valid app_id and title, don't bother signaling this
+    // toplevel, the rest of Way-Shell expects these fields.
+    if (!toplevel->app_id || !toplevel->title) goto reset;
+
+    gboolean ignored = false;
+    ignored =
+        g_hash_table_contains(self->ignored_toplevel_app_ids, toplevel->app_id);
+
+    if (!ignored)
+        ignored = g_hash_table_contains(self->ignored_toplevel_titles,
+                                        toplevel->title);
+
+    if (!ignored)
         g_signal_emit(self, service_signals[top_level_changed], 0,
                       self->toplevels, toplevel);
-    }
 
+reset:
     // reset bools after handlers read event
     toplevel->entered = FALSE;
     toplevel->activated = FALSE;
