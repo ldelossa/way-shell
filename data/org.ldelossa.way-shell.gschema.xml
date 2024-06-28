@@ -149,4 +149,19 @@
         </key>
     </schema>
 
+    <!--panel related settings-->
+    <schema path="/org/ldelossa/way-shell/panel/" id="org.ldelossa.way-shell.panel">
+        <key name="clock-format" type="s">
+            <default>"%b %d %I:%M"</default>
+            <summary>The format to display the current time in on the panel.</summary>
+            <description>
+            This is passed as the `format` argument to g_date_time_format when rendering the clock
+            in the panel.
+            Note that the clock only ticks every minute, so precise specifiers such as %S are
+            useless.
+            Way-Shell must be restarted for changes to take effect.
+            </description>
+        </key>
+    </schema>
+
 </schemalist>
