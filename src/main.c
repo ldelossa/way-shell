@@ -1,5 +1,6 @@
 #include <adwaita.h>
 
+#include "../gresources.h"
 #include "./activities/activities.h"
 #include "./app_switcher/app_switcher.h"
 #include "./dialog_overlay/dialog_overlay.h"
@@ -19,10 +20,9 @@
 #include "./services/theme_service.h"
 #include "./services/upower_service.h"
 #include "./services/wayland_service/wayland_service.h"
-#include "./services/window_manager_service/sway/window_manager_service_sway.h"
+#include "./services/window_manager_service/window_manager_service.h"
 #include "./services/wireplumber_service.h"
 #include "./workspace_switcher/workspace_switcher.h"
-#include "../gresources.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
@@ -82,8 +82,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
             "service.");
     }
 
-    if (wm_service_sway_global_init() != 0) {
-        g_error("main.c: activate(): failed to initialize sway service.");
+    if (window_manager_service_init() != 0) {
+        g_error(
+            "main.c: activate(): failed to initialize window manager service.");
     }
 
     if (notifications_service_global_init() != 0) {
@@ -145,7 +146,6 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
     panel_activate(app, user_data);
     g_debug("main.c: activate(): panel subsystems activated");
-
 
     // Subsystem mediator connections //
 

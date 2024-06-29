@@ -5,11 +5,9 @@
 #include <gio/gio.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "./../services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./../services/window_manager_service/window_manager_service.h"
 #include "./workspace_switcher_workspace_widget.h"
 #include "gdk/gdkkeysyms.h"
-#include "gtk/gtkexpression.h"
 
 static WorkspaceSwitcher *global = NULL;
 
@@ -142,8 +140,10 @@ static void on_search_activated_app_mode(GtkSearchEntry *entry,
     if (!workspace_switcher_top_choice(self)) {
         const gchar *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
         WMWorkspace ws = {.num = -1, .name = (void *)search_text};
-        WMServiceSway *sway = wm_service_sway_get_global();
-        wm_service_sway_current_app_to_workspace(sway, &ws);
+
+        WindowManager *wm = window_manager_service_get_global();
+        wm->current_app_to_workspace(wm, &ws);
+
         workspace_switcher_hide(self);
         return;
     }
@@ -161,8 +161,8 @@ static void on_search_activated_app_mode(GtkSearchEntry *entry,
     }
 
     // switch to workspace
-    WMServiceSway *sway = wm_service_sway_get_global();
-    wm_service_sway_current_app_to_workspace(sway, ws);
+    WindowManager *wm = window_manager_service_get_global();
+    wm->current_app_to_workspace(wm, ws);
 
     // hide widget
     workspace_switcher_hide(self);
@@ -172,8 +172,10 @@ static void activate_with_current_search_entry(GtkSearchEntry *entry,
                                                WorkspaceSwitcher *self) {
     const gchar *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
     WMWorkspace ws = {.num = -1, .name = (void *)search_text};
-    WMServiceSway *sway = wm_service_sway_get_global();
-    wm_service_sway_focus_workspace(sway, &ws);
+
+    WindowManager *wm = window_manager_service_get_global();
+    wm->focus_workspace(wm, &ws);
+
     workspace_switcher_hide(self);
     return;
 }
@@ -203,8 +205,8 @@ static void on_search_activated(GtkSearchEntry *entry,
     }
 
     // switch to workspace
-    WMServiceSway *sway = wm_service_sway_get_global();
-    wm_service_sway_focus_workspace(sway, ws);
+    WindowManager *wm = window_manager_service_get_global();
+    wm->focus_workspace(wm, ws);
 
     // hide widget
     workspace_switcher_hide(self);
@@ -247,8 +249,9 @@ static void on_search_changed(GtkSearchEntry *entry, WorkspaceSwitcher *self) {
     }
 }
 
-static void on_workspaces_changed(WMServiceSway *sway, GPtrArray *workspaces,
-                                  WorkspaceSwitcher *self) {
+static void on_workspaces_changed(void *data, GPtrArray *workspaces) {
+    WorkspaceSwitcher *self = (WorkspaceSwitcher *)data;
+
     g_debug("workspace_switcher.c:on_workspaces_changed() called.");
     if (!workspaces) return;
 
@@ -282,13 +285,11 @@ static void on_row_activated(GtkListBox *box, GtkListBoxRow *row,
         g_error("Workspace not found.");
     }
 
-    // switch to workspace
-    WMServiceSway *sway = wm_service_sway_get_global();
-
+    WindowManager *wm = window_manager_service_get_global();
     if (self->mode == switch_app)
-        wm_service_sway_current_app_to_workspace(sway, ws);
+        wm->current_app_to_workspace(wm, ws);
     else
-        wm_service_sway_focus_workspace(sway, ws);
+        wm->focus_workspace(wm, ws);
 
     // hide widget
     workspace_switcher_hide(self);
@@ -411,13 +412,11 @@ static void workspace_switcher_init_layout(WorkspaceSwitcher *self) {
     gtk_box_append(self->container, GTK_WIDGET(self->workspace_list));
 
     // get listings of workspaces
-    WMServiceSway *sway = wm_service_sway_get_global();
-    GPtrArray *workspaces = wm_service_sway_get_workspaces(sway);
-    on_workspaces_changed(sway, workspaces, self);
+    WindowManager *wm = window_manager_service_get_global();
+    GPtrArray *workspaces = wm->get_workspaces(wm);
+    on_workspaces_changed(self, workspaces);
 
-    // wire into workspaces changed events
-    g_signal_connect(sway, "workspaces-changed",
-                     G_CALLBACK(on_workspaces_changed), self);
+    wm->register_on_workspaces_changed(wm, on_workspaces_changed, self);
 
     // wire into GtkListBox's activated
     g_signal_connect(self->workspace_list, "row-activated",

@@ -5,7 +5,6 @@
 #include <gio/gio.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "./../services/window_manager_service/sway/window_manager_service_sway.h"
 #include "./../services/window_manager_service/window_manager_service.h"
 #include "./output_switcher_output_widget.h"
 #include "gdk/gdkkeysyms.h"
@@ -133,8 +132,10 @@ static void on_search_activated(GtkSearchEntry *entry, OutputSwitcher *self) {
     if (!output_switcher_top_choice(self)) {
         const gchar *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
         WMOutput ws = {.name = (void *)search_text};
-        WMServiceSway *sway = wm_service_sway_get_global();
-        wm_service_sway_current_ws_to_output(sway, &ws);
+
+        WindowManager *wm = window_manager_service_get_global();
+        wm->current_ws_to_output(wm, &ws);
+
         output_switcher_hide(self);
         return;
     }
@@ -152,8 +153,8 @@ static void on_search_activated(GtkSearchEntry *entry, OutputSwitcher *self) {
     };
 
     // switch to output
-    WMServiceSway *sway = wm_service_sway_get_global();
-    wm_service_sway_current_ws_to_output(sway, &o);
+    WindowManager *wm = window_manager_service_get_global();
+    wm->current_ws_to_output(wm, &o);
 
     // hide widget
     output_switcher_hide(self);
@@ -196,10 +197,11 @@ static void on_search_changed(GtkSearchEntry *entry, OutputSwitcher *self) {
     }
 }
 
-static void on_outputs_changed(WMServiceSway *sway, GPtrArray *outputs,
-                               OutputSwitcher *self) {
+static void on_outputs_changed(void *data, GPtrArray *outputs) {
     g_debug("output_switcher.c:on_outputs_changed() called.");
     if (!outputs) return;
+
+    OutputSwitcher *self = data;
 
     gtk_list_box_remove_all(self->output_list);
 
@@ -231,8 +233,8 @@ static void on_row_activated(GtkListBox *box, GtkListBoxRow *row,
     };
 
     // switch to output
-    WMServiceSway *sway = wm_service_sway_get_global();
-    wm_service_sway_current_ws_to_output(sway, &o);
+    WindowManager *wm = window_manager_service_get_global();
+    wm->current_ws_to_output(wm, &o);
 
     // hide widget
     output_switcher_hide(self);
@@ -345,13 +347,12 @@ static void output_switcher_init_layout(OutputSwitcher *self) {
     gtk_box_append(self->container, GTK_WIDGET(self->output_list));
 
     // get listings of outputs
-    WMServiceSway *sway = wm_service_sway_get_global();
-    GPtrArray *outputs = wm_service_sway_get_outputs(sway);
-    on_outputs_changed(sway, outputs, self);
+    WindowManager *wm = window_manager_service_get_global();
+    GPtrArray *outputs = wm->get_outputs(wm);
+    on_outputs_changed(self, outputs);
 
     // wire into outputs changed events
-    g_signal_connect(sway, "outputs-changed", G_CALLBACK(on_outputs_changed),
-                     self);
+    wm->register_on_outputs_changed(wm, on_outputs_changed, self);
 
     // wire into GtkListBox's activated
     g_signal_connect(self->output_list, "row-activated",

@@ -5,8 +5,6 @@
 #include <gio/gio.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "../services/window_manager_service/sway/window_manager_service_sway.h"
-#include "../services/window_manager_service/window_manager_service.h"
 #include "./activities_app_widget.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkrevealer.h"
@@ -308,16 +306,6 @@ static void on_search_entry_activate(GtkSearchEntry *entry, Activities *self) {
 
     // simulate click
     activities_app_widget_simulate_click(app_widget);
-}
-
-static void on_workspace_button_clicked(GtkButton *button, Activities *self) {
-    g_debug("activities.c:on_workspace_button_clicked: called");
-
-    WMServiceSway *sway = wm_service_sway_get_global();
-    WMWorkspace *ws = g_object_get_data(G_OBJECT(button), "workspace");
-    wm_service_sway_focus_workspace(sway, ws);
-
-    activities_hide(self);
 }
 
 static void activities_init_layout(Activities *self) {
