@@ -7,8 +7,6 @@
 #include "ipc.h"
 #include "sway_client.h"
 
-static WMServiceSway *global = NULL;
-
 enum signals { workspaces_changed, outputs_changed, signals_n };
 
 struct _WMServiceSway {
@@ -141,7 +139,7 @@ static void handle_ipc_event_workspaces(WMServiceSway *self,
     if (event->type == WMWORKSPACE_EVENT_URGENT &&
         g_settings_get_boolean(self->settings, "focus-urgent-workspace")) {
         // switch to workspace
-        wm_service_sway_focus_workspace(self, &event->workspace);
+        sway_client_ipc_focus_workspace(self->socket_fd, &event->workspace);
     }
 
     if (event->type == WMWORKSPACE_EVENT_FOCUSED) {
@@ -284,28 +282,9 @@ static void wm_service_sway_init(WMServiceSway *self) {
                      G_CALLBACK(on_sort_alphabetical_changed), self);
 };
 
-// Initializes the sway wm service.
-int wm_service_sway_global_init(void) {
-    g_debug(
-        "window_manager_service_sway.c:wm_service_sway_global_init() "
-        "initializing global service.");
+GPtrArray *wm_service_sway_get_workspaces(WindowManager *wm) {
+    WMServiceSway *self = wm->private;
 
-    global = g_object_new(WM_SERVICE_SWAY_TYPE, NULL);
-
-    // subscribe to desired events
-    sway_client_ipc_subscribe_req(
-        global->socket_fd, (int[]){IPC_EVENT_WORKSPACE, IPC_EVENT_OUTPUT}, 2);
-
-    // get initial listing of workspaces
-    sway_client_ipc_get_workspaces_req(global->socket_fd);
-
-    // get initial listing of outputs
-    sway_client_ipc_get_outputs_req(global->socket_fd);
-
-    return 0;
-};
-
-GPtrArray *wm_service_sway_get_workspaces(WMServiceSway *self) {
     if (!self->workspaces) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_get_workspaces() "
@@ -316,7 +295,9 @@ GPtrArray *wm_service_sway_get_workspaces(WMServiceSway *self) {
     return g_ptr_array_ref(self->workspaces);
 }
 
-GPtrArray *wm_service_sway_get_outputs(WMServiceSway *self) {
+GPtrArray *wm_service_sway_get_outputs(WindowManager *wm) {
+    WMServiceSway *self = wm->private;
+
     if (!self->outputs) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_get_outputs() "
@@ -327,7 +308,9 @@ GPtrArray *wm_service_sway_get_outputs(WMServiceSway *self) {
     return g_ptr_array_ref(self->outputs);
 }
 
-int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws) {
+int wm_service_sway_focus_workspace(WindowManager *wm, WMWorkspace *ws) {
+    WMServiceSway *self = wm->private;
+
     if (!self->workspaces) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_focus_workspace() "
@@ -337,7 +320,9 @@ int wm_service_sway_focus_workspace(WMServiceSway *self, WMWorkspace *ws) {
     return sway_client_ipc_focus_workspace(self->socket_fd, ws);
 }
 
-int wm_service_sway_current_ws_to_output(WMServiceSway *self, WMOutput *o) {
+int wm_service_sway_current_ws_to_output(WindowManager *wm, WMOutput *o) {
+    WMServiceSway *self = wm->private;
+
     if (!o) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_current_ws_to_"
@@ -348,8 +333,10 @@ int wm_service_sway_current_ws_to_output(WMServiceSway *self, WMOutput *o) {
     return sway_client_ipc_move_ws_to_output(self->socket_fd, o->name);
 }
 
-int wm_service_sway_current_app_to_workspace(WMServiceSway *self,
+int wm_service_sway_current_app_to_workspace(WindowManager *wm,
                                              WMWorkspace *ws) {
+    WMServiceSway *self = wm->private;
+
     if (!ws) {
         g_warning(
             "window_manager_service_sway.c:wm_service_sway_current_app_to_"
@@ -360,6 +347,65 @@ int wm_service_sway_current_app_to_workspace(WMServiceSway *self,
     return sway_client_ipc_move_app_to_workspace(self->socket_fd, ws->name);
 }
 
-// Get the global wm service
-// Will return NULL if `wm_service_sway_global_init` has not been called.
-WMServiceSway *wm_service_sway_get_global() { return global; };
+guint wm_service_sway_register_on_workspaces_changed(
+    WindowManager *wm, wm_on_workspaces_changed cb, void *data) {
+    WMServiceSway *self = wm->private;
+
+    return g_signal_connect(self, "workspaces-changed", G_CALLBACK(cb), self);
+}
+
+guint wm_service_sway_unregister_on_workspaces_changed(
+    WindowManager *wm, wm_on_workspaces_changed cb, void *data) {
+    WMServiceSway *self = wm->private;
+
+    return g_signal_handlers_disconnect_by_func(self, cb, self);
+}
+
+guint wm_service_sway_register_on_outputs_changed(WindowManager *wm,
+                                                  wm_on_outputs_changed cb,
+                                                  void *data) {
+    WMServiceSway *self = wm->private;
+
+    return g_signal_connect(self, "outputs-changed", G_CALLBACK(cb), self);
+}
+
+guint wm_service_sway_unregister_on_outputs_changed(WindowManager *wm,
+                                                    wm_on_outputs_changed cb,
+                                                    void *data) {
+    WMServiceSway *self = wm->private;
+
+    return g_signal_handlers_disconnect_by_func(self, cb, self);
+}
+
+WindowManager *wm_service_sway_window_manager_init() {
+    WindowManager *wm = g_malloc(sizeof(WindowManager));
+
+    WMServiceSway *self = g_object_new(WM_SERVICE_SWAY_TYPE, NULL);
+
+    wm->private = self;
+    wm->get_workspaces = wm_service_sway_get_workspaces;
+    wm->get_outputs = wm_service_sway_get_outputs;
+    wm->focus_workspace = wm_service_sway_focus_workspace;
+    wm->current_ws_to_output = wm_service_sway_current_ws_to_output;
+    wm->current_app_to_workspace = wm_service_sway_current_app_to_workspace;
+    wm->register_on_workspaces_changed =
+        wm_service_sway_register_on_workspaces_changed;
+    wm->unregister_on_workspaces_changed =
+        wm_service_sway_unregister_on_workspaces_changed;
+    wm->register_on_outputs_changed =
+        wm_service_sway_register_on_outputs_changed;
+    wm->unregister_on_outputs_changed =
+        wm_service_sway_unregister_on_outputs_changed;
+
+    // subscribe to desired events
+    sway_client_ipc_subscribe_req(
+        self->socket_fd, (int[]){IPC_EVENT_WORKSPACE, IPC_EVENT_OUTPUT}, 2);
+
+    // get initial listing of workspaces
+    sway_client_ipc_get_workspaces_req(self->socket_fd);
+
+    // get initial listing of outputs
+    sway_client_ipc_get_outputs_req(self->socket_fd);
+
+    return wm;
+}
