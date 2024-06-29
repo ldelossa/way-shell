@@ -65,6 +65,16 @@
 
     <!--window manager related settings-->
     <schema path="/org/ldelossa/way-shell/window-manager/" id="org.ldelossa.way-shell.window-manager">
+        <key name="backend" type="s">
+            <default>"sway"</default>
+            <summary>The window manager backend to use (default: sway)</summary>
+            <description>
+			Instructs Way-Shell which window manager to use.
+			Currently supported options are "sway".
+
+			Changing this setting requires a restart to take effect.
+            </description>
+        </key>
         <key name="sort-workspaces-alphabetical" type="b">
             <default>true</default>
             <summary>Sort workpaces alphabetically</summary>

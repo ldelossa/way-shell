@@ -2,7 +2,6 @@
 
 #include <adwaita.h>
 
-#include "../../services/window_manager_service/sway/window_manager_service_sway.h"
 #include "../../services/window_manager_service/window_manager_service.h"
 #include "../panel.h"
 
@@ -22,13 +21,13 @@ G_DEFINE_TYPE(PanelWorkspacesBar, panel_workspaces_bar, G_TYPE_OBJECT);
 // button on click handler
 static void on_button_clicked(GtkButton *button, PanelWorkspacesBar *self) {
     WMWorkspace *ws = g_object_get_data(G_OBJECT(button), "workspace");
-    WMServiceSway *sway = wm_service_sway_get_global();
+    WindowManager *wm = window_manager_service_get_global();
 
     g_debug("workspace_bar.c:on_button_clicked() called");
-    wm_service_sway_focus_workspace(sway, ws);
+    wm->focus_workspace(wm, ws);
 }
 
-GtkButton *create_workspace_button(WMServiceSway *srv, WMWorkspace *ws,
+GtkButton *create_workspace_button(WindowManager *wm, WMWorkspace *ws,
                                    PanelWorkspacesBar *self) {
     // create button
     GtkWidget *button;
@@ -59,8 +58,9 @@ GtkButton *create_workspace_button(WMServiceSway *srv, WMWorkspace *ws,
     return NULL;
 }
 
-static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
-                                 PanelWorkspacesBar *self) {
+static void on_workspaces_update(void *data, GPtrArray *workspaces) {
+    PanelWorkspacesBar *self = data;
+
     GtkWidget *child;
     GdkMonitor *mon = panel_get_monitor(self->panel);
     GtkButton *focused = NULL;
@@ -120,6 +120,8 @@ static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
         buttons_len++;
     }
 
+    WindowManager *wm = window_manager_service_get_global();
+
     // if no buttons to reuse, create one for each and return.
     if (buttons_len == 0) {
         for (int i = 0; i < workspaces->len; i++) {
@@ -137,7 +139,7 @@ static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
                 "workspace_bar.c:on_workspaces_update() creating button for "
                 "workspace [%s] on output [%s]",
                 ws->name, ws->output);
-            button = create_workspace_button(sway, ws, self);
+            button = create_workspace_button(wm, ws, self);
             if (button) focused = button;
         }
         return;
@@ -186,7 +188,7 @@ static void on_workspaces_update(WMServiceSway *sway, GPtrArray *workspaces,
             }
 
             // create button
-            button = create_workspace_button(sway, ws, self);
+            button = create_workspace_button(wm, ws, self);
             if (button) focused = button;
         }
         return;
@@ -214,9 +216,8 @@ static void panel_workspaces_bar_dispose(GObject *gobject) {
 
     g_debug("workspaces_bar.c:workspaces_bar_dispose() called");
 
-    // disconnect from signals
-    WMServiceSway *sway = wm_service_sway_get_global();
-    g_signal_handler_disconnect(sway, self->signal_id);
+    WindowManager *wm = window_manager_service_get_global();
+    wm->unregister_on_workspaces_changed(wm, on_workspaces_update, self);
 
     // release reference to current workspaces array
     g_ptr_array_unref(self->workspaces);
@@ -241,8 +242,8 @@ static void panel_workspaces_bar_class_init(PanelWorkspacesBarClass *klass) {
 };
 
 static void panel_workpaces_bar_init_layout(PanelWorkspacesBar *self) {
-    // get sway window manager service
-    WMServiceSway *sway = wm_service_sway_get_global();
+    // get window manager service
+    WindowManager *wm = window_manager_service_get_global();
 
     // initialize the container
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
@@ -266,11 +267,10 @@ static void panel_workpaces_bar_init_layout(PanelWorkspacesBar *self) {
     gtk_scrolled_window_set_child(self->scroll_win, GTK_WIDGET(self->list));
 
     // get initial list of workspaces
-    self->workspaces = wm_service_sway_get_workspaces(sway);
+    self->workspaces = wm->get_workspaces(wm);
 
     // wire up to 'workspaces-changed' service
-    self->signal_id = g_signal_connect(sway, "workspaces-changed",
-                                       G_CALLBACK(on_workspaces_update), self);
+    wm->register_on_workspaces_changed(wm, on_workspaces_update, self);
 }
 
 static void panel_workspaces_bar_init(PanelWorkspacesBar *self) {
@@ -288,5 +288,5 @@ void panel_workspaces_bar_set_panel(PanelWorkspacesBar *self, Panel *panel) {
             "NULL");
     self->panel = panel;
     // create initial buttons
-    on_workspaces_update(NULL, self->workspaces, self);
+    on_workspaces_update(self, self->workspaces);
 }
