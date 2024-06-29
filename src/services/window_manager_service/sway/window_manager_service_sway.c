@@ -3,6 +3,7 @@
 #include <adwaita.h>
 #include <glib-2.0/glib-unix.h>
 
+#include "glib-object.h"
 #include "glib.h"
 #include "ipc.h"
 #include "sway_client.h"
@@ -351,14 +352,17 @@ guint wm_service_sway_register_on_workspaces_changed(
     WindowManager *wm, wm_on_workspaces_changed cb, void *data) {
     WMServiceSway *self = wm->private;
 
-    return g_signal_connect(self, "workspaces-changed", G_CALLBACK(cb), self);
+    // we use swapped here because workspaces_changed functions should not
+    // leak the private workspace service's implementation in their signatures.
+    return g_signal_connect_swapped(self, "workspaces-changed", G_CALLBACK(cb),
+                                    data);
 }
 
 guint wm_service_sway_unregister_on_workspaces_changed(
     WindowManager *wm, wm_on_workspaces_changed cb, void *data) {
     WMServiceSway *self = wm->private;
 
-    return g_signal_handlers_disconnect_by_func(self, cb, self);
+    return g_signal_handlers_disconnect_by_func(self, cb, data);
 }
 
 guint wm_service_sway_register_on_outputs_changed(WindowManager *wm,
@@ -366,7 +370,10 @@ guint wm_service_sway_register_on_outputs_changed(WindowManager *wm,
                                                   void *data) {
     WMServiceSway *self = wm->private;
 
-    return g_signal_connect(self, "outputs-changed", G_CALLBACK(cb), self);
+    // we use swapped here because workspaces_changed functions should not
+    // leak the private workspace service's implementation in their signatures.
+    return g_signal_connect_swapped(self, "outputs-changed", G_CALLBACK(cb),
+                                    data);
 }
 
 guint wm_service_sway_unregister_on_outputs_changed(WindowManager *wm,
@@ -374,7 +381,7 @@ guint wm_service_sway_unregister_on_outputs_changed(WindowManager *wm,
                                                     void *data) {
     WMServiceSway *self = wm->private;
 
-    return g_signal_handlers_disconnect_by_func(self, cb, self);
+    return g_signal_handlers_disconnect_by_func(self, cb, data);
 }
 
 WindowManager *wm_service_sway_window_manager_init() {
@@ -382,6 +389,7 @@ WindowManager *wm_service_sway_window_manager_init() {
 
     WMServiceSway *self = g_object_new(WM_SERVICE_SWAY_TYPE, NULL);
 
+    // write virt func table.
     wm->private = self;
     wm->get_workspaces = wm_service_sway_get_workspaces;
     wm->get_outputs = wm_service_sway_get_outputs;
