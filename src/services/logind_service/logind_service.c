@@ -76,6 +76,10 @@ static void logind_service_session_dbus_connect(LogindService *self) {
         gchar *obj_path;
         g_variant_get(session, "(susso)", &id, &sess_uid, &seat, &display,
                       &obj_path);
+
+        if (!seat)
+            continue;
+
         if (sess_uid == uid) {
             session_obj_path = strdup(obj_path);
             session_id = strdup(id);
