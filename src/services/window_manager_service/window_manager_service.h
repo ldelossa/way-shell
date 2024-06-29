@@ -79,10 +79,9 @@ typedef int (*wm_current_ws_to_output_func)(WindowManager *self, WMOutput *o);
 typedef int (*wm_current_app_to_workspace_func)(WindowManager *self,
                                                 WMWorkspace *ws);
 
-typedef void (*wm_on_workspaces_changed)(WindowManager *self,
-                                         GPtrArray *workspaces, void *data);
-typedef void (*wm_on_outputs_changed)(WindowManager *self, GPtrArray *outputs,
-                                      void *data);
+typedef void (*wm_on_workspaces_changed)(void *data, GPtrArray *workspaces);
+
+typedef void (*wm_on_outputs_changed)(void *data, GPtrArray *outputs);
 
 typedef guint (*wm_register_on_workspaces_changed)(WindowManager *self,
                                                    wm_on_workspaces_changed cb,

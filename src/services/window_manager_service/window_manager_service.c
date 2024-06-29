@@ -2,7 +2,7 @@
 
 #include "./sway/window_manager_service_sway.h"
 
-WindowManager *global = NULL;
+static WindowManager *global = NULL;
 
 char *WMWorkspaceEventStringTbl[WMWORKSPACE_EVENT_LEN] = {
     "CREATED", "DESTROYED", "FOCUSED", "MOVED", "RENAMED", "URGENT", "RELOAD",
