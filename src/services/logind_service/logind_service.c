@@ -2,9 +2,9 @@
 
 #include <adwaita.h>
 
+#include "../../services/dbus_service.h"
 #include "logind_manager_dbus.h"
 #include "logind_session_dbus.h"
-#include "../../services/dbus_service.h"
 
 static LogindService *global = NULL;
 
@@ -51,9 +51,8 @@ static void logind_service_session_dbus_connect(LogindService *self) {
     g_debug("logind_service.c:logind_service_session_dbus_connect():");
 
     int uid = getuid();
-
-    GVariant *sessions = NULL;
     GError *error = NULL;
+    GVariant *sessions = NULL;
     char *session_obj_path = NULL;
     char *session_id = 0;
 
@@ -65,30 +64,49 @@ static void logind_service_session_dbus_connect(LogindService *self) {
             error->message);
     }
 
-    GVariant *session = NULL;
+    DbusLogin1Session *session = NULL;
+    GVariant *session_variant = NULL;
     GVariantIter *iter;
     g_variant_get(sessions, "a(susso)", &iter);
-    while (g_variant_iter_loop(iter, "@(susso)", &session)) {
+    while (g_variant_iter_loop(iter, "@(susso)", &session_variant)) {
         gchar *id;
         guint32 sess_uid;
         gchar *seat;
         gchar *display;
         gchar *obj_path;
-        g_variant_get(session, "(susso)", &id, &sess_uid, &seat, &display,
-                      &obj_path);
+        g_variant_get(session_variant, "(susso)", &id, &sess_uid, &seat,
+                      &display, &obj_path);
 
-        if (!seat)
-            continue;
+        if (!seat) continue;
 
-        if (sess_uid == uid) {
-            session_obj_path = strdup(obj_path);
-            session_id = strdup(id);
+        session = dbus_login1_session_proxy_new_sync(
+            self->conn, G_DBUS_PROXY_FLAGS_NONE, "org.freedesktop.login1",
+            obj_path, NULL, &error);
+
+        if (error) {
+            g_error(
+                "logind_service.c:logind_service_init(): failed to create "
+                "session "
+                "proxy: %s",
+                error->message);
         }
+
+        char *state = NULL;
+        g_object_get(session, "state", &state, NULL);
+
+        gboolean active = (g_strcmp0(state, "active") == 0);
+        g_free(state);
+
+        if (active) {
+            self->session = session;
+            break;
+        } else
+            g_object_unref(session);
     }
     g_variant_unref(sessions);
     g_variant_iter_free(iter);
 
-    if (!session_obj_path)
+    if (!self->session)
         g_error(
             "logind_service.c:logind_service_init(): error: no session found");
 
@@ -96,19 +114,6 @@ static void logind_service_session_dbus_connect(LogindService *self) {
         "logind_service.c:logind_service_init(): found session id: %s "
         "session_obj_path: %s",
         session_id, session_obj_path);
-
-    self->session = dbus_login1_session_proxy_new_sync(
-        self->conn, G_DBUS_PROXY_FLAGS_NONE, "org.freedesktop.login1",
-        session_obj_path, NULL, &error);
-    if (!self->session)
-        g_error(
-            "logind_service.c:logind_service_init(): failed to create session "
-            "proxy: %s",
-            error->message);
-    g_debug(
-        "logind_service.c:logind_service_init(): session proxy created for "
-        "user %d",
-        uid);
 }
 
 static void logind_service_manager_dbus_connect(LogindService *self) {
@@ -116,8 +121,8 @@ static void logind_service_manager_dbus_connect(LogindService *self) {
 
     GError *error = NULL;
 
-	DBUSService *dbus = dbus_service_get_global();
-	self->conn = dbus_service_get_system_bus(dbus);
+    DBUSService *dbus = dbus_service_get_global();
+    self->conn = dbus_service_get_system_bus(dbus);
 
     self->manager = dbus_login1_manager_proxy_new_sync(
         self->conn, G_DBUS_PROXY_FLAGS_NONE, "org.freedesktop.login1",
