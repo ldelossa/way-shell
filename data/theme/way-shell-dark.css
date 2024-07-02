@@ -1024,15 +1024,16 @@ label.day-number.today:focus {
 
 #workspace-switcher #search-entry {
     margin: 20px;
-    margin-bottom: 0px;
+    margin-bottom: 5px;
     padding: 8px;
     border-radius: 10px;
 }
 
 #workspace-switcher #workspace-list {
-    background: @top-panel-background;
+    background: @base-panel-background;
     margin: 20px;
     border-radius: 20px;
+	margin-bottom: 40px;
 }
 
 #workspace-switcher row:selected {
@@ -1071,13 +1072,13 @@ label.day-number.today:focus {
 
 #output-switcher #search-entry {
     margin: 20px;
-    margin-bottom: 0px;
+    margin-bottom: 5px;
     padding: 8px;
     border-radius: 10px;
 }
 
 #output-switcher #output-list {
-    background: @top-panel-background;
+    background: @base-panel-background;
     margin: 20px;
     border-radius: 20px;
 }

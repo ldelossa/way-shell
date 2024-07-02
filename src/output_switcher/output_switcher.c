@@ -17,6 +17,7 @@ typedef struct _OutputSwitcher {
     GObject parent_instance;
     AdwWindow *win;
 
+    GtkScrolledWindow *scrolled;
     // List model and filtering
     GtkListBox *output_list;
 
@@ -112,6 +113,7 @@ static void on_search_next_match(GtkSearchEntry *entry, OutputSwitcher *self) {
     if (!next_row) next_row = output_switcher_top_choice(self);
 
     gtk_list_box_select_row(self->output_list, next_row);
+    gtk_widget_grab_focus(GTK_WIDGET(next_row));
 }
 
 static void on_search_previous_match(GtkSearchEntry *entry,
@@ -126,6 +128,7 @@ static void on_search_previous_match(GtkSearchEntry *entry,
     if (!next_row) next_row = output_switcher_last_choice(self);
 
     gtk_list_box_select_row(self->output_list, next_row);
+    gtk_widget_grab_focus(GTK_WIDGET(next_row));
 }
 
 static void on_search_activated(GtkSearchEntry *entry, OutputSwitcher *self) {
@@ -337,14 +340,22 @@ static void output_switcher_init_layout(OutputSwitcher *self) {
     g_signal_connect(self->search_entry, "previous-match",
                      G_CALLBACK(on_search_previous_match), self);
 
+    self->scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
+    gtk_scrolled_window_set_max_content_height(self->scrolled, 400);
+    gtk_scrolled_window_set_propagate_natural_height(self->scrolled, 1);
+    gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
+
     self->output_list = GTK_LIST_BOX(gtk_list_box_new());
     gtk_widget_set_name(GTK_WIDGET(self->output_list), "output-list");
     gtk_widget_set_hexpand(GTK_WIDGET(self->output_list), true);
     gtk_widget_set_vexpand(GTK_WIDGET(self->output_list), true);
 
+    gtk_scrolled_window_set_child(self->scrolled,
+                                  GTK_WIDGET(self->output_list));
+
     // wire it up
     gtk_box_append(self->container, GTK_WIDGET(search_container));
-    gtk_box_append(self->container, GTK_WIDGET(self->output_list));
+    gtk_box_append(self->container, GTK_WIDGET(self->scrolled));
 
     // get listings of outputs
     WindowManager *wm = window_manager_service_get_global();
