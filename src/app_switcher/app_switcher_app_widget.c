@@ -7,6 +7,7 @@
 
 #include "./../services/wayland_service/wayland_service.h"
 #include "./app_switcher.h"
+#include "gtk/gtk.h"
 
 enum signals { signals_n };
 
@@ -28,6 +29,7 @@ typedef struct _AppSwitcherAppWidget {
     GtkImage *icon;
     GtkLabel *id_or_title;
     GtkImage *expand_arrow;
+    GtkScrolledWindow *scrolled;
     GtkBox *instances_container;
     mouse_coords mouse;
     gint focused_index;
@@ -156,8 +158,17 @@ static void app_switcher_app_widget_init_layout(AppSwitcherAppWidget *self) {
     gtk_label_set_ellipsize(self->id_or_title, PANGO_ELLIPSIZE_START);
     gtk_label_set_xalign(self->id_or_title, 0.5);
 
+    self->scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
+    gtk_scrolled_window_set_max_content_width(self->scrolled, 1200);
+    gtk_scrolled_window_set_max_content_height(self->scrolled, -1);
+    gtk_scrolled_window_set_propagate_natural_height(self->scrolled, 1);
+	gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
+
     self->instances_container =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+
+    gtk_scrolled_window_set_child(self->scrolled,
+                                  GTK_WIDGET(self->instances_container));
 
     // wire the widget up
     gtk_box_append(self->button_contents, GTK_WIDGET(self->icon));
@@ -167,7 +178,7 @@ static void app_switcher_app_widget_init_layout(AppSwitcherAppWidget *self) {
     gtk_box_append(self->container, GTK_WIDGET(self->button));
     gtk_box_append(self->container, GTK_WIDGET(self->expand_arrow));
 
-    adw_window_set_content(self->win, GTK_WIDGET(self->instances_container));
+    adw_window_set_content(self->win, GTK_WIDGET(self->scrolled));
 }
 
 static void app_switcher_app_widget_init(AppSwitcherAppWidget *self) {
@@ -362,6 +373,7 @@ void app_switcher_app_widget_set_focused(AppSwitcherAppWidget *self,
     }
 
     gtk_widget_add_css_class(GTK_WIDGET(self->button), "selected");
+	gtk_widget_grab_focus(GTK_WIDGET(self->button));
 }
 
 void app_switcher_app_widget_set_focused_next_instance(

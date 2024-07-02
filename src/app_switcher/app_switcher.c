@@ -17,6 +17,7 @@ enum signals { signals_n };
 typedef struct _AppSwitcher {
     GObject parent_instance;
     AdwWindow *win;
+	GtkScrolledWindow *scrolled;
     GtkBox *app_widget_list;
     GtkEventController *key_controller;
     int widget_n;
@@ -209,10 +210,18 @@ static void app_switcher_init_layout(AppSwitcher *self) {
     gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
                                 GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
+	self->scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
+    gtk_scrolled_window_set_max_content_width(self->scrolled, 1400);
+    gtk_scrolled_window_set_max_content_height(self->scrolled, -1);
+    gtk_scrolled_window_set_propagate_natural_height(self->scrolled, 1);
+	gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
+
     self->app_widget_list = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->app_widget_list), "app-switcher-list");
 
-    adw_window_set_content(self->win, GTK_WIDGET(self->app_widget_list));
+	gtk_scrolled_window_set_child(self->scrolled, GTK_WIDGET(self->app_widget_list));
+
+    adw_window_set_content(self->win, GTK_WIDGET(self->scrolled));
 
     // listen for toplevels from wayland service
     WaylandService *wayland = wayland_service_get_global();
