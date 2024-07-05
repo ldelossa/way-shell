@@ -1,6 +1,7 @@
 # Way-Shell
 
 [![Copr build status](https://copr.fedorainfracloud.org/coprs/ldelossa/Way-Shell/package/way-shell/status_image/last_build.png)](https://copr.fedorainfracloud.org/coprs/ldelossa/Way-Shell/package/way-shell/)
+![AUR Version](https://img.shields.io/aur/version/way-shell)
 
 A Gnome inspired desktop shell for Wayland compositors/window managers written
 in C and Gtk4.
