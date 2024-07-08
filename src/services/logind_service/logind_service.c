@@ -71,13 +71,13 @@ static void logind_service_session_dbus_connect(LogindService *self) {
     while (g_variant_iter_loop(iter, "@(susso)", &session_variant)) {
         gchar *id;
         guint32 sess_uid;
+        gchar *username;
         gchar *seat;
-        gchar *display;
         gchar *obj_path;
-        g_variant_get(session_variant, "(susso)", &id, &sess_uid, &seat,
-                      &display, &obj_path);
+        g_variant_get(session_variant, "(susso)", &id, &sess_uid, &username,
+                      &seat, &obj_path);
 
-        if (!seat) continue;
+        if (strlen(seat) == 0) continue;
 
         session = dbus_login1_session_proxy_new_sync(
             self->conn, G_DBUS_PROXY_FLAGS_NONE, "org.freedesktop.login1",
