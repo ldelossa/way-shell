@@ -53,7 +53,8 @@ static void on_vpn_deactivated(NetworkManagerService *nm,
 static void on_vpn_removed(NetworkManagerService *nm, NMConnection *vpn_conn,
                            int len, QuickSettingsGridVPNButton *self) {
     g_debug("quick_settings_grid_vpn.c:on_vpn_removed() called");
-    g_signal_emit_by_name(self->button.cluster, "remove_button_req", self);
+    if (len == 0)
+        g_signal_emit_by_name(self->button.cluster, "remove_button_req", self);
 }
 
 QuickSettingsGridVPNButton *quick_settings_grid_vpn_button_init() {
