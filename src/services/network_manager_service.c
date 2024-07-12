@@ -4,12 +4,21 @@
 #include <adwaita.h>
 
 #include "glib-object.h"
+#include "glib.h"
 #include "nm-core-types.h"
 #include "nm-dbus-interface.h"
 
 static NetworkManagerService *global = NULL;
 
-enum signals { changed, networking_enabled, signals_n };
+enum signals {
+    changed,
+    networking_enabled,
+    vpn_added,
+    vpn_removed,
+    vpn_activated,
+    vpn_deactivated,
+    signals_n
+};
 
 struct _NetworkManagerService {
     GObject parent_instance;
@@ -18,6 +27,9 @@ struct _NetworkManagerService {
     NMState last_state;
     gboolean has_wifi;
     gboolean has_ethernet;
+    gboolean has_vpn;
+    GHashTable *vpn_conns;
+    NMVpnConnection *active_vpn;
     struct {
         NMDeviceWifi *dev;
         NMAccessPoint *ap;
@@ -51,6 +63,22 @@ static void network_manager_service_class_init(
     signals[networking_enabled] = g_signal_new(
         "networking-enabled-changed", G_TYPE_FROM_CLASS(klass),
         G_SIGNAL_RUN_LAST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1, G_TYPE_BOOLEAN);
+
+    signals[vpn_added] = g_signal_new(
+        "vpn-added", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL, NULL,
+        NULL, G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_INT);
+
+    signals[vpn_removed] = g_signal_new(
+        "vpn-removed", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL,
+        NULL, NULL, G_TYPE_NONE, 2, G_TYPE_POINTER, G_TYPE_INT);
+
+    signals[vpn_activated] = g_signal_new(
+        "vpn-activated", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL,
+        NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+    signals[vpn_deactivated] = g_signal_new(
+        "vpn-deactivated", G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_LAST, 0, NULL,
+        NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 };
 
 static void on_changed(NMClient *client, GParamSpec *spec,
@@ -63,6 +91,7 @@ static void on_changed(NMClient *client, GParamSpec *spec,
 
     self->has_ethernet = false;
     self->has_wifi = false;
+    self->has_vpn = false;
 
     const GPtrArray *devices = nm_client_get_devices(client);
     for (int i = 0; i < devices->len; i++) {
@@ -119,8 +148,70 @@ static void on_networking_enabled_changed(NMClient *client, GParamSpec *_,
     }
 }
 
+static void on_vpn_connection_added(NMClient *client, NMConnection *conn,
+                                    NetworkManagerService *self) {
+    // We only care about tracking VPN connections.
+    const gchar *type = nm_connection_get_connection_type(conn);
+    const gchar *id = nm_connection_get_id(conn);
+
+    if (g_strcmp0(type, "vpn") != 0) return;
+
+    g_hash_table_insert(self->vpn_conns, strdup(id), conn);
+    int len = g_hash_table_size(self->vpn_conns);
+
+    self->has_vpn = true;
+
+    g_signal_emit(self, signals[vpn_added], 0, conn, len);
+}
+
+static void on_vpn_connection_removed(NMClient *client, NMConnection *conn,
+                                      NetworkManagerService *self) {
+    // We only care about tracking VPN connections.
+    const gchar *type = nm_connection_get_connection_type(conn);
+    const gchar *id = nm_connection_get_id(conn);
+
+    if (g_strcmp0(type, "vpn") != 0) return;
+
+    g_hash_table_remove(self->vpn_conns, id);
+    int len = g_hash_table_size(self->vpn_conns);
+
+    if (len == 0) self->has_vpn = false;
+
+    g_signal_emit(self, signals[vpn_removed], 0, conn, len);
+}
+
+static void on_active_vpn_connection_added(NMClient *client,
+                                           NMActiveConnection *conn,
+                                           NetworkManagerService *self) {
+    // We only care about tracking VPN connections.
+    if (!nm_active_connection_get_vpn(conn)) return;
+
+    self->active_vpn = (NMVpnConnection *)conn;
+
+    g_signal_emit(self, signals[vpn_activated], 0, conn);
+}
+
+static void on_active_vpn_connection_removed(NMClient *client,
+                                             NMActiveConnection *conn,
+                                             NetworkManagerService *self) {
+    // We only care about tracking VPN connections.
+    if (!nm_active_connection_get_vpn(conn)) return;
+
+    if (!self->active_vpn) return;
+
+    const gchar *id = nm_active_connection_get_id(conn);
+    const gchar *cur_id =
+        nm_active_connection_get_id((NMActiveConnection *)self->active_vpn);
+
+    if (g_strcmp0(id, cur_id) != 0) return;
+
+    g_signal_emit(self, signals[vpn_deactivated], 0, conn);
+}
+
 static void network_manager_service_init(NetworkManagerService *self) {
     GError *error;
+
+    self->vpn_conns = g_hash_table_new(g_str_hash, g_str_equal);
 
     self->client = nm_client_new(NULL, &error);
     if (!self->client) {
@@ -131,9 +222,35 @@ static void network_manager_service_init(NetworkManagerService *self) {
 
     on_changed(self->client, NULL, self);
 
+    // populate existing VPN networks
+    const GPtrArray *connections = nm_client_get_connections(self->client);
+    for (int i = 0; i < connections->len; i++) {
+        NMConnection *conn = connections->pdata[i];
+        const gchar *type = nm_connection_get_connection_type(conn);
+        if (g_strcmp0(type, "vpn") == 0) {
+            g_object_ref(conn);
+            g_hash_table_insert(self->vpn_conns,
+                                g_strdup(nm_connection_get_id(conn)), conn);
+            self->has_vpn = true;
+        }
+    }
+
     g_signal_connect(self->client, "notify", G_CALLBACK(on_changed), self);
+
     g_signal_connect(self->client, "notify::networking-enabled",
                      G_CALLBACK(on_networking_enabled_changed), self);
+
+    g_signal_connect(self->client, "connection-added",
+                     G_CALLBACK(on_vpn_connection_added), self);
+
+    g_signal_connect(self->client, "connection-removed",
+                     G_CALLBACK(on_vpn_connection_removed), self);
+
+    g_signal_connect(self->client, "active-connection-added",
+                     G_CALLBACK(on_active_vpn_connection_added), self);
+
+    g_signal_connect(self->client, "active-connection-removed",
+                     G_CALLBACK(on_active_vpn_connection_removed), self);
 };
 
 const GPtrArray *network_manager_service_get_devices(
@@ -454,3 +571,71 @@ gboolean network_manager_service_get_networking_enabled(
     enabled = nm_client_networking_get_enabled(self->client);
     return enabled;
 };
+
+gboolean network_manager_has_vpn(NetworkManagerService *self) {
+    return self->has_vpn;
+}
+
+GHashTable *network_manager_get_vpn_connections(NetworkManagerService *self) {
+    return self->vpn_conns;
+}
+
+static void on_vpn_activated(GObject *source_object, GAsyncResult *res,
+                             gpointer data) {
+    GError *error = NULL;
+    NMClient *client = NM_CLIENT(source_object);
+    nm_client_activate_connection_finish(client, res, &error);
+
+    if (error) {
+        g_debug(
+            "network_manager_service.c:on_vpn_activated() failed to activate "
+            "vpn: %s",
+            error->message);
+        g_error_free(error);
+        return;
+    }
+}
+
+static void on_vpn_deactivated(GObject *source_object, GAsyncResult *res,
+                               gpointer data) {
+    GError *error = NULL;
+    NMClient *client = NM_CLIENT(source_object);
+    nm_client_deactivate_connection_finish(client, res, &error);
+
+    if (error) {
+        g_debug(
+            "network_manager_service.c:on_vpn_activated() failed to deactivate "
+            "vpn: %s",
+            error->message);
+        g_error_free(error);
+        return;
+    }
+}
+
+void network_manager_activate_vpn(NetworkManagerService *self, const gchar *id,
+                                  gboolean activate) {
+    if (activate) {
+        NMConnection *conn = g_hash_table_lookup(self->vpn_conns, id);
+        if (!conn) return;
+
+        nm_client_activate_connection_async(self->client, conn,
+                                            self->primary_dev, NULL, NULL,
+                                            on_vpn_activated, self);
+    } else {
+        NMActiveConnection *conn =
+            nm_client_get_primary_connection(self->client);
+        if (!conn) return;
+
+        nm_client_deactivate_connection_async(self->client, conn, NULL,
+                                              on_vpn_deactivated, self);
+    }
+}
+
+NMVpnConnection *network_manager_get_active_vpn_connection(
+    NetworkManagerService *self) {
+    NMActiveConnection *conn = nm_client_get_primary_connection(self->client);
+
+    if (nm_active_connection_get_vpn(conn)) return (NMVpnConnection *)conn;
+
+    return NULL;
+}
