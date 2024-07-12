@@ -1,4 +1,6 @@
 #include <adwaita.h>
+#include <signal.h>
+#include <sys/wait.h>
 
 #include "../gresources.h"
 #include "./activities/activities.h"
@@ -36,8 +38,28 @@ AdwApplication *gtk_app = NULL;
 // system along with the other responsibilities of a ApplicationWindow.
 AdwApplicationWindow *global = NULL;
 
+static void handle_sigchld(int signum) {
+    while (waitpid(-1, NULL, WNOHANG) > 0) {
+    };
+}
+
+// Way-Shell launches processes via forking.
+// We must cleanup our forked children on exit or else they become zombies.
+static void configure_signal_handler() {
+    struct sigaction sa;
+    sa.sa_handler = handle_sigchld;
+    sigemptyset(&sa.sa_mask);
+    sa.sa_flags = SA_RESTART | SA_NOCLDSTOP;
+    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
+        g_error("failed to setup sigchild handler");
+    }
+}
+
 // activates all the components of our shell.
 static void activate(AdwApplication *app, gpointer user_data) {
+    // Set up the SIGCHLD handler
+	configure_signal_handler();
+
     // CSS Theme is embedded as a GResource
     GResource *resource = gresources_get_resource();
     g_resources_register(resource);

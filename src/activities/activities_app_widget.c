@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 #include <gio/gio.h>
+#include <sys/wait.h>
 
 #include "./activities.h"
 #include "glib.h"
