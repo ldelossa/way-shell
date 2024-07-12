@@ -9,6 +9,7 @@
 #include "./quick_settings_grid_airplane_mode_button.h"
 #include "./quick_settings_grid_night_light/quick_settings_grid_night_light.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
+#include "./quick_settings_grid_vpn/quick_settings_grid_vpn.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "./quick_settings_keyboard_brightness/quick_settings_grid_keyboard_brightness.h"
 #include "nm-dbus-interface.h"
@@ -32,6 +33,7 @@ typedef struct _QuickSettingsGrid {
     // If an NMDevice is in this list a QuickSettingGridButton exists for it
     // and is watching the device's status.
     GPtrArray *managed_network_devices;
+    gboolean has_vpn;
     gboolean compacting;
 } QuickSettingsGrid;
 
@@ -204,6 +206,28 @@ static void on_network_manager_change(NetworkManagerService *nm,
     }
 }
 
+// Creates a VPN button if we need it.
+static void on_vpn_added(NetworkManagerService *nm, NMConnection *vpn_conn,
+                         int len, QuickSettingsGrid *self) {
+    if (self->has_vpn) return;
+
+    QuickSettingsGridVPNButton *vpn_button =
+        quick_settings_grid_vpn_button_init();
+    quick_settings_grid_vpn_button_init();
+    quick_settings_grid_add_button(self, (QuickSettingsGridButton *)vpn_button);
+    self->has_vpn = true;
+}
+
+static void on_vpn_removed(NetworkManagerService *nm, NMConnection *vpn_conn,
+                           int len, QuickSettingsGrid *self) {
+    if (!self->has_vpn) return;
+
+    // VPN button monitors whether it needs to exist or not and fires a signal
+    // to remove itself when all vpns are moved. So we just need to update our
+    // record keeping here.
+    if (len == 0) self->has_vpn = false;
+}
+
 // stub out dispose, finalize, class_init, and init methods
 static void quick_settings_grid_dispose(GObject *gobject) {
     QuickSettingsGrid *self = QUICK_SETTINGS_GRID(gobject);
@@ -247,7 +271,15 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
     gtk_widget_set_name(GTK_WIDGET(self->container), "quick-settings-grid");
 
     NetworkManagerService *nm = network_manager_service_get_global();
+
     on_network_manager_change(nm, self);
+
+    // Determine if we need a VPN button.
+    if (network_manager_has_vpn(nm)) on_vpn_added(nm, NULL, 0, self);
+
+    // listen for vpn add and remove signals
+    g_signal_connect(nm, "vpn-added", G_CALLBACK(on_vpn_added), self);
+    g_signal_connect(nm, "vpn-removed", G_CALLBACK(on_vpn_removed), self);
 
     // if power profiles service available create button for it
     PowerProfilesService *pps = power_profiles_service_get_global();
@@ -302,6 +334,8 @@ void quick_settings_grid_reinitialize(QuickSettingsGrid *self) {
     // destroy signals
     NetworkManagerService *nm = network_manager_service_get_global();
     g_signal_handlers_disconnect_by_func(nm, on_network_manager_change, self);
+    g_signal_handlers_disconnect_by_func(nm, on_vpn_added, self);
+    g_signal_handlers_disconnect_by_func(nm, on_vpn_removed, self);
 
     // free clusters
     for (int i = 0; i < self->clusters->len; i++) {
@@ -328,6 +362,7 @@ void quick_settings_grid_reinitialize(QuickSettingsGrid *self) {
 static void quick_settings_grid_init(QuickSettingsGrid *self) {
     self->clusters = g_ptr_array_new();
     self->managed_network_devices = g_ptr_array_new();
+    self->has_vpn = false;
     quick_settings_grid_init_layout(self);
 };
 

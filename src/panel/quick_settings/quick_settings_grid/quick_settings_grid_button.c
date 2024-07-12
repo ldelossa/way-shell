@@ -8,6 +8,7 @@
 #include "./quick_settings_grid_night_light/quick_settings_grid_night_light.h"
 #include "./quick_settings_grid_power_profiles/quick_settings_grid_power_profiles.h"
 #include "./quick_settings_grid_theme.h"
+#include "./quick_settings_grid_vpn/quick_settings_grid_vpn.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "./quick_settings_keyboard_brightness/quick_settings_grid_keyboard_brightness.h"
 #include "gtk/gtkrevealer.h"
@@ -205,6 +206,10 @@ void quick_settings_grid_button_free(QuickSettingsGridButton *self) {
         case QUICK_SETTINGS_BUTTON_KEYBOARD_BRIGHTNESS:
             quick_settings_grid_keyboard_brightness_button_free(
                 (QuickSettingsGridKeyboardBrightnessButton *)self);
+            break;
+        case QUICK_SETTINGS_BUTTON_VPN:
+            quick_settings_grid_vpn_button_free(
+                (QuickSettingsGridVPNButton *)self);
             break;
     }
 }

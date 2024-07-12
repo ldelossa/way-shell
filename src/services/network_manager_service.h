@@ -3,6 +3,8 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
+#include "nm-core-types.h"
+
 G_BEGIN_DECLS
 
 // Simple clock service which emits a 'tick' signal on every minute.
@@ -61,8 +63,15 @@ void network_manager_service_wireless_enable(NetworkManagerService *self,
 void network_manager_service_networking_enable(NetworkManagerService *self,
                                                gboolean enabled);
 
-void network_manager_service_networking_enable(NetworkManagerService *self,
-                                               gboolean enabled);
+gboolean network_manager_has_vpn(NetworkManagerService *self);
+
+GHashTable *network_manager_get_vpn_connections(NetworkManagerService *self);
+
+NMVpnConnection *network_manager_get_active_vpn_connection(
+    NetworkManagerService *self);
+
+void network_manager_activate_vpn(NetworkManagerService *self, const gchar *id,
+                                  gboolean activate);
 
 gboolean network_manager_service_get_networking_enabled(
     NetworkManagerService *self);
