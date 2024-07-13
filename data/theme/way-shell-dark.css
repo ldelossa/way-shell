@@ -1029,6 +1029,10 @@ label.day-number.today:focus {
     border-radius: 10px;
 }
 
+#switcher .no_list #search-entry  {
+    margin: 20px;
+}
+
 #switcher #list {
     background: @base-panel-background;
     margin: 20px;

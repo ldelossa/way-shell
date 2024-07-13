@@ -3,6 +3,8 @@
 #include <adwaita.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
+#include "gtk/gtk.h"
+
 void switcher_init(Switcher *self, gboolean has_list) {
     // create key controller
     self->key_controller = gtk_event_controller_key_new();
@@ -56,7 +58,10 @@ void switcher_init(Switcher *self, gboolean has_list) {
 
     // wire it up
     gtk_box_append(self->container, GTK_WIDGET(search_container));
-    if (has_list) gtk_box_append(self->container, GTK_WIDGET(self->scrolled));
+    if (has_list)
+        gtk_box_append(self->container, GTK_WIDGET(self->scrolled));
+    else
+        gtk_widget_add_css_class(GTK_WIDGET(self->container), "no_list");
 
     adw_window_set_content(self->win, GTK_WIDGET(self->container));
 }

@@ -66,6 +66,7 @@ bindsym $mod+Tab exec way-sh app-switcher toggle
 bindsym $mod+o exec way-sh output-switcher toggle
 bindsym $mod+w exec way-sh workspace-switcher toggle
 bindsym $mod+a exec way-sh workspace-app-switcher toggle
+bindsym $mod+r exec way-sh rename-switcher toggle
 ```
 
 ## Using Way-Shell

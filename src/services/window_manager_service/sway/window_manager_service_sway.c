@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 #include <glib-2.0/glib-unix.h>
+#include <string.h>
 
 #include "glib-object.h"
 #include "glib.h"
@@ -321,6 +322,15 @@ int wm_service_sway_focus_workspace(WindowManager *wm, WMWorkspace *ws) {
     return sway_client_ipc_focus_workspace(self->socket_fd, ws);
 }
 
+int wm_service_sway_rename_current_workspace(WindowManager *wm,
+                                             const gchar *name) {
+    WMServiceSway *self = wm->private;
+
+    if (strlen(name) == 0) return -1;
+
+    return sway_client_ipc_rename_current_workspace(self->socket_fd, name);
+}
+
 int wm_service_sway_current_ws_to_output(WindowManager *wm, WMOutput *o) {
     WMServiceSway *self = wm->private;
 
@@ -394,6 +404,7 @@ WindowManager *wm_service_sway_window_manager_init() {
     wm->get_workspaces = wm_service_sway_get_workspaces;
     wm->get_outputs = wm_service_sway_get_outputs;
     wm->focus_workspace = wm_service_sway_focus_workspace;
+    wm->rename_workspace = wm_service_sway_rename_current_workspace;
     wm->current_ws_to_output = wm_service_sway_current_ws_to_output;
     wm->current_app_to_workspace = wm_service_sway_current_app_to_workspace;
     wm->register_on_workspaces_changed =

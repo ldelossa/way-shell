@@ -94,6 +94,9 @@ int sway_client_ipc_move_ws_to_output(int socket_fd, gchar *output);
 // Move the current focused app to the provided workspace.
 int sway_client_ipc_move_app_to_workspace(int socket_fd, gchar *workspace);
 
+// Rename the current workspace to `name`
+int sway_client_ipc_rename_current_workspace(int socket_fd, const gchar *name);
+
 // Events //
 
 // Parses a workspace event and returns a WMWorkspaceEvent
@@ -107,4 +110,3 @@ int sway_client_ipc_move_app_to_workspace(int socket_fd, gchar *workspace);
 // in event.workspace may be nonsense.
 WMWorkspaceEvent *sway_client_ipc_event_workspace_resp(
     sway_client_ipc_msg *msg);
-
