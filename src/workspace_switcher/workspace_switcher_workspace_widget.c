@@ -34,7 +34,7 @@ static void workspace_switcher_workspace_widget_class_init(
 static void workspace_switcher_workspace_widget_init_layout(
     WorkspaceSwitcherWorkspaceWidget *self) {
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_add_css_class(GTK_WIDGET(self->container), "workspace-entry");
+    gtk_widget_add_css_class(GTK_WIDGET(self->container), "switcher-entry");
 
     self->label = GTK_LABEL(gtk_label_new(""));
     gtk_box_append(self->container, GTK_WIDGET(self->label));
