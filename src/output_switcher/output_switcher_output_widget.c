@@ -33,10 +33,10 @@ static void output_switcher_output_widget_class_init(
 static void output_switcher_output_widget_init_layout(
     OutputSwitcherOutputWidget *self) {
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
-    gtk_widget_add_css_class(GTK_WIDGET(self->container), "output-entry");
+    gtk_widget_add_css_class(GTK_WIDGET(self->container), "switcher-entry");
 
     // add pointer to self on container
-    g_object_set_data(G_OBJECT(self->container), "output-widget", self);
+    g_object_set_data(G_OBJECT(self->container), "switcher-widget", self);
 
     self->label = GTK_LABEL(gtk_label_new(""));
     gtk_box_append(self->container, GTK_WIDGET(self->label));

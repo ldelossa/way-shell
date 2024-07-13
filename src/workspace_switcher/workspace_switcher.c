@@ -5,6 +5,7 @@
 #include <gio/gio.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
+#include "../switcher/switcher.h"
 #include "./../services/window_manager_service/window_manager_service.h"
 #include "./workspace_switcher_workspace_widget.h"
 #include "gdk/gdkkeysyms.h"
@@ -20,16 +21,9 @@ enum mode {
 
 typedef struct _WorkspaceSwitcher {
     GObject parent_instance;
-    AdwWindow *win;
+    Switcher switcher;
     enum mode mode;
 
-	GtkScrolledWindow *scrolled;
-    // List model and filtering
-    GtkListBox *workspace_list;
-
-    GtkBox *container;
-    GtkSearchEntry *search_entry;
-    GtkEventController *key_controller;
 } WorkspaceSwitcher;
 
 static guint workspace_switcher_signals[signals_n] = {0};
@@ -53,7 +47,7 @@ static void workspace_switcher_class_init(WorkspaceSwitcherClass *class) {
 GtkListBoxRow *workspace_switcher_top_choice(WorkspaceSwitcher *self) {
     // always select first visible entry
     GtkListBoxRow *child = GTK_LIST_BOX_ROW(
-        gtk_widget_get_first_child(GTK_WIDGET(self->workspace_list)));
+        gtk_widget_get_first_child(GTK_WIDGET(SWITCHER(self).list)));
     while (child) {
         if (gtk_widget_get_child_visible(GTK_WIDGET(child))) {
             return child;
@@ -69,7 +63,7 @@ GtkListBoxRow *workspace_switcher_last_choice(WorkspaceSwitcher *self) {
     // always select first visible entry
     GtkListBoxRow *found = NULL;
     GtkListBoxRow *child = GTK_LIST_BOX_ROW(
-        gtk_widget_get_first_child(GTK_WIDGET(self->workspace_list)));
+        gtk_widget_get_first_child(GTK_WIDGET(SWITCHER(self).list)));
     while (child) {
         if (gtk_widget_get_child_visible(GTK_WIDGET(child))) {
             found = child;
@@ -84,14 +78,14 @@ static void on_search_changed(GtkSearchEntry *entry, WorkspaceSwitcher *self);
 
 static void workspace_switcher_clear_search(WorkspaceSwitcher *self) {
     // block search entry change signal
-    g_signal_handlers_block_by_func(self->search_entry, on_search_changed,
-                                    self);
+    g_signal_handlers_block_by_func(SWITCHER(self).search_entry,
+                                    on_search_changed, self);
     // clear search entry
-    gtk_editable_set_text(GTK_EDITABLE(self->search_entry), "");
+    gtk_editable_set_text(GTK_EDITABLE(SWITCHER(self).search_entry), "");
 
     // unblock signal
-    g_signal_handlers_unblock_by_func(self->search_entry, on_search_changed,
-                                      self);
+    g_signal_handlers_unblock_by_func(SWITCHER(self).search_entry,
+                                      on_search_changed, self);
 }
 
 static void on_window_destroy(GtkWindow *win, WorkspaceSwitcher *self) {}
@@ -110,32 +104,32 @@ static void on_search_next_match(GtkSearchEntry *entry,
                                  WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:on_search_next_match() called.");
 
-    GtkListBoxRow *start = gtk_list_box_get_selected_row(self->workspace_list);
+    GtkListBoxRow *start = gtk_list_box_get_selected_row(SWITCHER(self).list);
     if (!start) start = workspace_switcher_top_choice(self);
 
     if (!start) return;
 
     GtkListBoxRow *next_row = gtk_list_box_get_row_at_index(
-        self->workspace_list, gtk_list_box_row_get_index(start) + 1);
+        SWITCHER(self).list, gtk_list_box_row_get_index(start) + 1);
     if (!next_row) next_row = workspace_switcher_top_choice(self);
 
-    gtk_list_box_select_row(self->workspace_list, next_row);
-	gtk_widget_grab_focus(GTK_WIDGET(next_row));
+    gtk_list_box_select_row(SWITCHER(self).list, next_row);
+    gtk_widget_grab_focus(GTK_WIDGET(next_row));
 }
 
 static void on_search_previous_match(GtkSearchEntry *entry,
                                      WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:on_search_previous_match() called.");
 
-    GtkListBoxRow *start = gtk_list_box_get_selected_row(self->workspace_list);
+    GtkListBoxRow *start = gtk_list_box_get_selected_row(SWITCHER(self).list);
     if (!start) start = workspace_switcher_top_choice(self);
 
     GtkListBoxRow *next_row = gtk_list_box_get_row_at_index(
-        self->workspace_list, gtk_list_box_row_get_index(start) - 1);
+        SWITCHER(self).list, gtk_list_box_row_get_index(start) - 1);
     if (!next_row) next_row = workspace_switcher_last_choice(self);
 
-    gtk_list_box_select_row(self->workspace_list, next_row);
-	gtk_widget_grab_focus(GTK_WIDGET(next_row));
+    gtk_list_box_select_row(SWITCHER(self).list, next_row);
+    gtk_widget_grab_focus(GTK_WIDGET(next_row));
 }
 
 static void on_search_activated_app_mode(GtkSearchEntry *entry,
@@ -152,7 +146,7 @@ static void on_search_activated_app_mode(GtkSearchEntry *entry,
     }
 
     GtkListBoxRow *selected =
-        gtk_list_box_get_selected_row(self->workspace_list);
+        gtk_list_box_get_selected_row(SWITCHER(self).list);
 
     GtkWidget *widget = gtk_list_box_row_get_child(selected);
     if (!widget) return;
@@ -196,7 +190,7 @@ static void on_search_activated(GtkSearchEntry *entry,
     }
 
     GtkListBoxRow *selected =
-        gtk_list_box_get_selected_row(self->workspace_list);
+        gtk_list_box_get_selected_row(SWITCHER(self).list);
 
     GtkWidget *widget = gtk_list_box_row_get_child(selected);
     if (!widget) return;
@@ -219,15 +213,15 @@ static void on_search_stop(GtkSearchEntry *entry, WorkspaceSwitcher *self) {
     if (entry) {
         const char *search_text = gtk_editable_get_text(GTK_EDITABLE(entry));
         if (strlen(search_text) == 0) {
-            gtk_widget_set_visible(GTK_WIDGET(self->win), false);
-            gtk_list_box_invalidate_filter(self->workspace_list);
+            gtk_widget_set_visible(GTK_WIDGET(SWITCHER(self).win), false);
+            gtk_list_box_invalidate_filter(SWITCHER(self).list);
             return;
         }
     }
 
     workspace_switcher_clear_search(self);
     // invalidate filter
-    gtk_list_box_invalidate_filter(self->workspace_list);
+    gtk_list_box_invalidate_filter(SWITCHER(self).list);
 }
 
 static void on_search_changed(GtkSearchEntry *entry, WorkspaceSwitcher *self) {
@@ -235,20 +229,20 @@ static void on_search_changed(GtkSearchEntry *entry, WorkspaceSwitcher *self) {
     // if search string is empty call on_search_stop
     if (strlen(search_text) == 0) {
         // invalidate filter
-        gtk_list_box_invalidate_filter(self->workspace_list);
+        gtk_list_box_invalidate_filter(SWITCHER(self).list);
         return;
     }
 
     // invlidate filter
-    gtk_list_box_invalidate_filter(self->workspace_list);
+    gtk_list_box_invalidate_filter(SWITCHER(self).list);
 
     // apply new filter
     gtk_list_box_set_filter_func(
-        self->workspace_list, (GtkListBoxFilterFunc)filter_func, entry, NULL);
+        SWITCHER(self).list, (GtkListBoxFilterFunc)filter_func, entry, NULL);
 
     GtkListBoxRow *top_choice = workspace_switcher_top_choice(self);
     if (top_choice) {
-        gtk_list_box_select_row(self->workspace_list, top_choice);
+        gtk_list_box_select_row(SWITCHER(self).list, top_choice);
     }
 }
 
@@ -258,7 +252,7 @@ static void on_workspaces_changed(void *data, GPtrArray *workspaces) {
     g_debug("workspace_switcher.c:on_workspaces_changed() called.");
     if (!workspaces) return;
 
-    gtk_list_box_remove_all(self->workspace_list);
+    gtk_list_box_remove_all(SWITCHER(self).list);
 
     for (guint i = 0; i < workspaces->len; i++) {
         WMWorkspace *workspace = g_ptr_array_index(workspaces, i);
@@ -272,7 +266,7 @@ static void on_workspaces_changed(void *data, GPtrArray *workspaces) {
             G_OBJECT(workspace_switcher_workspace_widget_get_widget(widget)),
             "workspace", workspace);
         gtk_list_box_append(
-            self->workspace_list,
+            SWITCHER(self).list,
             workspace_switcher_workspace_widget_get_widget(widget));
     }
 }
@@ -342,7 +336,7 @@ static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
     // this allows the search to be fuzzy, but still provides a way for a user
     // to create a workspace if the desired name overlaps with an existing one.
     if (keyval == GDK_KEY_Return && (state & GDK_CONTROL_MASK)) {
-        activate_with_current_search_entry(self->search_entry, self);
+        activate_with_current_search_entry(SWITCHER(self).search_entry, self);
         return true;
     }
 
@@ -350,76 +344,27 @@ static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
 }
 
 static void workspace_switcher_init_layout(WorkspaceSwitcher *self) {
-    self->win = ADW_WINDOW(adw_window_new());
-    gtk_widget_set_hexpand(GTK_WIDGET(self->win), true);
-    gtk_widget_set_vexpand(GTK_WIDGET(self->win), true);
-    gtk_widget_set_name(GTK_WIDGET(self->win), "workspace-switcher");
-    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
-    gtk_widget_add_controller(GTK_WIDGET(self->win), self->key_controller);
-    gtk_window_set_default_size(GTK_WINDOW(self->win), 600, 0);
-
-    g_signal_connect(self->win, "destroy", G_CALLBACK(on_window_destroy), self);
-
-    // configure layershell, no anchors will place window in center.
-    gtk_layer_init_for_window(GTK_WINDOW(self->win));
-    gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-switcher");
-    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
-    gtk_layer_set_anchor((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_EDGE_TOP,
-                         true);
-    gtk_layer_set_margin((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_EDGE_TOP,
-                         400);
-    gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
-                                GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
-
-    self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    gtk_widget_set_hexpand(GTK_WIDGET(self->container), true);
-    gtk_widget_set_vexpand(GTK_WIDGET(self->container), true);
-
-    GtkBox *search_container =
-        GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
-    gtk_widget_set_name(GTK_WIDGET(search_container), "search-container");
-    gtk_widget_set_hexpand(GTK_WIDGET(search_container), true);
-
-    self->search_entry = GTK_SEARCH_ENTRY(gtk_search_entry_new());
-    gtk_widget_set_name(GTK_WIDGET(self->search_entry), "search-entry");
-
-    gtk_box_append(search_container, GTK_WIDGET(self->search_entry));
+    switcher_init(&self->switcher, true);
 
     // wire into search-changed signal for GtkSearchEntry
-    g_signal_connect(self->search_entry, "search-changed",
+    g_signal_connect(SWITCHER(self).search_entry, "search-changed",
                      G_CALLBACK(on_search_changed), self);
 
     // wire into stop-search signal for GtkSearchEntry
-    g_signal_connect(self->search_entry, "stop-search",
+    g_signal_connect(SWITCHER(self).search_entry, "stop-search",
                      G_CALLBACK(on_search_stop), self);
 
     // wire into 'activate' signal
-    g_signal_connect(self->search_entry, "activate",
+    g_signal_connect(SWITCHER(self).search_entry, "activate",
                      G_CALLBACK(on_search_activated), self);
 
     // wire into 'next-match' signal
-    g_signal_connect(self->search_entry, "next-match",
+    g_signal_connect(SWITCHER(self).search_entry, "next-match",
                      G_CALLBACK(on_search_next_match), self);
 
     // wire into 'previous-match' signal
-    g_signal_connect(self->search_entry, "previous-match",
+    g_signal_connect(SWITCHER(self).search_entry, "previous-match",
                      G_CALLBACK(on_search_previous_match), self);
-
-	self->scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
-    gtk_scrolled_window_set_max_content_height(self->scrolled, 400);
-    gtk_scrolled_window_set_propagate_natural_height(self->scrolled, 1);
-	gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
-
-    self->workspace_list = GTK_LIST_BOX(gtk_list_box_new());
-    gtk_widget_set_name(GTK_WIDGET(self->workspace_list), "workspace-list");
-    gtk_widget_set_hexpand(GTK_WIDGET(self->workspace_list), true);
-    gtk_widget_set_vexpand(GTK_WIDGET(self->workspace_list), true);
-
-	gtk_scrolled_window_set_child(self->scrolled, GTK_WIDGET(self->workspace_list));
-
-    // wire it up
-    gtk_box_append(self->container, GTK_WIDGET(search_container));
-    gtk_box_append(self->container, GTK_WIDGET(self->scrolled));
 
     // get listings of workspaces
     WindowManager *wm = window_manager_service_get_global();
@@ -429,18 +374,15 @@ static void workspace_switcher_init_layout(WorkspaceSwitcher *self) {
     wm->register_on_workspaces_changed(wm, on_workspaces_changed, self);
 
     // wire into GtkListBox's activated
-    g_signal_connect(self->workspace_list, "row-activated",
+    g_signal_connect(SWITCHER(self).list, "row-activated",
                      G_CALLBACK(on_row_activated), self);
 
-    adw_window_set_content(self->win, GTK_WIDGET(self->container));
+    // hook up keymap
+    g_signal_connect(SWITCHER(self).key_controller, "key-pressed",
+                     G_CALLBACK(key_pressed), self);
 }
 
 static void workspace_switcher_init(WorkspaceSwitcher *self) {
-    self->key_controller = gtk_event_controller_key_new();
-
-    g_signal_connect(self->key_controller, "key-pressed",
-                     G_CALLBACK(key_pressed), self);
-
     workspace_switcher_init_layout(self);
 }
 
@@ -455,13 +397,13 @@ void workspace_switcher_activate(AdwApplication *app, gpointer user_data) {
 void workspace_switcher_show(WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:workspace_switcher_show() called.");
 
-    GtkListBoxRow *row = gtk_list_box_get_row_at_index(self->workspace_list, 0);
-    if (row) gtk_list_box_select_row(self->workspace_list, row);
+    GtkListBoxRow *row = gtk_list_box_get_row_at_index(SWITCHER(self).list, 0);
+    if (row) gtk_list_box_select_row(SWITCHER(self).list, row);
 
     // grab search entry focus
-    gtk_widget_grab_focus(GTK_WIDGET(self->search_entry));
+    gtk_widget_grab_focus(GTK_WIDGET(SWITCHER(self).search_entry));
 
-    gtk_window_present(GTK_WINDOW(self->win));
+    gtk_window_present(GTK_WINDOW(SWITCHER(self).win));
 }
 
 void workspace_switcher_hide(WorkspaceSwitcher *self) {
@@ -471,12 +413,12 @@ void workspace_switcher_hide(WorkspaceSwitcher *self) {
 
     on_search_stop(NULL, self);
 
-    gtk_widget_set_visible(GTK_WIDGET(self->win), false);
+    gtk_widget_set_visible(GTK_WIDGET(SWITCHER(self).win), false);
 }
 
 void workspace_switcher_toggle(WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:workspace_switcher_toggle() called.");
-    if (gtk_widget_get_visible(GTK_WIDGET(self->win))) {
+    if (gtk_widget_get_visible(GTK_WIDGET(SWITCHER(self).win))) {
         workspace_switcher_hide(self);
     } else {
         workspace_switcher_show(self);
@@ -486,20 +428,20 @@ void workspace_switcher_toggle(WorkspaceSwitcher *self) {
 void workspace_switcher_show_app_mode(WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:workspace_switcher_show() called.");
 
-    GtkListBoxRow *row = gtk_list_box_get_row_at_index(self->workspace_list, 0);
-    if (row) gtk_list_box_select_row(self->workspace_list, row);
+    GtkListBoxRow *row = gtk_list_box_get_row_at_index(SWITCHER(self).list, 0);
+    if (row) gtk_list_box_select_row(SWITCHER(self).list, row);
 
     self->mode = switch_app;
 
     // grab search entry focus
-    gtk_widget_grab_focus(GTK_WIDGET(self->search_entry));
+    gtk_widget_grab_focus(GTK_WIDGET(SWITCHER(self).search_entry));
 
-    gtk_window_present(GTK_WINDOW(self->win));
+    gtk_window_present(GTK_WINDOW(SWITCHER(self).win));
 }
 
 void workspace_switcher_toggle_app_mode(WorkspaceSwitcher *self) {
     g_debug("workspace_switcher.c:workspace_switcher_toggle() called.");
-    if (gtk_widget_get_visible(GTK_WIDGET(self->win))) {
+    if (gtk_widget_get_visible(GTK_WIDGET(SWITCHER(self).win))) {
         workspace_switcher_hide(self);
     } else {
         workspace_switcher_show_app_mode(self);
