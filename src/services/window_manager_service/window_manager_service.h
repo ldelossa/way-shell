@@ -74,6 +74,9 @@ typedef GPtrArray *(*wm_get_outputs_func)(WindowManager *self);
 
 typedef int (*wm_focus_workspace_func)(WindowManager *self, WMWorkspace *ws);
 
+typedef int (*wm_rename_current_workspace_func)(WindowManager *self,
+                                                const gchar *name);
+
 typedef int (*wm_current_ws_to_output_func)(WindowManager *self, WMOutput *o);
 
 typedef int (*wm_current_app_to_workspace_func)(WindowManager *self,
@@ -108,6 +111,8 @@ typedef struct _WindowManager {
     wm_get_outputs_func get_outputs;
     // Focus the provided workspace
     wm_focus_workspace_func focus_workspace;
+    // Rename the current workspace
+    wm_rename_current_workspace_func rename_workspace;
     // Move the current workspace to the specified output
     wm_current_ws_to_output_func current_ws_to_output;
     // Move the current app to the specified workspace

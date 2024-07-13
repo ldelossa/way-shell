@@ -83,3 +83,8 @@ cmd_tree_node_t *workspace_app_switcher_cmd();
 //
 // Subcommands off this node deal with enabling and disabling the Night Light
 cmd_tree_node_t *bluelight_filter_cmd();
+
+// The Rename Switcher command
+//
+// Subcommands off this node deal with showing and hiding the Rename Switcher
+cmd_tree_node_t *rename_switcher_cmd();

@@ -659,6 +659,22 @@ int sway_client_ipc_move_app_to_workspace(int socket_fd, gchar *workspace) {
     return sway_client_ipc_send(socket_fd, &msg);
 }
 
+int sway_client_ipc_rename_current_workspace(int socket_fd, const gchar *name) {
+    sway_client_ipc_msg msg = {.type = IPC_COMMAND};
+    char *cmd_prefix = "rename workspace to ";
+
+    if (!name) return -1;
+    if (strlen(name) == 0) return -1;
+
+    msg.size = strlen(cmd_prefix) + strlen(name) + 1;
+    msg.payload = g_malloc0(msg.size);
+
+    strcpy(msg.payload, cmd_prefix);
+    strcat(msg.payload, name);
+
+    return sway_client_ipc_send(socket_fd, &msg);
+}
+
 WMWorkspaceEvent *sway_client_ipc_event_workspace_resp(
     sway_client_ipc_msg *msg) {
     JsonParser *parser = NULL;

@@ -25,6 +25,7 @@
 #include "./services/window_manager_service/window_manager_service.h"
 #include "./services/wireplumber_service.h"
 #include "./workspace_switcher/workspace_switcher.h"
+#include "./rename_switcher/rename_switcher.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
@@ -153,6 +154,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
 
     output_switcher_activate(app, user_data);
     g_debug("main.c: activate(): output_switcher subsystems activated");
+
+    rename_switcher_activate(app, user_data);
+    g_debug("main.c: activate(): rename_switcher subsystems activated");
 
     workspace_switcher_activate(app, user_data);
     g_debug("main.c: activate(): workspace_switcher subsystems activated");

@@ -17,6 +17,7 @@ static int root_exec(void *ctx, uint8_t argc, char **argv) {
         "\tworkspace-app-switcher\n"
         "\toutput-switcher\n"
 		"\tbluelight-filter\n"
+		"\trename-switcher\n"
 	);
     return 0;
 };

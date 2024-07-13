@@ -8,6 +8,7 @@
 #include "../../activities/activities.h"
 #include "../../app_switcher/app_switcher.h"
 #include "../../output_switcher/output_switcher.h"
+#include "../../rename_switcher/rename_switcher.h"
 #include "../../panel/message_tray/message_tray.h"
 #include "../../services/brightness_service/brightness_service.h"
 #include "../../services/theme_service.h"
@@ -336,6 +337,45 @@ static gboolean ip_cmd_output_switcher_toggle() {
     }
 
     output_switcher_toggle(o);
+
+    return true;
+}
+
+static gboolean ip_cmd_rename_switcher_show() {
+    g_debug("ipc_service.c:ip_cmd_rename_switcher_show()");
+
+    RenameSwitcher *o = rename_switcher_get_global();
+    if (!o) {
+        return false;
+    }
+
+    rename_switcher_show(o);
+
+    return true;
+}
+
+static gboolean ip_cmd_rename_switcher_hide() {
+    g_debug("ipc_service.c:ip_cmd_rename_switcher_hide()");
+
+    RenameSwitcher *o = rename_switcher_get_global();
+    if (!o) {
+        return false;
+    }
+
+    rename_switcher_hide(o);
+
+    return true;
+}
+
+static gboolean ip_cmd_rename_switcher_toggle() {
+    g_debug("ipc_service.c:ip_cmd_rename_switcher_toggle()");
+
+    RenameSwitcher *o = rename_switcher_get_global();
+    if (!o) {
+        return false;
+    }
+
+    rename_switcher_toggle(o);
 
     return true;
 }
@@ -681,6 +721,24 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "IPC_CMD_KEYBOARD_BRIGHTNESS_DOWN");
             ret = ipc_command_keyboard_brightness_down();
             break;
+		case IPC_CMD_RENAME_SWITCHER_SHOW:
+			g_debug(
+				"ipc_service.c:on_ipc_readable() received "
+				"IPC_CMD_RENAME_SWITCHER_SHOW");
+			ret = ip_cmd_rename_switcher_show();
+			break;
+		case IPC_CMD_RENAME_SWITCHER_HIDE:
+			g_debug(
+				"ipc_service.c:on_ipc_readable() received "
+				"IPC_CMD_RENAME_SWITCHER_HIDE");
+			ret = ip_cmd_rename_switcher_hide();
+			break;
+		case IPC_CMD_RENAME_SWITCHER_TOGGLE:
+			g_debug(
+				"ipc_service.c:on_ipc_readable() received "
+				"IPC_CMD_RENAME_SWITCHER_TOGGLE");
+			ret = ip_cmd_rename_switcher_toggle();
+			break;
         default:
             goto skip_resp;
             break;
