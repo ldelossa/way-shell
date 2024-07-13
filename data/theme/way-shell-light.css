@@ -38,6 +38,15 @@
 }
 
 /*
+ * Unless overriden we usually don't want a hover for things like
+ * AdwSwitchRow which is derived from an AdwActionRow. The latter of which
+ * exposes this 'row' node.
+ */
+row:hover {
+	background: @transparent
+}
+
+/*
  * OSD
  */
 #osd {
