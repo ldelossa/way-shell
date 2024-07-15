@@ -84,6 +84,7 @@ The below table lists useful keymaps to keep in mind.
 | Ctrl + Return | (In workspace switcher) create workspace with current search bar entry's text, useful if the desired name of a new workspace overlaps with an existing one. |
 | Super + a | Open the workspace app switcher (repeat to toggle close) |
 | Super + o | Open the output switcher (repeat to toggle close) |
+| Super + r | Open the rename workspace switcher (repeat to toggle close) |
 
 All widgets which provide a list of selections (workspace switcher, app switcher, output switcher)
 support the following keybinds.
