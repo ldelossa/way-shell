@@ -150,3 +150,4 @@ Feel free to adjust these to your liking.
 - [x] Workspace Overview/Application launcher overlay widget
 - [ ] Option to turn on idle inhibitor when video/audio sources are detected.
 - [x] Network Manager VPN integration in quick settings (toggle VPN's on an off).
+- [x] Rename workspace via on screen widget
