@@ -257,7 +257,7 @@ void osd_init_layout(OSD *self) {
     // configure layershell, top layer and center
     gtk_layer_init_for_window(GTK_WINDOW(self->win));
     gtk_layer_set_namespace(GTK_WINDOW(self->win), "way-shell-osd");
-    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_TOP);
+    gtk_layer_set_layer((GTK_WINDOW(self->win)), GTK_LAYER_SHELL_LAYER_OVERLAY);
     gtk_widget_set_name(GTK_WIDGET(self->win), "osd");
     gtk_layer_set_anchor(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_BOTTOM,
                          true);
