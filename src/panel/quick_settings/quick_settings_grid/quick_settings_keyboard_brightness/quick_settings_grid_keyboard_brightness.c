@@ -87,6 +87,9 @@ void quick_settings_grid_keyboard_brightness_button_free(
     g_signal_handlers_disconnect_by_func(bs, on_keyboard_brightness_changed,
                                          self);
 
+    // unref menu
+    g_object_unref(self->menu);
+
     // free ourselves
     g_free(self);
 }

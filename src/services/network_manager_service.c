@@ -28,7 +28,6 @@ struct _NetworkManagerService {
     gboolean has_wifi;
     gboolean has_ethernet;
     gboolean has_vpn;
-    gboolean has_wireguard;
     GHashTable *vpn_conns;
     GHashTable *active_vpn_conns;
     struct {
@@ -92,8 +91,6 @@ static void on_changed(NMClient *client, GParamSpec *spec,
 
     self->has_ethernet = false;
     self->has_wifi = false;
-    self->has_vpn = false;
-    self->has_wireguard = false;
 
     const GPtrArray *devices = nm_client_get_devices(client);
     for (int i = 0; i < devices->len; i++) {
@@ -103,9 +100,6 @@ static void on_changed(NMClient *client, GParamSpec *spec,
         }
         if (type == NM_DEVICE_TYPE_WIFI) {
             self->has_wifi = true;
-        }
-        if (type == NM_DEVICE_TYPE_WIREGUARD) {
-            self->has_wireguard = true;
         }
     }
 

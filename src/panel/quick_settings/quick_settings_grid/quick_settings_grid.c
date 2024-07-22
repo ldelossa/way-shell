@@ -331,6 +331,9 @@ static void quick_settings_grid_init_layout(QuickSettingsGrid *self) {
 };
 
 void quick_settings_grid_reinitialize(QuickSettingsGrid *self) {
+    // reset to false so we check if we need a VPN button again.
+    self->has_vpn = false;
+
     // destroy signals
     NetworkManagerService *nm = network_manager_service_get_global();
     g_signal_handlers_disconnect_by_func(nm, on_network_manager_change, self);
