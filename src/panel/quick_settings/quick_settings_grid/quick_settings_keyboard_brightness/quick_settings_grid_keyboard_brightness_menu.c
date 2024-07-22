@@ -18,11 +18,23 @@ typedef struct _QuickSettingsGridKeyboardBrightnessMenu {
 G_DEFINE_TYPE(QuickSettingsGridKeyboardBrightnessMenu,
               quick_settings_grid_keyboard_brightness_menu, G_TYPE_OBJECT);
 
+static void on_keyboard_brightness_changed(
+    BrightnessService *bs, guint32 brightness,
+    QuickSettingsGridKeyboardBrightnessMenu *self);
+
 // stub out dispose, finalize, init and class init functions for GObject
 static void quick_settings_grid_keyboard_brightness_menu_dispose(
     GObject *object) {
     QuickSettingsGridKeyboardBrightnessMenu *self =
         QUICK_SETTINGS_GRID_KEYBOARD_BRIGHTNESS_MENU(object);
+
+    // kill signals
+    BrightnessService *bs = brightness_service_get_global();
+    g_signal_handlers_disconnect_by_func(bs, on_keyboard_brightness_changed,
+                                         self);
+
+    G_OBJECT_CLASS(quick_settings_grid_keyboard_brightness_menu_parent_class)
+        ->dispose(object);
 }
 
 static void quick_settings_grid_keyboard_brightness_menu_finalize(
@@ -39,10 +51,6 @@ static void quick_settings_grid_keyboard_brightness_menu_class_init(
 
 static void on_value_changed(GtkRange *range,
                              QuickSettingsGridKeyboardBrightnessMenu *self);
-
-static void on_keyboard_brightness_changed(
-    BrightnessService *bs, guint32 brightness,
-    QuickSettingsGridKeyboardBrightnessMenu *self);
 
 static void block_brightness_service_signals(
     QuickSettingsGridKeyboardBrightnessMenu *self, gboolean block) {
