@@ -13,6 +13,7 @@ typedef struct _QuickSesstingsGridVPNButton {
     QuickSettingsGridButton button;
     QuickSettingsGridVPNMenu *menu;
     gboolean enabled;
+	GPtrArray *active_stack;
 
 } QuickSettingsGridVPNButton;
 

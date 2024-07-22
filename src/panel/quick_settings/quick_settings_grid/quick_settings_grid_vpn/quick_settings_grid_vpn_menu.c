@@ -4,7 +4,6 @@
 #include <adwaita.h>
 
 #include "../../../../services/network_manager_service.h"
-#include "../../quick_settings.h"
 #include "../../quick_settings_menu_widget.h"
 #include "glib-object.h"
 #include "gtk/gtk.h"
@@ -113,28 +112,6 @@ static void on_vpn_removed(NetworkManagerService *nm, NMConnection *vpn_conn,
     }
 }
 
-static void disable_other_rows(GtkWidget *enabled,
-                               QuickSettingsGridVPNMenu *self) {
-    GtkWidget *child =
-        gtk_widget_get_first_child(GTK_WIDGET(self->menu.options));
-    while (child) {
-        if (child != enabled) {
-            gtk_widget_set_sensitive(child, false);
-            gtk_widget_set_focusable(child, false);
-        }
-        child = gtk_widget_get_next_sibling(child);
-    }
-}
-
-static void enable_all_rows(QuickSettingsGridVPNMenu *self) {
-    GtkWidget *child =
-        gtk_widget_get_first_child(GTK_WIDGET(self->menu.options));
-    while (child) {
-        gtk_widget_set_sensitive(child, true);
-        child = gtk_widget_get_next_sibling(child);
-    }
-}
-
 static void on_vpn_activated(NetworkManagerService *nm,
                              NMActiveConnection *vpn_conn,
                              QuickSettingsGridVPNMenu *self) {
@@ -146,8 +123,6 @@ static void on_vpn_activated(NetworkManagerService *nm,
     g_signal_handlers_block_by_func(row, on_vpn_conn_widget_activate, self);
     adw_switch_row_set_active(ADW_SWITCH_ROW(row), TRUE);
     g_signal_handlers_unblock_by_func(row, on_vpn_conn_widget_activate, self);
-
-    disable_other_rows(row, self);
 }
 
 static void on_vpn_deactivated(NetworkManagerService *nm,
@@ -162,8 +137,6 @@ static void on_vpn_deactivated(NetworkManagerService *nm,
     g_signal_handlers_block_by_func(row, on_vpn_conn_widget_activate, self);
     adw_switch_row_set_active(ADW_SWITCH_ROW(row), FALSE);
     g_signal_handlers_unblock_by_func(row, on_vpn_conn_widget_activate, self);
-
-    enable_all_rows(self);
 }
 
 static void quick_settings_grid_vpn_menu_init_layout(
@@ -182,6 +155,14 @@ static void quick_settings_grid_vpn_menu_init_layout(
     for (GList *l = values; l; l = l->next) {
         NMConnection *vpn_conn = l->data;
         on_vpn_added(nm, vpn_conn, 0, self);
+    }
+
+    GHashTable *active_vpn_conns =
+        network_manager_service_get_active_vpn_connections(nm);
+    GList *active_values = g_hash_table_get_values(active_vpn_conns);
+    for (GList *l = active_values; l; l = l->next) {
+        NMActiveConnection *vpn_conn = l->data;
+        on_vpn_activated(nm, vpn_conn, self);
     }
 
     g_signal_connect(nm, "vpn-added", G_CALLBACK(on_vpn_added), self);

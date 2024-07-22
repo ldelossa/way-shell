@@ -75,3 +75,6 @@ void network_manager_activate_vpn(NetworkManagerService *self, const gchar *id,
 
 gboolean network_manager_service_get_networking_enabled(
     NetworkManagerService *self);
+
+GHashTable *network_manager_service_get_active_vpn_connections(
+    NetworkManagerService *self);

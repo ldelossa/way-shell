@@ -4,6 +4,7 @@
 
 #include "../../../../services/network_manager_service.h"
 #include "./../quick_settings_grid_button.h"
+#include "glib.h"
 
 static void on_toggle_button_clicked(GtkToggleButton *toggle_button,
                                      QuickSettingsGridVPNButton *self) {
@@ -43,11 +44,21 @@ static void on_vpn_deactivated(NetworkManagerService *nm,
                                NMActiveConnection *vpn_conn,
                                QuickSettingsGridVPNButton *self) {
     g_debug("quick_settings_grid_vpn.c:on_vpn_deactivated() called");
-    gtk_label_set_text(self->button.subtitle, "");
-    gtk_image_set_from_icon_name(self->button.icon,
-                                 "network-vpn-disconnected-symbolic");
 
-    quick_settings_grid_button_set_toggled(&self->button, false);
+    // check if we have any other active vpn connections.
+    const char *active_conn = NULL;
+    GHashTable *active_conns =
+        network_manager_service_get_active_vpn_connections(nm);
+    GList *values = g_hash_table_get_keys(active_conns);
+    if (values) active_conn = values->data;
+
+    gtk_label_set_text(self->button.subtitle, active_conn ?: "");
+    gtk_image_set_from_icon_name(
+        self->button.icon, active_conn ? "network-vpn-symbolic"
+                                       : "network-vpn-disconnected-symbolic");
+
+    quick_settings_grid_button_set_toggled(&self->button,
+                                           active_conn ? true : false);
 }
 
 static void on_vpn_removed(NetworkManagerService *nm, NMConnection *vpn_conn,
@@ -70,6 +81,14 @@ QuickSettingsGridVPNButton *quick_settings_grid_vpn_button_init() {
                      self);
 
     quick_settings_grid_button_set_toggled(&self->button, false);
+
+    GHashTable *active_conns =
+        network_manager_service_get_active_vpn_connections(nm);
+    GList *values = g_hash_table_get_values(active_conns);
+    for (GList *l = values; l; l = l->next) {
+        NMActiveConnection *vpn_conn = l->data;
+        on_vpn_activated(nm, vpn_conn, self);
+    }
 
     return self;
 }

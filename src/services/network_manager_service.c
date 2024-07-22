@@ -28,8 +28,9 @@ struct _NetworkManagerService {
     gboolean has_wifi;
     gboolean has_ethernet;
     gboolean has_vpn;
+    gboolean has_wireguard;
     GHashTable *vpn_conns;
-    NMVpnConnection *active_vpn;
+    GHashTable *active_vpn_conns;
     struct {
         NMDeviceWifi *dev;
         NMAccessPoint *ap;
@@ -92,6 +93,7 @@ static void on_changed(NMClient *client, GParamSpec *spec,
     self->has_ethernet = false;
     self->has_wifi = false;
     self->has_vpn = false;
+    self->has_wireguard = false;
 
     const GPtrArray *devices = nm_client_get_devices(client);
     for (int i = 0; i < devices->len; i++) {
@@ -101,6 +103,9 @@ static void on_changed(NMClient *client, GParamSpec *spec,
         }
         if (type == NM_DEVICE_TYPE_WIFI) {
             self->has_wifi = true;
+        }
+        if (type == NM_DEVICE_TYPE_WIREGUARD) {
+            self->has_wireguard = true;
         }
     }
 
@@ -148,13 +153,26 @@ static void on_networking_enabled_changed(NMClient *client, GParamSpec *_,
     }
 }
 
+gboolean connection_is_vpn(NMConnection *conn) {
+    const gchar *type = nm_connection_get_connection_type(conn);
+    // we consider wireguard a vpn, tho NetworkManager has its own built in
+    // type for this.
+    return (g_strcmp0(type, "vpn") == 0 || g_strcmp0(type, "wireguard") == 0);
+}
+
+gboolean active_connection_is_vpn(NMActiveConnection *conn) {
+    const gchar *type = nm_active_connection_get_connection_type(conn);
+    // we consider wireguard a vpn, tho NetworkManager has its own built in
+    // type for this.
+    return (g_strcmp0(type, "vpn") == 0 || g_strcmp0(type, "wireguard") == 0);
+}
+
 static void on_vpn_connection_added(NMClient *client, NMConnection *conn,
                                     NetworkManagerService *self) {
-    // We only care about tracking VPN connections.
-    const gchar *type = nm_connection_get_connection_type(conn);
     const gchar *id = nm_connection_get_id(conn);
 
-    if (g_strcmp0(type, "vpn") != 0) return;
+    // We only care about tracking VPN connections.
+    if (!connection_is_vpn(conn)) return;
 
     g_hash_table_insert(self->vpn_conns, strdup(id), conn);
     int len = g_hash_table_size(self->vpn_conns);
@@ -167,10 +185,9 @@ static void on_vpn_connection_added(NMClient *client, NMConnection *conn,
 static void on_vpn_connection_removed(NMClient *client, NMConnection *conn,
                                       NetworkManagerService *self) {
     // We only care about tracking VPN connections.
-    const gchar *type = nm_connection_get_connection_type(conn);
-    const gchar *id = nm_connection_get_id(conn);
+    if (!connection_is_vpn(conn)) return;
 
-    if (g_strcmp0(type, "vpn") != 0) return;
+    const gchar *id = nm_connection_get_id(conn);
 
     g_hash_table_remove(self->vpn_conns, id);
     int len = g_hash_table_size(self->vpn_conns);
@@ -184,9 +201,10 @@ static void on_active_vpn_connection_added(NMClient *client,
                                            NMActiveConnection *conn,
                                            NetworkManagerService *self) {
     // We only care about tracking VPN connections.
-    if (!nm_active_connection_get_vpn(conn)) return;
+    if (!active_connection_is_vpn(conn)) return;
 
-    self->active_vpn = (NMVpnConnection *)conn;
+    const gchar *id = nm_active_connection_get_id(conn);
+    g_hash_table_insert(self->active_vpn_conns, strdup(id), conn);
 
     g_signal_emit(self, signals[vpn_activated], 0, conn);
 }
@@ -195,15 +213,10 @@ static void on_active_vpn_connection_removed(NMClient *client,
                                              NMActiveConnection *conn,
                                              NetworkManagerService *self) {
     // We only care about tracking VPN connections.
-    if (!nm_active_connection_get_vpn(conn)) return;
-
-    if (!self->active_vpn) return;
+    if (!active_connection_is_vpn(conn)) return;
 
     const gchar *id = nm_active_connection_get_id(conn);
-    const gchar *cur_id =
-        nm_active_connection_get_id((NMActiveConnection *)self->active_vpn);
-
-    if (g_strcmp0(id, cur_id) != 0) return;
+    g_hash_table_remove(self->active_vpn_conns, id);
 
     g_signal_emit(self, signals[vpn_deactivated], 0, conn);
 }
@@ -212,6 +225,7 @@ static void network_manager_service_init(NetworkManagerService *self) {
     GError *error;
 
     self->vpn_conns = g_hash_table_new(g_str_hash, g_str_equal);
+    self->active_vpn_conns = g_hash_table_new(g_str_hash, g_str_equal);
 
     self->client = nm_client_new(NULL, &error);
     if (!self->client) {
@@ -226,13 +240,26 @@ static void network_manager_service_init(NetworkManagerService *self) {
     const GPtrArray *connections = nm_client_get_connections(self->client);
     for (int i = 0; i < connections->len; i++) {
         NMConnection *conn = connections->pdata[i];
-        const gchar *type = nm_connection_get_connection_type(conn);
-        if (g_strcmp0(type, "vpn") == 0) {
+        if (connection_is_vpn(conn)) {
             g_object_ref(conn);
             g_hash_table_insert(self->vpn_conns,
                                 g_strdup(nm_connection_get_id(conn)), conn);
             self->has_vpn = true;
         }
+    }
+
+    // seed vpn connections
+    const GPtrArray *conns = nm_client_get_connections(self->client);
+    for (int i = 0; i < conns->len; i++) {
+        on_vpn_connection_added(self->client, conns->pdata[i], self);
+    }
+
+    // seed active vpn connections
+    const GPtrArray *active_conns =
+        nm_client_get_active_connections(self->client);
+    for (int i = 0; i < active_conns->len; i++) {
+        on_active_vpn_connection_added(self->client, active_conns->pdata[i],
+                                       self);
     }
 
     g_signal_connect(self->client, "notify", G_CALLBACK(on_changed), self);
@@ -614,28 +641,45 @@ static void on_vpn_deactivated(GObject *source_object, GAsyncResult *res,
 
 void network_manager_activate_vpn(NetworkManagerService *self, const gchar *id,
                                   gboolean activate) {
-    if (activate) {
-        NMConnection *conn = g_hash_table_lookup(self->vpn_conns, id);
-        if (!conn) return;
+    NMConnection *conn = g_hash_table_lookup(self->vpn_conns, id);
+    if (!conn) return;
 
-        nm_client_activate_connection_async(self->client, conn,
-                                            self->primary_dev, NULL, NULL,
+    if (activate) {
+        NMDevice *dev = self->primary_dev;
+
+        const char *type = nm_connection_get_connection_type(conn);
+
+        if (g_strcmp0(type, "wireguard") == 0) {
+            // wireguard connections setup their own interfaces on created,
+            // so we don't need to provide a base device.
+            dev = NULL;
+        }
+
+        nm_client_activate_connection_async(self->client, conn, dev, NULL, NULL,
                                             on_vpn_activated, self);
     } else {
-        NMActiveConnection *conn =
-            nm_client_get_primary_connection(self->client);
-        if (!conn) return;
+        NMActiveConnection *active_conn = NULL;
 
-        nm_client_deactivate_connection_async(self->client, conn, NULL,
+        // determine if the desired conn is actually active...
+        const GPtrArray *active_conns =
+            nm_client_get_active_connections(self->client);
+
+        for (int i = 0; i < active_conns->len; i++) {
+            NMActiveConnection *ac = active_conns->pdata[i];
+            if (g_strcmp0(nm_active_connection_get_id(ac), id) == 0) {
+                active_conn = ac;
+                break;
+            }
+        }
+
+        if (!active_conn) return;
+
+        nm_client_deactivate_connection_async(self->client, active_conn, NULL,
                                               on_vpn_deactivated, self);
     }
 }
 
-NMVpnConnection *network_manager_get_active_vpn_connection(
+GHashTable *network_manager_service_get_active_vpn_connections(
     NetworkManagerService *self) {
-    NMActiveConnection *conn = nm_client_get_primary_connection(self->client);
-
-    if (nm_active_connection_get_vpn(conn)) return (NMVpnConnection *)conn;
-
-    return NULL;
+    return self->active_vpn_conns;
 }
