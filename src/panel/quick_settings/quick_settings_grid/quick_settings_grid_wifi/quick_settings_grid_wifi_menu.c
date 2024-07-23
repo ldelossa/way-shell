@@ -3,8 +3,10 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
+#include "../../../../services/network_manager_service.h"
 #include "../../quick_settings.h"
 #include "../../quick_settings_menu_widget.h"
+#include "glib.h"
 #include "nm-dbus-interface.h"
 #include "quick_settings_grid_wifi.h"
 #include "quick_settings_grid_wifi_menu_option.h"
@@ -115,10 +117,34 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
 
     QuickSettingsGridWifiMenuOption *active_option = NULL;
 
-    // check if we have a pointer to this ap in our hash table
-    // if not, add it.
+    // we want to iterate over all APs and filter out
+    // 1. APs with no names
+    // 2. APs with duplicate SSIDs, picking the one with the strongest
+    // signal
+    GHashTable *best_aps = g_hash_table_new(g_str_hash, g_str_equal);
+
     for (int i = 0; i < aps->len; i++) {
         NMAccessPoint *ap = g_ptr_array_index(aps, i);
+
+        // if no ssid, just skip.
+        if (!nm_access_point_get_ssid(ap)) continue;
+
+        const char *ssid = network_manager_service_ap_to_name(ap);
+
+        NMAccessPoint *seen = g_hash_table_lookup(best_aps, ssid);
+        if (seen) {
+            double seen_signal = nm_access_point_get_strength(seen);
+            double ap_signal = nm_access_point_get_strength(ap);
+            if (ap_signal > seen_signal)
+                g_hash_table_replace(best_aps, (gpointer)ssid, ap);
+        } else {
+            g_hash_table_insert(best_aps, (gpointer)ssid, ap);
+        }
+    }
+
+    GList *best_aps_values = g_hash_table_get_values(best_aps);
+    for (GList *iter = best_aps_values; iter; iter = g_list_next(iter)) {
+        NMAccessPoint *ap = iter->data;
 
         QuickSettingsGridWifiMenuOption *opt =
             g_object_new(QUICK_SETTINGS_GRID_WIFI_MENU_OPTION_TYPE, NULL);
@@ -139,6 +165,9 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
         gtk_box_append(self->menu.options,
                        quick_settings_grid_wifi_menu_option_get_widget(opt));
     }
+
+	// we can free best_aps now
+	g_hash_table_unref(best_aps);
 
     // always keep active option on top
     if (active_option) {
@@ -254,9 +283,6 @@ void quick_settings_grid_wifi_menu_on_reveal(QuickSettingsGridButton *button_,
     QuickSettingsGridWifiButton *button =
         (QuickSettingsGridWifiButton *)button_;
     QuickSettingsGridWifiMenu *self = button->menu;
-
-    if (!is_revealed) {
-    }
 
     g_debug("quick_settings_grid_wifi_menu.c:on_reveal() called");
 
