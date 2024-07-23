@@ -166,8 +166,8 @@ static void wifi_device_get_aps(NMDeviceWifi *wifi, GParamSpec *pspec,
                        quick_settings_grid_wifi_menu_option_get_widget(opt));
     }
 
-	// we can free best_aps now
-	g_hash_table_unref(best_aps);
+    // we can free best_aps now
+    g_hash_table_unref(best_aps);
 
     // always keep active option on top
     if (active_option) {
@@ -226,6 +226,9 @@ static void quick_settings_grid_wifi_menu_init_layout(
     gtk_widget_set_hexpand(GTK_WIDGET(self->refresh), TRUE);
     gtk_widget_set_halign(GTK_WIDGET(self->refresh), GTK_ALIGN_END);
     g_signal_connect(self->refresh, "clicked", G_CALLBACK(do_scan), self);
+
+    // kick off an initial scan
+    do_scan(NULL, self);
 }
 
 static void quick_settings_grid_wifi_menu_init(
