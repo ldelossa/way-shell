@@ -20,6 +20,18 @@ static void on_nm_change(NetworkManagerService *nm,
 
     g_debug("panel_status_bar_network_button.c:on_nm_change() called.");
 
+    // check if network is disabled, if it is, we hide the wifi button all
+	// together.
+    gboolean enabled = network_manager_service_get_networking_enabled(nm);
+    if (!enabled) {
+        // hide icon and return
+        gtk_widget_set_visible(GTK_WIDGET(self->icon), false);
+		return;
+    } else {
+        // show icon
+        gtk_widget_set_visible(GTK_WIDGET(self->icon), true);
+    }
+
     NMDeviceType type = 0;
     if (dev) type = nm_device_get_device_type(dev);
 

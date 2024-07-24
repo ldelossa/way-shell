@@ -32,6 +32,26 @@ static void on_vpn_deactivated(NetworkManagerService *nm,
                                NMActiveConnection *vpn_conn,
                                QuickSettingsGridVPNMenu *self);
 
+static void on_networking_enabled(NetworkManagerService *nm, gboolean enabled,
+                                  QuickSettingsGridVPNMenu *self) {
+    GtkWidget *child =
+        gtk_widget_get_first_child(GTK_WIDGET(self->menu.options));
+
+    if (enabled) {
+        while (child) {
+            gtk_widget_set_sensitive(child, true);
+            gtk_widget_set_focusable(child, true);
+            child = gtk_widget_get_next_sibling(child);
+        }
+    } else {
+        while (child) {
+            gtk_widget_set_sensitive(child, false);
+            gtk_widget_set_focusable(child, false);
+            child = gtk_widget_get_next_sibling(child);
+        }
+    }
+}
+
 // stub out dispose, finalize, init and class init functions for GObject
 static void quick_settings_grid_vpn_menu_dispose(GObject *object) {
     QuickSettingsGridVPNMenu *self = QUICK_SETTINGS_GRID_VPN_MENU(object);
@@ -39,6 +59,7 @@ static void quick_settings_grid_vpn_menu_dispose(GObject *object) {
     NetworkManagerService *nm = network_manager_service_get_global();
 
     // disconnect from signals
+    g_signal_handlers_disconnect_by_func(nm, on_networking_enabled, self);
     g_signal_handlers_disconnect_by_func(nm, on_vpn_added, self);
     g_signal_handlers_disconnect_by_func(nm, on_vpn_removed, self);
     g_signal_handlers_disconnect_by_func(nm, on_vpn_activated, self);
@@ -164,6 +185,9 @@ static void quick_settings_grid_vpn_menu_init_layout(
         NMActiveConnection *vpn_conn = l->data;
         on_vpn_activated(nm, vpn_conn, self);
     }
+
+    g_signal_connect(nm, "networking-enabled-changed",
+                     G_CALLBACK(on_networking_enabled), self);
 
     g_signal_connect(nm, "vpn-added", G_CALLBACK(on_vpn_added), self);
     g_signal_connect(nm, "vpn-removed", G_CALLBACK(on_vpn_removed), self);

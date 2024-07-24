@@ -8,6 +8,9 @@
 #include "./panel_status_bar_network_button.h"
 #include "./panel_status_bar_power_button.h"
 #include "./panel_status_bar_sound_button.h"
+#include "./panel_status_bar_vpn_button.h"
+#include "./panel_status_bar_nightlight_button.h"
+#include "./panel_status_bar_airplane_mode_button.h"
 
 struct _PanelStatusBar {
     GObject parent_instance;
@@ -76,6 +79,30 @@ static void panel_status_bar_init_layout(PanelStatusBar *self) {
                                   idle_inhibitor_button));
     // append to buttons
     g_ptr_array_add(self->buttons, idle_inhibitor_button);
+
+	// create nighlight icon and append it to box
+	PanelStatusBarNightLightButton *nightlight_button =
+		g_object_new(PANEL_STATUS_BAR_NIGHTLIGHT_BUTTON_TYPE, NULL);
+	gtk_box_append(self->box,
+				   panel_status_bar_nightlight_button_get_widget(nightlight_button));
+	// append to buttons
+	g_ptr_array_add(self->buttons, nightlight_button);
+
+	// create airplane mode icon and append it to box
+	PanelStatusBarAirplaneModeButton *airplane_mode_button =
+		g_object_new(PANEL_STATUS_BAR_AIRPLANE_MODE_BUTTON_TYPE, NULL);
+	gtk_box_append(self->box,
+				   panel_status_bar_airplane_mode_button_get_widget(airplane_mode_button));
+	// append to buttons
+	g_ptr_array_add(self->buttons, airplane_mode_button);
+
+    // create vpn icon and append it to box
+    PanelStatusBarVPNButton *vpn_button =
+        g_object_new(PANEL_STATUS_BAR_VPN_BUTTON_TYPE, NULL);
+    gtk_box_append(self->box,
+                   panel_status_bar_vpn_button_get_widget(vpn_button));
+    // append to buttons
+    g_ptr_array_add(self->buttons, vpn_button);
 
     // create network icon and append it to box
     PanelStatusBarNetworkButton *network_button =
