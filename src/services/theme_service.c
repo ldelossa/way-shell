@@ -46,18 +46,21 @@ static void on_theme_switch(ThemeService *self) {
         arg = "dark";
     }
 
-    // check if {config_dir}/way-shell/on_theme_changed.sh file exists
+    // check if {config_dir}/way-shell/on_theme_changed{.sh} file exists
     // if it does, execute it with
-    char *script_path =
-        g_build_filename(conf_dir, CONFIG_DIR, "on_theme_changed.sh", NULL);
-    if (g_file_test(script_path,
-                    G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE)) {
-        char *cmd = g_strdup_printf("bash -c '%s %s'", script_path, arg);
-        GError *error = NULL;
-        g_spawn_command_line_async(cmd, &error);
-        if (error != NULL) {
-            g_warning("Failed to execute command: %s", error->message);
-            g_error_free(error);
+    char *scripts_path[2];
+    scripts_path[0] = g_build_filename(conf_dir, CONFIG_DIR, "on_theme_changed", NULL);
+    scripts_path[1] = g_build_filename(conf_dir, CONFIG_DIR, "on_theme_changed.sh", NULL);
+    for (size_t i = 0; i < 2; ++i) {
+        if (g_file_test(scripts_path[i], G_FILE_TEST_EXISTS | G_FILE_TEST_IS_EXECUTABLE)) {
+            char *cmd = g_strdup_printf("%s %s", scripts_path[i], arg);
+            GError *error = NULL;
+            g_spawn_command_line_async(cmd, &error);
+            if (error != NULL) {
+                g_warning("Failed to execute command: %s", error->message);
+                g_error_free(error);
+            }
+	    break;
         }
     }
 }
