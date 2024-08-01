@@ -4,6 +4,7 @@
 
 #include "../../../services/media_player_service/media_player_service.h"
 #include "../../../services/notifications_service/notifications_service.h"
+#include "notification_osd.h"
 
 G_BEGIN_DECLS
 
@@ -36,3 +37,12 @@ void notification_widget_set_stack_effect(NotificationWidget *self,
 void notification_widget_dismiss_notification(NotificationWidget *self);
 
 gchar *notification_widget_get_media_player_name(NotificationWidget *self);
+
+// If the NotificationWidget is associated with an Notification on screen
+// display, this method will set a synthetic 'Hide' action button which
+// closes the OSD.
+void notification_widget_set_osd(NotificationWidget *self,
+                                 NotificationsOSD *osd);
+
+NotificationsOSD *notification_widget_get_osd(NotificationWidget *self);
+

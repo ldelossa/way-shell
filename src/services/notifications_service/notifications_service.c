@@ -241,7 +241,10 @@ static gboolean on_handle_notify(DbusNotifications *dbus,
     // parse hints
     parse_notify_hints(hints, n);
 
-    n->id = self->last_id++;
+	// ids should start at zero for client compat
+    n->id = self->last_id;
+    self->last_id++;
+
     n->replaces_id = replaces_id;
     n->expire_timeout = expire_timeout;
     n->created_on = g_date_time_new_now_local();
@@ -354,6 +357,7 @@ static void notifications_service_init(NotificationsService *self) {
     g_debug("notifications_service.c:notifications_service_init() called");
 
     self->enabled = false;
+    self->last_id = 0;
 
     notifications_service_dbus_connect(self);
 

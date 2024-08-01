@@ -467,6 +467,43 @@ statuspage {
     margin: 2px;
 }
 
+#notifications-osd .notification-widget-action-button,
+#notifications-list .notification-widget-action-button {
+	border-radius: 0px;
+	margin: 0px;
+	padding-top: 10px;
+	padding-bottom: 10px;
+	font-size: 14px;
+}
+
+#notifications-osd .notification-widget-action-button.only,
+#notifications-list .notification-widget-action-button.only {
+	border-bottom-left-radius: 8px;
+	border-bottom-right-radius: 8px;
+}
+
+#notifications-osd .notification-widget-action-button.first,
+#notifications-list .notification-widget-action-button.first {
+	border-bottom-left-radius: 8px;
+	border-right: .25px solid;
+}
+
+#notifications-osd .notification-widget-action-button.center,
+#notifications-list .notification-widget-action-button.center {
+	border-bottom-left-radius: 0px;
+	border-right: .25px solid;
+}
+
+#notifications-osd .notification-widget-action-button.last,
+#notifications-list .notification-widget-action-button.last {
+	border-bottom-right-radius: 8px;
+}
+
+#notifications-osd .notification-widget-action-button:hover,
+#notifications-list .notification-widget-action-button:hover {
+    background: @panel-button-hover;
+}
+
 #notifications-list #notifications-list-controls {
   font-weight: bold;
   font-size: 14px;
