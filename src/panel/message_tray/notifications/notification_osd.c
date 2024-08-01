@@ -153,6 +153,8 @@ static void on_notification_added(NotificationsService *ns,
     }
 
     NotificationWidget *new = notification_widget_from_notification(n, true);
+	notification_widget_set_osd(new, self);
+
     // for some reason, we need to reset this before presenting, despite
     // them being set in the constructing function.
     GtkLabel *summary = notification_widget_get_summary(new);
@@ -252,4 +254,15 @@ static void notifications_osd_init(NotificationsOSD *self) {
 void notification_osd_set_notification_list(NotificationsOSD *self,
                                             NotificationsList *list) {
     self->list = list;
+}
+
+void notification_osd_hide(NotificationsOSD *self) {
+    if (!self->win) return;
+    gtk_revealer_set_reveal_child(self->revealer, false);
+
+    // if timer, kill is
+    if (self->timeout_id) {
+        g_source_remove(self->timeout_id);
+        self->timeout_id = 0;
+    }
 }

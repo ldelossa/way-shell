@@ -2,7 +2,6 @@
 
 #include <adwaita.h>
 
-#include "./notification_widget.h"
 #include "./notifications_list.h"
 
 G_BEGIN_DECLS
@@ -18,3 +17,5 @@ void notification_osd_reinitialize(NotificationsOSD *self);
 
 void notification_osd_set_notification_list(NotificationsOSD *self,
                                             NotificationsList *list);
+
+void notification_osd_hide(NotificationsOSD *self);

@@ -5,8 +5,10 @@
 
 #include "../../../services/media_player_service/media_player_service.h"
 #include "../message_tray.h"
+#include "glib-object.h"
 #include "glib.h"
 #include "gtk/gtk.h"
+#include "notification_osd.h"
 
 enum signals { notification_expanded, notification_collapsed, signals_n };
 
@@ -45,12 +47,20 @@ typedef struct _NotificationWidget {
     GtkButton *previous;
     GtkButton *next;
 
+    // action revealer
+    GtkRevealer *action_revealer;
+    // container which holds action buttons
+    GtkBox *action_container;
+    // count of action buttons used for applying the correct css.
+    int actions_buttons_n;
+
     // properties
     gboolean expanded;
     GDateTime *created_on;
     guint32 timer_id;
     // mpris media player name, if null, notification is not a media player.
     gchar *media_player_name;
+    NotificationsOSD *osd;
 } NotificationWidget;
 
 static guint notification_widget_signals[signals_n] = {0};
@@ -62,6 +72,10 @@ void on_pointer_enter(GtkEventControllerMotion *ctrl, double x, double y,
     AdwAnimationState state = adw_animation_get_state(self->expand_animation);
     gboolean reverse = adw_timed_animation_get_reverse(
         ADW_TIMED_ANIMATION(self->expand_animation));
+
+    if (self->action_revealer) {
+        gtk_revealer_set_reveal_child(self->action_revealer, true);
+    }
 
     switch (state) {
         case ADW_ANIMATION_IDLE:
@@ -109,6 +123,10 @@ void on_pointer_leave(GtkEventControllerMotion *ctrl, double x, double y,
     AdwAnimationState state = adw_animation_get_state(self->expand_animation);
     gboolean reverse = adw_timed_animation_get_reverse(
         ADW_TIMED_ANIMATION(self->expand_animation));
+
+    if (self->action_revealer) {
+        gtk_revealer_set_reveal_child(self->action_revealer, false);
+    }
 
     switch (state) {
         case ADW_ANIMATION_IDLE:
@@ -241,7 +259,106 @@ static void on_message_tray_will_hide(MessageTray *tray,
         adw_timed_animation_set_reverse(
             ADW_TIMED_ANIMATION(self->expand_animation), true);
         adw_animation_play(self->expand_animation);
+		if (self->action_revealer)
+			gtk_revealer_set_reveal_child(self->action_revealer, false);
         self->expanded = !self->expanded;
+    }
+}
+
+static void on_action_button_clicked(GtkButton *button,
+                                     NotificationWidget *self) {
+    g_debug("notification_widget.c:on_action_button_clicked() called");
+
+    NotificationsService *service = notifications_service_get_global();
+
+    gchar *action = g_object_get_data(G_OBJECT(button), "action");
+    if (!action) return;
+
+    notifications_service_invoke_action(service, self->id, action);
+}
+
+// we need this so we don't leak string allocs.
+static void on_action_button_destroy(GtkButton *button, gpointer _) {
+    gchar *action = g_object_get_data(G_OBJECT(button), "action");
+    if (action) g_free(action);
+}
+
+static void configure_action_revealer(NotificationWidget *self) {
+    self->action_revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->action_revealer,
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+
+    GtkCenterBox *center = GTK_CENTER_BOX(gtk_center_box_new());
+
+    // hexpand center box
+    gtk_widget_set_hexpand(GTK_WIDGET(center), true);
+
+    self->action_container =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+
+    // hexpand action container
+    gtk_widget_set_hexpand(GTK_WIDGET(self->action_container), true);
+
+    // set container as child of revealer
+    gtk_revealer_set_child(self->action_revealer, GTK_WIDGET(center));
+
+    gtk_center_box_set_center_widget(center,
+                                     GTK_WIDGET(self->action_container));
+
+    gtk_box_append(self->action_container, GTK_WIDGET(center));
+
+    // append revealer to notification container
+    gtk_box_append(self->notification_container,
+                   GTK_WIDGET(self->action_revealer));
+}
+
+static void notification_widget_from_notification_action_buttons(
+    Notification *n, NotificationWidget *self) {
+    int i = 0;
+    for (char *a = n->actions[i]; a; a = n->actions[i]) {
+        // ignore the 'default' action, this will always be called by clicking
+        // the notification body.
+        if (n->actions[i + 1] && strcmp(n->actions[i + 1], "default") == 0) {
+            i += 2;
+            continue;
+        }
+
+        // ensure we have a user-facing string to display.
+        // see:
+        // https://specifications.freedesktop.org/notification-spec/notification-spec-latest.html
+        if (!n->actions[i + 1] || strlen(n->actions[i + 1]) == 0) {
+            i += 2;
+            continue;
+        }
+
+        // create GtkRevealer and GtkBox if we need to.
+        if (!self->action_revealer) {
+            configure_action_revealer(self);
+        }
+
+        // Add action button
+        GtkButton *action_button =
+            GTK_BUTTON(gtk_button_new_with_label(n->actions[i + 1]));
+
+        // hexpand button
+        gtk_widget_set_hexpand(GTK_WIDGET(action_button), true);
+
+        gtk_widget_add_css_class(GTK_WIDGET(action_button),
+                                 "notification-widget-action-button");
+
+        g_object_set_data(G_OBJECT(action_button), "action",
+                          strdup(n->actions[i]));
+
+        g_signal_connect(action_button, "destroy",
+                         G_CALLBACK(on_action_button_destroy), NULL);
+
+        g_signal_connect(action_button, "clicked",
+                         G_CALLBACK(on_action_button_clicked), self);
+
+        gtk_box_append(self->action_container, GTK_WIDGET(action_button));
+        self->actions_buttons_n++;
+
+        i += 2;
     }
 }
 
@@ -572,11 +689,17 @@ static void on_expand_button_clicked(GtkButton *button,
         adw_timed_animation_set_reverse(
             ADW_TIMED_ANIMATION(self->expand_animation), true);
         adw_animation_play(self->expand_animation);
+
+        if (self->action_revealer)
+            gtk_revealer_set_reveal_child(self->action_revealer, false);
     } else {
         gtk_button_set_icon_name(self->header_expand, "go-up-symbolic");
         adw_timed_animation_set_reverse(
             ADW_TIMED_ANIMATION(self->expand_animation), false);
         adw_animation_play(self->expand_animation);
+
+        if (self->action_revealer)
+            gtk_revealer_set_reveal_child(self->action_revealer, true);
     }
 
     self->expanded = !self->expanded;
@@ -618,6 +741,42 @@ static gboolean update_timer(NotificationWidget *self) {
     return true;
 }
 
+static void action_button_css_reset(GtkWidget *child) {
+    gtk_widget_remove_css_class(child, "first");
+    gtk_widget_remove_css_class(child, "center");
+    gtk_widget_remove_css_class(child, "last");
+    gtk_widget_remove_css_class(child, "only");
+}
+
+static void set_action_button_css(NotificationWidget *self) {
+    if (!self->actions_buttons_n) return;
+
+    GtkWidget *child =
+        gtk_widget_get_first_child(GTK_WIDGET(self->action_container));
+
+    if (self->actions_buttons_n == 1) {
+        // add .only class
+        action_button_css_reset(child);
+        gtk_widget_add_css_class(child, "only");
+        return;
+    }
+
+    int i = 1;
+
+    while (child) {
+        action_button_css_reset(child);
+        if (i == 1) {
+            gtk_widget_add_css_class(child, "first");
+        } else if (i != self->actions_buttons_n) {
+            gtk_widget_add_css_class(child, "center");
+        } else {
+            gtk_widget_add_css_class(child, "last");
+        }
+        i++;
+        child = gtk_widget_get_next_sibling(child);
+    }
+}
+
 NotificationWidget *notification_widget_from_notification(
     Notification *n, gboolean expand_on_enter) {
     NotificationWidget *self = g_object_new(NOTIFICATION_WIDGET_TYPE, NULL);
@@ -625,6 +784,17 @@ NotificationWidget *notification_widget_from_notification(
     self->id = n->id;
 
     notification_widget_init_layout(self);
+
+    // if we have actions, create actions revealer with buttons
+    if (n->actions) {
+        notification_widget_from_notification_action_buttons(n, self);
+        if (self->action_revealer)
+            gtk_box_append(self->notification_container,
+                           GTK_WIDGET(self->action_revealer));
+    }
+
+    // all action buttons are created by now, set the CSS appropriately.
+    set_action_button_css(self);
 
     g_object_set_data(G_OBJECT(self->container), "notification-id",
                       GUINT_TO_POINTER(n->id));
@@ -874,4 +1044,40 @@ NotificationWidget *notification_widget_from_media_player(MediaPlayer *player) {
 
 gchar *notification_widget_get_media_player_name(NotificationWidget *self) {
     return self->media_player_name;
+}
+
+static void on_hide_button_clicked(GtkButton *button,
+                                   NotificationWidget *self) {
+    g_debug("notification_widget.c:on_hide_button_clicked() called");
+    notification_osd_hide(self->osd);
+}
+
+void notification_widget_set_osd(NotificationWidget *self,
+                                 NotificationsOSD *osd) {
+    // for the creation of a synethic 'hide' action button if this notification
+    // has an OSD attached, which hides the notification for later viewing in
+    // the NotificationList
+    if (!self->action_revealer) {
+        configure_action_revealer(self);
+    }
+
+    // Add action button
+    GtkButton *action_button = GTK_BUTTON(gtk_button_new_with_label("Hide"));
+
+    // hexpand button
+    gtk_widget_set_hexpand(GTK_WIDGET(action_button), true);
+
+    gtk_widget_add_css_class(GTK_WIDGET(action_button),
+                             "notification-widget-action-button");
+
+    g_signal_connect(action_button, "clicked",
+                     G_CALLBACK(on_hide_button_clicked), self);
+
+    gtk_box_append(self->action_container, GTK_WIDGET(action_button));
+    self->actions_buttons_n++;
+
+    // we added a button, so reset css
+    set_action_button_css(self);
+
+    self->osd = osd;
 }
