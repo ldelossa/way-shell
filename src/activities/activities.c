@@ -24,6 +24,7 @@ typedef struct _Activities {
     AdwWindow *win;
     GtkRevealer *revealer;
     GtkWidget *container;
+    GtkEventController *key_controller;
 
     // Search
     GtkSearchEntry *search_entry;
@@ -246,6 +247,12 @@ static void on_search_stop(GtkSearchEntry *entry, Activities *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->search_result_scrolled), false);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel), true);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel_dots), true);
+
+	// clear search text
+	gtk_editable_set_text(GTK_EDITABLE(entry), "");
+
+	// unselect all search results
+	gtk_flow_box_unselect_all(self->search_result_flbox);
 }
 
 static void on_search_changed(GtkSearchEntry *entry, Activities *self) {
@@ -306,6 +313,32 @@ static void on_search_entry_activate(GtkSearchEntry *entry, Activities *self) {
 
     // simulate click
     activities_app_widget_simulate_click(app_widget);
+}
+
+static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
+                            guint keycode, GdkModifierType state,
+                            Activities *self) {
+    if (keyval == GDK_KEY_Tab) {
+        on_search_next_match(NULL, self);
+        return true;
+    }
+
+    if (keyval == GDK_KEY_ISO_Left_Tab && (state & GDK_SHIFT_MASK)) {
+        on_search_previous_match(NULL, self);
+        return true;
+    }
+
+    if (keyval == GDK_KEY_n && (state & GDK_CONTROL_MASK)) {
+        on_search_next_match(NULL, self);
+        return true;
+    }
+
+    if (keyval == GDK_KEY_p && (state & GDK_CONTROL_MASK)) {
+        on_search_previous_match(NULL, self);
+        return true;
+    }
+
+    return false;
 }
 
 static void activities_init_layout(Activities *self) {
@@ -425,6 +458,13 @@ static void activities_init_layout(Activities *self) {
     fill_app_infos(self);
 
     adw_window_set_content(self->win, GTK_WIDGET(self->revealer));
+
+	// wire up key controller
+    self->key_controller = gtk_event_controller_key_new();
+    g_signal_connect(self->key_controller, "key-pressed",
+                     G_CALLBACK(key_pressed), self);
+
+    gtk_widget_add_controller(GTK_WIDGET(self->win), self->key_controller);
 }
 
 static void activities_init(Activities *self) {
@@ -454,7 +494,7 @@ void activities_hide(Activities *self) {
 
     gtk_editable_set_text(GTK_EDITABLE(self->search_entry), "");
 
-	gtk_flow_box_unselect_all(self->search_result_flbox);
+    gtk_flow_box_unselect_all(self->search_result_flbox);
 
     on_search_stop(self->search_entry, self);
 }
