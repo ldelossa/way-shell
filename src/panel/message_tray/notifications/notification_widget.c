@@ -259,8 +259,8 @@ static void on_message_tray_will_hide(MessageTray *tray,
         adw_timed_animation_set_reverse(
             ADW_TIMED_ANIMATION(self->expand_animation), true);
         adw_animation_play(self->expand_animation);
-		if (self->action_revealer)
-			gtk_revealer_set_reveal_child(self->action_revealer, false);
+        if (self->action_revealer)
+            gtk_revealer_set_reveal_child(self->action_revealer, false);
         self->expanded = !self->expanded;
     }
 }
@@ -318,7 +318,7 @@ static void notification_widget_from_notification_action_buttons(
     for (char *a = n->actions[i]; a; a = n->actions[i]) {
         // ignore the 'default' action, this will always be called by clicking
         // the notification body.
-        if (n->actions[i + 1] && strcmp(n->actions[i + 1], "default") == 0) {
+        if (n->actions[i] && strcmp(n->actions[i], "default") == 0) {
             i += 2;
             continue;
         }
