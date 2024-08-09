@@ -198,11 +198,11 @@ void quick_settings_grid_wifi_menu_option_update_ap(
     NMAccessPoint *ap) {
     NMDeviceState state = nm_device_get_state(NM_DEVICE(dev));
     gboolean is_active_ap = nm_device_wifi_get_active_access_point(dev) == ap;
-    if ((nm_access_point_get_flags(ap) == NM_802_11_AP_FLAGS_NONE)) {
-        self->has_sec = false;
-    } else {
+
+    self->has_sec = false;
+    if (nm_access_point_get_wpa_flags(ap) != NM_802_11_AP_SEC_NONE ||
+        nm_access_point_get_rsn_flags(ap) != NM_802_11_AP_SEC_NONE)
         self->has_sec = true;
-    }
 
     if (is_active_ap) {
         // unhide spinner and start it
