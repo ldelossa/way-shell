@@ -109,7 +109,6 @@ static void quick_settings_grid_wifi_menu_option_class_init_layout(
     self->sec_icon = GTK_IMAGE(
         gtk_image_new_from_icon_name("network-wireless-encrypted-symbolic"));
     gtk_image_set_pixel_size(self->sec_icon, 10);
-    gtk_widget_set_visible(GTK_WIDGET(self->sec_icon), false);
 
     self->active_icon =
         GTK_IMAGE(gtk_image_new_from_icon_name("object-select-symbolic"));
@@ -204,6 +203,12 @@ void quick_settings_grid_wifi_menu_option_update_ap(
         nm_access_point_get_rsn_flags(ap) != NM_802_11_AP_SEC_NONE)
         self->has_sec = true;
 
+    if (self->has_sec)
+        gtk_image_set_from_icon_name(self->sec_icon,
+                                     "network-wireless-encrypted-symbolic");
+    else
+        gtk_image_set_from_icon_name(self->sec_icon, NULL);
+
     if (is_active_ap) {
         // unhide spinner and start it
         gtk_widget_set_visible(GTK_WIDGET(self->spinner), true);
@@ -224,11 +229,6 @@ void quick_settings_grid_wifi_menu_option_update_ap(
     gtk_image_set_from_icon_name(
         self->strength_icon, network_manager_service_ap_strength_to_icon_name(
                                  nm_access_point_get_strength(ap)));
-
-    // if password protected make self->sec_icon visible
-    if (self->has_sec) {
-        gtk_widget_set_visible(GTK_WIDGET(self->sec_icon), true);
-    }
 
     // if active ap set active icon visible
     if (is_active_ap && state == NM_DEVICE_STATE_ACTIVATED) {
