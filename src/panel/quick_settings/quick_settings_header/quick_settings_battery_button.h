@@ -17,3 +17,6 @@ void quick_settings_battery_button_reinitialize(
 
 GtkWidget *quick_settings_battery_button_get_widget(
     QuickSettingsBatteryButton *self);
+
+GtkButton *quick_settings_battery_button_get_button(
+    QuickSettingsBatteryButton *self);
