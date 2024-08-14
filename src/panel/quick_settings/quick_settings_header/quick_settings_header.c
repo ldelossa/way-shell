@@ -33,7 +33,7 @@ static void quick_settings_header_on_qs_hidden(QuickSettings *qs,
         "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
     gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
-	gtk_revealer_set_reveal_child(self->battery_menu_revealer, FALSE);
+    gtk_revealer_set_reveal_child(self->battery_menu_revealer, FALSE);
 }
 
 static void on_battery_button_click(GtkButton *button,
@@ -175,6 +175,12 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
         self->mixer_revealer,
         quick_settings_header_mixer_get_menu_widget(self->mixer));
 
+    // wire up the battery button click handler here, since we may reinitalize
+    // if the qs window is destroyed.
+    g_signal_connect(
+        quick_settings_battery_button_get_button(self->battery_button),
+        "clicked", G_CALLBACK(on_battery_button_click), self);
+
     // create GtkRevealer for battery menu
     self->battery_menu_revealer = GTK_REVEALER(gtk_revealer_new());
     gtk_revealer_set_transition_type(self->battery_menu_revealer,
@@ -232,10 +238,6 @@ static void quick_settings_header_init(QuickSettingsHeader *self) {
     self->battery_button =
         g_object_new(QUICK_SETTINGS_BATTERY_BUTTON_TYPE, NULL);
 
-    g_signal_connect(
-        quick_settings_battery_button_get_button(self->battery_button),
-        "clicked", G_CALLBACK(on_battery_button_click), self);
-
     self->battery_menu = g_object_new(QUICK_SETTINGS_BATTERY_MENU_TYPE, NULL);
 
     self->power_menu = g_object_new(QUICK_SETTINGS_POWER_MENU_TYPE, NULL);
@@ -250,12 +252,18 @@ void quick_settings_header_reinitialize(QuickSettingsHeader *self) {
     // destroy our signals
     QuickSettings *qs = quick_settings_get_global();
     g_signal_handlers_disconnect_by_func(
-        self->power_button, G_CALLBACK(on_power_button_click), self);
-    g_signal_handlers_disconnect_by_func(
         qs, G_CALLBACK(quick_settings_header_on_qs_hidden), self);
+
+    g_signal_handlers_disconnect_by_func(
+        self->power_button, G_CALLBACK(on_power_button_click), self);
+
+    g_signal_handlers_disconnect_by_func(
+        quick_settings_battery_button_get_button(self->battery_button),
+        G_CALLBACK(on_battery_button_click), self);
 
     // call reinitialize on children widget
     quick_settings_battery_button_reinitialize(self->battery_button);
+    quick_settings_battery_menu_reinitialize(self->battery_menu);
     quick_settings_power_menu_reinitialize(self->power_menu);
     quick_settings_header_mixer_reinitialize(self->mixer);
 

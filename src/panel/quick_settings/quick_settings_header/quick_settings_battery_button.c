@@ -193,7 +193,7 @@ void quick_settings_battery_button_reinitialize(
     // kill signals
     g_signal_handlers_disconnect_by_func(self->device,
                                          G_CALLBACK(on_power_dev_notify), self);
-    // un ref power device
+    // unref power device
     g_object_unref(self->device);
 
     // init our layout
@@ -202,5 +202,5 @@ void quick_settings_battery_button_reinitialize(
 
 GtkButton *quick_settings_battery_button_get_button(
     QuickSettingsBatteryButton *self) {
-	return self->button;
+    return self->button;
 }
