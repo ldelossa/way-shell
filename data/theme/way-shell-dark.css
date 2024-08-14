@@ -593,6 +593,22 @@ label.day-number.today:focus {
   padding: 5px 10px;
 }
 
+#quick-settings #quick-settings-header.#battery-menu scale slider {
+	background: @transparent
+}
+#quick-settings #quick-settings-header.#battery-menu scale highlight {
+	background: shade(@success, 2);
+}
+#quick-settings #quick-settings-header.#battery-menu label {
+	padding: 0px;
+	margin-left: 12px;
+	margin-right: 12px;
+	margin-top: 2px;
+	margin-bottom: 4px;
+	font-weight: bold;
+	color: @panel-button-color;
+}
+
 #quick-settings #quick-settings-header image,
 #quick-settings #quick-settings-header label {
   padding: 2px;

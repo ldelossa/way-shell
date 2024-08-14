@@ -5,6 +5,7 @@
 #include "../quick_settings.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_battery_button.h"
+#include "quick_settings_battery_menu.h"
 #include "quick_settings_header_mixer/quick_settings_header_mixer.h"
 #include "quick_settings_power_menu.h"
 
@@ -14,7 +15,9 @@ typedef struct _QuickSettingsHeader {
     GObject parent_instance;
     GtkBox *container;
     GtkCenterBox *center_box;
+    QuickSettingsBatteryMenu *battery_menu;
     QuickSettingsBatteryButton *battery_button;
+    GtkRevealer *battery_menu_revealer;
     QuickSettingsPowerMenu *power_menu;
     GtkButton *power_button;
     GtkRevealer *power_menu_revealer;
@@ -30,6 +33,24 @@ static void quick_settings_header_on_qs_hidden(QuickSettings *qs,
         "quick_settings_header.c:quick_settings_header_on_qs_hidden() called.");
     gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
     gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
+	gtk_revealer_set_reveal_child(self->battery_menu_revealer, FALSE);
+}
+
+static void on_battery_button_click(GtkButton *button,
+                                    QuickSettingsHeader *self) {
+    g_debug("quick_settings.c:on_battery_button_click() called.");
+    QuickSettings *qs = quick_settings_get_global();
+    gboolean revealed = gtk_revealer_get_reveal_child(
+        GTK_REVEALER(self->battery_menu_revealer));
+    if (!revealed) {
+        quick_settings_set_focused(qs, true);
+        gtk_revealer_set_reveal_child(self->battery_menu_revealer, true);
+        gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
+        gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+    } else {
+        quick_settings_set_focused(qs, false);
+        gtk_revealer_set_reveal_child(self->battery_menu_revealer, false);
+    }
 }
 
 static void on_power_button_click(GtkButton *button,
@@ -41,6 +62,7 @@ static void on_power_button_click(GtkButton *button,
     if (!revealed) {
         quick_settings_set_focused(qs, true);
         gtk_revealer_set_reveal_child(self->power_menu_revealer, true);
+        gtk_revealer_set_reveal_child(self->battery_menu_revealer, FALSE);
         gtk_revealer_set_reveal_child(self->mixer_revealer, FALSE);
     } else {
         quick_settings_set_focused(qs, false);
@@ -58,6 +80,7 @@ static void on_mixer_button_click(GtkButton *button,
         quick_settings_set_focused(qs, true);
         gtk_revealer_set_reveal_child(self->mixer_revealer, true);
         gtk_revealer_set_reveal_child(self->power_menu_revealer, FALSE);
+        gtk_revealer_set_reveal_child(self->battery_menu_revealer, FALSE);
     } else {
         quick_settings_set_focused(qs, false);
         gtk_revealer_set_reveal_child(self->mixer_revealer, false);
@@ -152,6 +175,22 @@ static void quick_settings_header_init_layout(QuickSettingsHeader *self) {
         self->mixer_revealer,
         quick_settings_header_mixer_get_menu_widget(self->mixer));
 
+    // create GtkRevealer for battery menu
+    self->battery_menu_revealer = GTK_REVEALER(gtk_revealer_new());
+    gtk_revealer_set_transition_type(self->battery_menu_revealer,
+                                     GTK_REVEALER_TRANSITION_TYPE_SLIDE_DOWN);
+    gtk_revealer_set_transition_duration(self->battery_menu_revealer, 250);
+    gtk_revealer_set_reveal_child(self->battery_menu_revealer, FALSE);
+
+    gtk_box_append(self->container, GTK_WIDGET(self->battery_menu_revealer));
+
+    g_signal_connect(self->battery_menu_revealer, "notify::child-revealed",
+                     G_CALLBACK(on_reveal_finish), self);
+
+    gtk_revealer_set_child(
+        self->battery_menu_revealer,
+        quick_settings_battery_menu_get_widget(self->battery_menu));
+
     // create right side buttons box
     GtkBox *buttons_box = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 8));
 
@@ -192,6 +231,12 @@ static void quick_settings_header_init(QuickSettingsHeader *self) {
     // load up children depedencies.
     self->battery_button =
         g_object_new(QUICK_SETTINGS_BATTERY_BUTTON_TYPE, NULL);
+
+    g_signal_connect(
+        quick_settings_battery_button_get_button(self->battery_button),
+        "clicked", G_CALLBACK(on_battery_button_click), self);
+
+    self->battery_menu = g_object_new(QUICK_SETTINGS_BATTERY_MENU_TYPE, NULL);
 
     self->power_menu = g_object_new(QUICK_SETTINGS_POWER_MENU_TYPE, NULL);
 
