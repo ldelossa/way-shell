@@ -643,14 +643,9 @@ label.day-number.today:focus {
 }
 
 #quick-settings .quick-settings-grid-button-toggle {
-  border-top-left-radius: 99px;
-  border-bottom-left-radius: 99px;
+  border-radius: 99px;
   background-color: @quick-settings-button;
   padding: 2px;
-}
-
-#quick-settings .quick-settings-grid-button-toggle.no-revealer {
-  border-radius: 99px;
 }
 
 #quick-settings .quick-settings-grid-button-toggle.off {

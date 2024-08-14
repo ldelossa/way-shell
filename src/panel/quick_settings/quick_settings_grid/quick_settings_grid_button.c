@@ -11,6 +11,7 @@
 #include "./quick_settings_grid_vpn/quick_settings_grid_vpn.h"
 #include "./quick_settings_grid_wifi/quick_settings_grid_wifi.h"
 #include "./quick_settings_keyboard_brightness/quick_settings_grid_keyboard_brightness.h"
+#include "gtk/gtk.h"
 #include "gtk/gtkrevealer.h"
 #include "quick_settings_grid_ethernet.h"
 
@@ -63,9 +64,13 @@ void quick_settings_grid_button_init(
     // append pointer to self on container's data
     g_object_set_data(G_OBJECT(self->toggle), "self", self);
 
+    GtkOverlay *overlay = GTK_OVERLAY(gtk_overlay_new());
+    gtk_overlay_set_child(overlay, GTK_WIDGET(self->toggle));
+
     // GtkCenterBox *center_box = GTK_CENTER_BOX(gtk_center_box_new());
     GtkBox *button_contents =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
+
     // valign center
     gtk_widget_set_valign(GTK_WIDGET(button_contents), GTK_ALIGN_CENTER);
     // create and append icon
@@ -112,7 +117,7 @@ void quick_settings_grid_button_init(
     }
     gtk_box_append(button_contents, GTK_WIDGET(text_area));
     gtk_button_set_child(self->toggle, GTK_WIDGET(button_contents));
-    gtk_box_append(self->container, GTK_WIDGET(self->toggle));
+    gtk_box_append(self->container, GTK_WIDGET(overlay));
 
     // setup revealer
     self->revealer = GTK_REVEALER(gtk_revealer_new());
@@ -130,7 +135,9 @@ void quick_settings_grid_button_init(
         gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
                                  "quick-settings-grid-button-reveal-hidden");
 
-        gtk_box_append(self->container, GTK_WIDGET(self->reveal_button));
+        gtk_widget_set_halign(GTK_WIDGET(self->reveal_button), GTK_ALIGN_END);
+
+        gtk_overlay_add_overlay(overlay, GTK_WIDGET(self->reveal_button));
 
         // add reveal_widget as child of revealer
         gtk_revealer_set_child(self->revealer, self->reveal_widget);
@@ -142,9 +149,6 @@ void quick_settings_grid_button_init(
 
         gtk_widget_add_css_class(GTK_WIDGET(self->reveal_button),
                                  "quick-settings-grid-button-reveal-visible");
-    } else {
-        // add no-revealer class to toggle button
-        gtk_widget_add_css_class(GTK_WIDGET(self->toggle), "no-revealer");
     }
 }
 
