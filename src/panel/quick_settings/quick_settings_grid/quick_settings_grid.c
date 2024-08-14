@@ -156,9 +156,6 @@ static void quick_settings_grid_add_button(QuickSettingsGrid *self,
     // the cluster owns this button now, will notify us when it is removed,
     // and will clean the button's memory.
     quick_settings_grid_cluster_add_button(cluster, side, button);
-
-    // adjust button sizes.
-    quick_settings_grid_cluster_realize_size(cluster);
 }
 
 static void on_network_manager_change(NetworkManagerService *nm,

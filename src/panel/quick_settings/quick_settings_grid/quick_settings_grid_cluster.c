@@ -125,28 +125,6 @@ static void on_will_reveal(QuickSettingsGridCluster *self,
     }
 }
 
-
-// Total hack, but this ensures that buttons without a revealer button take up
-// just as much space as buttons with a revealer button.
-//
-// This is necessary since the buttons with a reveal button request more space
-// in the GtkCenterBox of the grid cluster and thus make buttons without a
-// reveal button smaller in size.
-void quick_settings_grid_cluster_realize_size(
-    QuickSettingsGridCluster *self) {
-    QuickSettingsGridButton *left = self->left;
-    QuickSettingsGridButton *right = self->right;
-
-    if (!left->reveal_widget) {
-        if (self->right && self->right->reveal_widget)
-            gtk_widget_set_size_request(GTK_WIDGET(left->container), 182, -1);
-    }
-    if (!right->reveal_widget) {
-        if (self->left && self->left->reveal_widget)
-            gtk_widget_set_size_request(GTK_WIDGET(right->container), 182, -1);
-    }
-}
-
 int quick_settings_grid_cluster_add_button(
     QuickSettingsGridCluster *self, enum QuickSettingsGridClusterSide side,
     QuickSettingsGridButton *button) {
