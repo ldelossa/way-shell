@@ -13,6 +13,7 @@ typedef struct _QuickSettingsBatteryMenu {
     QuickSettingsMenuWidget menu;
     GtkScale *battery_scale;
     GtkLabel *battery_time;
+    GtkLabel *battery_percentage;
     GSettings *settings;
 } QuickSettingsBatteryMenu;
 G_DEFINE_TYPE(QuickSettingsBatteryMenu, quick_settings_battery_menu,
@@ -23,7 +24,7 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
     g_debug("quick_settings_battery_button.c:on_power_dev_notify() called.");
 
     gchar *icon_name = upower_device_map_icon_name(power_dev);
-    gtk_menu_button_set_icon_name(GTK_MENU_BUTTON(self->menu.icon), icon_name);
+    gtk_image_set_from_icon_name(self->menu.icon, icon_name);
 
     gboolean is_recharable = false;
     g_object_get(power_dev, "is-rechargeable", &is_recharable, NULL);
@@ -40,6 +41,11 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
     // update battery scale
     gtk_range_set_value(GTK_RANGE(self->battery_scale), percent);
 
+    // update percentage
+    gchar *percentage_str = g_strdup_printf("%.0f%%", percent);
+    gtk_label_set_text(self->battery_percentage, percentage_str);
+    g_free(percentage_str);
+
     gboolean charging = (state == UP_DEVICE_STATE_CHARGING ||
                          state == UP_DEVICE_STATE_FULLY_CHARGED ||
                          state == UP_DEVICE_STATE_PENDING_CHARGE);
@@ -49,33 +55,23 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
         gint64 time_to_full = 0;
         g_object_get(power_dev, "time-to-full", &time_to_full, NULL);
 
-        gint64 days = time_to_full / (60 * 60 * 24);
-        gint64 hours = (time_to_full / (60 * 60)) % 24;
+        gint64 hours = (time_to_full / (60 * 60));
         gint64 minutes = (time_to_full / 60) % 60;
 
-        if (days) {
-            time_str =
-                g_strdup_printf("%ld Days %ld Hours %ld Minutes Until Charged",
-                                days, hours, minutes);
-        } else if (hours) {
-            time_str = g_strdup_printf("%ld Hours %ld Minutes Until Charged",
+        if (hours) {
+            time_str = g_strdup_printf("%ld Hours %ld Minutes Until Full",
                                        hours, minutes);
         } else {
-            time_str = g_strdup_printf("%ld Minutes Until Charged", minutes);
+            time_str = g_strdup_printf("%ld Minutes Until Full", minutes);
         }
     } else {
         gint64 time_to_empty = 0;
         g_object_get(power_dev, "time-to-empty", &time_to_empty, NULL);
 
-        gint64 days = time_to_empty / (60 * 60 * 24);
-        gint64 hours = (time_to_empty / (60 * 60)) % 24;
+        gint64 hours = (time_to_empty / (60 * 60));
         gint64 minutes = (time_to_empty / 60) % 60;
 
-        if (days) {
-            time_str =
-                g_strdup_printf("%ld Days %ld Hours %ld Minutes Remaining",
-                                days, hours, minutes);
-        } else if (hours) {
+        if (hours) {
             time_str = g_strdup_printf("%ld Hours %ld Minutes Remaining", hours,
                                        minutes);
         } else {
@@ -84,6 +80,7 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
     }
 
     gtk_label_set_text(self->battery_time, time_str);
+    g_debug("Battery time: %s", time_str);
     g_free(time_str);
 }
 
@@ -136,21 +133,25 @@ static void quick_settings_battery_menu_init_layout(
 
     GtkBox *container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_VERTICAL, 0));
     gtk_widget_set_name(GTK_WIDGET(container), "battery-menu");
-    GtkCenterBox *center_box = GTK_CENTER_BOX(gtk_center_box_new());
+    GtkBox *stats_container =
+        GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
 
     self->battery_scale = GTK_SCALE(
         gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, 100, 1));
     // do not allow interacting with the scale
     gtk_widget_set_sensitive(GTK_WIDGET(self->battery_scale), FALSE);
-	gtk_scale_set_draw_value(self->battery_scale, true);
-	gtk_scale_set_value_pos(self->battery_scale, GTK_POS_TOP);
 
-    self->battery_time = GTK_LABEL(gtk_label_new(""));
-	gtk_label_set_ellipsize(self->battery_time, PANGO_ELLIPSIZE_END);
+    self->battery_time = GTK_LABEL(gtk_label_new(NULL));
+    gtk_label_set_ellipsize(self->battery_time, PANGO_ELLIPSIZE_END);
+    gtk_label_set_width_chars(self->battery_time, 30);
+    gtk_label_set_xalign(self->battery_time, 0.0);
+
+    self->battery_percentage = GTK_LABEL(gtk_label_new(NULL));
 
     gtk_box_append(container, GTK_WIDGET(self->battery_scale));
-    gtk_center_box_set_center_widget(center_box, GTK_WIDGET(self->battery_time));
-    gtk_box_append(container, GTK_WIDGET(center_box));
+    gtk_box_append(stats_container, GTK_WIDGET(self->battery_time));
+    gtk_box_append(stats_container, GTK_WIDGET(self->battery_percentage));
+    gtk_box_append(container, GTK_WIDGET(stats_container));
 
     gtk_box_append(self->menu.options, GTK_WIDGET(container));
 
@@ -159,7 +160,7 @@ static void quick_settings_battery_menu_init_layout(
     // get primary power device
     UpDevice *power_dev = upower_service_get_primary_device(upower);
 
-	on_power_dev_notify(power_dev, NULL, self);
+    on_power_dev_notify(power_dev, NULL, self);
 
     g_signal_connect(power_dev, "notify", G_CALLBACK(on_power_dev_notify),
                      self);
