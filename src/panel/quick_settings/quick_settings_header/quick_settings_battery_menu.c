@@ -79,6 +79,13 @@ static void on_power_dev_notify(UpDevice *power_dev, GParamSpec *pspec,
         }
     }
 
+	// this just fine-tunes the alignment of the percentage field, we remove one
+	// char of padding to the time string to account for a 3 digit percent value
+	if (percent == 100)
+		gtk_label_set_width_chars(self->battery_time, 27);
+	else
+		gtk_label_set_width_chars(self->battery_time, 28);
+
     gtk_label_set_text(self->battery_time, time_str);
     g_debug("Battery time: %s", time_str);
     g_free(time_str);
@@ -143,10 +150,10 @@ static void quick_settings_battery_menu_init_layout(
 
     self->battery_time = GTK_LABEL(gtk_label_new(NULL));
     gtk_label_set_ellipsize(self->battery_time, PANGO_ELLIPSIZE_END);
-    gtk_label_set_width_chars(self->battery_time, 30);
     gtk_label_set_xalign(self->battery_time, 0.0);
 
     self->battery_percentage = GTK_LABEL(gtk_label_new(NULL));
+	gtk_label_set_xalign(self->battery_percentage, 1.0);
 
     gtk_box_append(container, GTK_WIDGET(self->battery_scale));
     gtk_box_append(stats_container, GTK_WIDGET(self->battery_time));
