@@ -6,6 +6,7 @@
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
 #include "./activities_app_widget.h"
+#include "glib.h"
 #include "gtk/gtk.h"
 #include "gtk/gtkrevealer.h"
 
@@ -25,6 +26,12 @@ typedef struct _Activities {
     GtkRevealer *revealer;
     GtkWidget *container;
     GtkEventController *key_controller;
+    GFileMonitor *inotify_apps_dir;
+    GFileMonitor *inotify_flatpak_dir;
+    // dirty is flipped true when Activities as detected the inventory of
+    // installed apps has changed, a new fill of the applications will be done
+    // on not toggle open
+    gboolean dirty;
 
     // Search
     GtkSearchEntry *search_entry;
@@ -35,9 +42,6 @@ typedef struct _Activities {
     AdwCarousel *app_carousel;
     AdwCarouselIndicatorDots *app_carousel_dots;
     GPtrArray *app_carousel_pages;
-
-    // Cached pixel buffer of the configured desktop wallpaper.
-    GdkPixbuf *desktop_wallpaper;
 
     // window-manager.desktop-wallpayer setting
     GSettings *settings;
@@ -248,11 +252,11 @@ static void on_search_stop(GtkSearchEntry *entry, Activities *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel), true);
     gtk_widget_set_visible(GTK_WIDGET(self->app_carousel_dots), true);
 
-	// clear search text
-	gtk_editable_set_text(GTK_EDITABLE(entry), "");
+    // clear search text
+    gtk_editable_set_text(GTK_EDITABLE(entry), "");
 
-	// unselect all search results
-	gtk_flow_box_unselect_all(self->search_result_flbox);
+    // unselect all search results
+    gtk_flow_box_unselect_all(self->search_result_flbox);
 }
 
 static void on_search_changed(GtkSearchEntry *entry, Activities *self) {
@@ -339,6 +343,13 @@ static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
     }
 
     return false;
+}
+
+static void on_app_dir_changed(GFileMonitor *monitor, GFile *file,
+                               GFile *other_file, GFileMonitorEvent event_type,
+                               Activities *self) {
+    g_debug("activities.c:on_app_dir_changed called");
+    self->dirty = true;
 }
 
 static void activities_init_layout(Activities *self) {
@@ -459,12 +470,43 @@ static void activities_init_layout(Activities *self) {
 
     adw_window_set_content(self->win, GTK_WIDGET(self->revealer));
 
-	// wire up key controller
+    // wire up key controller
     self->key_controller = gtk_event_controller_key_new();
     g_signal_connect(self->key_controller, "key-pressed",
                      G_CALLBACK(key_pressed), self);
 
     gtk_widget_add_controller(GTK_WIDGET(self->win), self->key_controller);
+
+    GError *error = NULL;
+
+    // watch for general app install/removals
+    const char *apps_dir = "/usr/share/applications/";
+
+    self->inotify_apps_dir = g_file_monitor_directory(g_file_new_for_path(apps_dir),
+                                             G_FILE_MONITOR_NONE, NULL, &error);
+    if (error) {
+        g_warning("activities.c: Failed to create inotify for %s: %s", apps_dir,
+                  error->message);
+    }
+
+    error = NULL;
+
+    g_signal_connect(self->inotify_apps_dir, "changed", G_CALLBACK(on_app_dir_changed),
+                     self);
+
+    // watch for flatpak app install/removals
+    const char *flatpak_apps_dir = "/var/lib/flatpak/";
+    self->inotify_flatpak_dir =
+        g_file_monitor_directory(g_file_new_for_path(flatpak_apps_dir),
+                                 G_FILE_MONITOR_NONE, NULL, &error);
+
+    if (error) {
+        g_warning("activities.c: Failed to create inotify for %s: %s",
+                  flatpak_apps_dir, error->message);
+    }
+
+    g_signal_connect(self->inotify_flatpak_dir, "changed",
+                     G_CALLBACK(on_app_dir_changed), self);
 }
 
 static void activities_init(Activities *self) {
@@ -479,6 +521,12 @@ void activities_show(Activities *self) {
     g_debug("activities.c:activities_show called");
 
     g_signal_emit(self, activities_signals[activities_will_show], 0);
+
+    // if dirty then we should refresh our inventoried apps.
+    if (self->dirty) {
+        fill_app_infos(self);
+        self->dirty = false;
+    }
 
     gtk_window_present(GTK_WINDOW(self->win));
     gtk_revealer_set_reveal_child(self->revealer, true);
