@@ -105,6 +105,7 @@ void quick_settings_grid_vpn_button_free(QuickSettingsGridVPNButton *self) {
     NetworkManagerService *nm = network_manager_service_get_global();
     g_signal_handlers_disconnect_by_func(nm, on_vpn_activated, self);
     g_signal_handlers_disconnect_by_func(nm, on_vpn_deactivated, self);
+    g_signal_handlers_disconnect_by_func(nm, on_vpn_removed, self);
 
     // unref our menu
     g_object_unref(self->menu);
