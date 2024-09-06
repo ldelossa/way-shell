@@ -41,7 +41,7 @@
         </key>
         <key name="idle-inhibitor" type="b">
             <default>false</default>
-            <summary>Enable light theme</summary>
+            <summary>Enable the idle inhibitor</summary>
             <description>
             Enable or disable the idle inhibitor. When enabled the system will not
             suspend or hibernate when the screen is locked.
@@ -52,7 +52,7 @@
         </key>
         <key name="light-theme" type="b">
             <default>false</default>
-            <summary>Enable idle inhibitor</summary>
+            <summary>Enable the light theme</summary>
             <description>
 			When enabled way-shell will switch to the its light them.
 			While disabled the dark theme is shown.
