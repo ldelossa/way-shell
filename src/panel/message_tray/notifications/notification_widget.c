@@ -69,96 +69,28 @@ G_DEFINE_TYPE(NotificationWidget, notification_widget, G_TYPE_OBJECT);
 void on_pointer_enter(GtkEventControllerMotion *ctrl, double x, double y,
                       NotificationWidget *self) {
     g_debug("notification_widget.c:on_pointer_enter() called");
-    AdwAnimationState state = adw_animation_get_state(self->expand_animation);
-    gboolean reverse = adw_timed_animation_get_reverse(
-        ADW_TIMED_ANIMATION(self->expand_animation));
-
     if (self->action_revealer) {
         gtk_revealer_set_reveal_child(self->action_revealer, true);
     }
 
-    switch (state) {
-        case ADW_ANIMATION_IDLE:
-            g_debug("notification_widget.c:on_pointer_enter() called: idle");
-            adw_animation_play(self->expand_animation);
-            return;
-        case ADW_ANIMATION_PAUSED:
-            g_debug("notification_widget.c:on_pointer_enter() called: paused");
-            adw_timed_animation_set_reverse(
-                ADW_TIMED_ANIMATION(self->expand_animation), false);
-            adw_animation_play(self->expand_animation);
-            return;
-        case ADW_ANIMATION_FINISHED:
-            g_debug(
-                "notification_widget.c:on_pointer_enter() called: finished");
-            if (reverse) {
-                g_debug(
-                    "notification_widget.c:on_pointer_enter() called: finished "
-                    "reverse");
-                adw_timed_animation_set_reverse(
-                    ADW_TIMED_ANIMATION(self->expand_animation), false);
-                adw_animation_play(self->expand_animation);
-                return;
-            }
-        case ADW_ANIMATION_PLAYING:
-            g_debug(
-                "notification_widget.c:on_pointer_enter() called: finished");
-            if (reverse) {
-                // pause animation
-                adw_animation_pause(self->expand_animation);
-                // reverse it
-                adw_timed_animation_set_reverse(
-                    ADW_TIMED_ANIMATION(self->expand_animation), false);
-                // play it
-                adw_animation_play(self->expand_animation);
-                return;
-            }
-        default:
-            return;
-    }
+    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->expand_animation),
+                                    false);
+
+    adw_animation_reset(self->expand_animation);
+    adw_animation_play(self->expand_animation);
 }
 
 void on_pointer_leave(GtkEventControllerMotion *ctrl, double x, double y,
                       NotificationWidget *self) {
-    AdwAnimationState state = adw_animation_get_state(self->expand_animation);
-    gboolean reverse = adw_timed_animation_get_reverse(
-        ADW_TIMED_ANIMATION(self->expand_animation));
-
     if (self->action_revealer) {
         gtk_revealer_set_reveal_child(self->action_revealer, false);
     }
 
-    switch (state) {
-        case ADW_ANIMATION_IDLE:
-            // play animation
-            adw_animation_play(self->expand_animation);
-            return;
-        case ADW_ANIMATION_PAUSED:
-            adw_timed_animation_set_reverse(
-                ADW_TIMED_ANIMATION(self->expand_animation), true);
-            adw_animation_play(self->expand_animation);
-            return;
-        case ADW_ANIMATION_FINISHED:
-            if (!reverse) {
-                adw_timed_animation_set_reverse(
-                    ADW_TIMED_ANIMATION(self->expand_animation), true);
-                adw_animation_play(self->expand_animation);
-                return;
-            }
-        case ADW_ANIMATION_PLAYING:
-            if (!reverse) {
-                // pause animation
-                adw_animation_pause(self->expand_animation);
-                // reverse it
-                adw_timed_animation_set_reverse(
-                    ADW_TIMED_ANIMATION(self->expand_animation), true);
-                // play it
-                adw_animation_play(self->expand_animation);
-                return;
-            }
-        default:
-            return;
-    }
+    adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->expand_animation),
+                                    true);
+
+    adw_animation_reset(self->expand_animation);
+    adw_animation_play(self->expand_animation);
 }
 
 void on_dismiss_clicked(GtkButton *button, NotificationWidget *self) {
@@ -571,6 +503,8 @@ static void icon_from_app_id(GtkImage *icon, gchar *app_id) {
     }
     g_list_free(apps);
 
+    if (!app_info) return;
+
     GIcon *g_icon = g_app_info_get_icon(G_APP_INFO(app_info));
     if (g_icon && G_IS_THEMED_ICON(g_icon)) {
         GdkDisplay *display = gdk_display_get_default();
@@ -596,6 +530,8 @@ static void avatar_from_app_id(NotificationWidget *self, gchar *app_id) {
         }
     }
     g_list_free(apps);
+
+    if (!app_info) return;
 
     GIcon *g_icon = g_app_info_get_icon(G_APP_INFO(app_info));
     if (g_icon && G_IS_THEMED_ICON(g_icon)) {
