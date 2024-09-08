@@ -104,7 +104,9 @@ static void on_notifications_removed(NotificationsService *ns,
         return;
     }
 
-    gtk_revealer_set_reveal_child(self->revealer, false);
+    // only hide the revealer if the removed notification is being presented.
+    if (id == notification_widget_get_id(self->notification))
+        gtk_revealer_set_reveal_child(self->revealer, false);
 }
 
 static gboolean timed_dismiss(NotificationsOSD *self) {
@@ -153,7 +155,7 @@ static void on_notification_added(NotificationsService *ns,
     }
 
     NotificationWidget *new = notification_widget_from_notification(n, true);
-	notification_widget_set_osd(new, self);
+    notification_widget_set_osd(new, self);
 
     // for some reason, we need to reset this before presenting, despite
     // them being set in the constructing function.
