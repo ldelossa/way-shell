@@ -19,8 +19,11 @@ struct _WaylandGammaControlService {
     struct zwlr_gamma_control_manager_v1 *mgr;
     // Whether gamma is being controlled
     gboolean enabled;
-    // List of created gamma controllers
-    GHashTable *controllers;
+    // Table of created gamma controllers keyed by *WaylandOuput
+    GHashTable *controllers_by_output;
+    // Table of created gamma controllers keyed by their `zwlr_gamma_control_v1`
+    // proxy interfaces.
+    GHashTable *controllers_by_proxy;
     // The last seen temperature
     double temperature;
 };
@@ -61,7 +64,10 @@ static void wayland_gamma_control_service_class_init(
 static void wayland_gamma_control_service_init(
     WaylandGammaControlService *self) {
     self->enabled = false;
-    self->controllers = g_hash_table_new(g_direct_hash, g_direct_equal);
+    self->controllers_by_output =
+        g_hash_table_new(g_direct_hash, g_direct_equal);
+    self->controllers_by_proxy =
+        g_hash_table_new(g_direct_hash, g_direct_equal);
 };
 
 int wayland_gamma_control_service_global_init(
@@ -139,33 +145,44 @@ static const struct zwlr_gamma_control_v1_listener gamma_control_listener;
 static void on_wl_output_added(WaylandCoreService *core, GHashTable *outputs,
                                WaylandOutput *output,
                                WaylandGammaControlService *self) {
+    g_debug("gamma.c:on_wl_output_added(): called");
     WaylandWLRGammaControl *ctrl = g_malloc0(sizeof(WaylandWLRGammaControl));
 
     ctrl->header.type = WLR_GAMMA_CONTROL;
-    ctrl->output = output->output;
+    ctrl->output = output;
     ctrl->temperature = self->temperature;
     ctrl->gamma_size = 0;
     ctrl->gamma_table_fd = -1;
     ctrl->control = zwlr_gamma_control_manager_v1_get_gamma_control(
         self->mgr, output->output);
 
+    g_debug("gamma.c:on_wl_output_added(): ctrl->output: %p", ctrl->output);
+
+    g_hash_table_insert(self->controllers_by_output, ctrl->output, ctrl);
+    g_hash_table_insert(self->controllers_by_proxy, ctrl->control, ctrl);
+
     // add listener for gamma controller
     zwlr_gamma_control_v1_add_listener(ctrl->control, &gamma_control_listener,
                                        self);
-
-    g_hash_table_insert(self->controllers, ctrl->control, ctrl);
 }
 
-static void on_wl_output_removed(WaylandCoreService *core, GHashTable *outputs,
+static void on_wl_output_removed(WaylandCoreService *core,
                                  WaylandOutput *output,
                                  WaylandGammaControlService *self) {
+    g_debug("gamma.c:on_wl_output_removed(): called");
     WaylandWLRGammaControl *ctrl =
-        g_hash_table_lookup(self->controllers, output->output);
+        g_hash_table_lookup(self->controllers_by_output, output);
+
+    g_debug("gamma.c:on_wl_output_removed(): ctrl->output: %p", ctrl->output);
 
     if (!ctrl) return;
 
-    g_hash_table_remove(self->controllers, output->output);
+    g_hash_table_remove(self->controllers_by_output, output);
+    g_hash_table_remove(self->controllers_by_proxy, ctrl->control);
+
     zwlr_gamma_control_v1_destroy(ctrl->control);
+    wl_display_flush(wayland_core_service_get_display(self->core));
+
     g_free(ctrl);
 }
 
@@ -180,7 +197,7 @@ void wayland_gamma_control_service_set_temperature(
 
     // if we are already enabled, apply gamma change to all existing controllers
     if (self->enabled) {
-        for (GList *l = g_hash_table_get_values(self->controllers); l;
+        for (GList *l = g_hash_table_get_values(self->controllers_by_output); l;
              l = l->next) {
             WaylandWLRGammaControl *ctrl = l->data;
             ctrl->temperature = temperature;
@@ -211,16 +228,22 @@ void wayland_gamma_control_service_set_temperature(
 }
 
 void wayland_gamma_control_service_destroy(WaylandGammaControlService *self) {
+    g_debug("gamma.c:wayland_gamma_control_service_destroy(): called");
     if (!self->enabled) return;
 
-    for (GList *l = g_hash_table_get_values(self->controllers); l;
+    g_debug(
+        "gamma.c:wayland_gamma_control_service_destroy(): destroying gamma "
+        "control service");
+
+    for (GList *l = g_hash_table_get_values(self->controllers_by_output); l;
          l = l->next) {
         WaylandWLRGammaControl *ctrl = l->data;
         zwlr_gamma_control_v1_destroy(ctrl->control);
         g_free(ctrl);
     }
 
-    g_hash_table_remove_all(self->controllers);
+    g_hash_table_remove_all(self->controllers_by_output);
+    g_hash_table_remove_all(self->controllers_by_proxy);
 
     wl_display_flush(wayland_core_service_get_display(self->core));
 
@@ -247,13 +270,13 @@ WaylandGammaControlService *wayland_gamma_control_service_get_global() {
 //							//
 static void zwlr_gamma_control_handle_size(
     void *data, struct zwlr_gamma_control_v1 *control, uint32_t size) {
-    g_debug("gamma.c:zwlr_gamma_control_handle_size(): size: %d",
-            size);
+    g_debug("gamma.c:zwlr_gamma_control_handle_size(): size: %d", size);
 
     WaylandGammaControlService *self = (WaylandGammaControlService *)data;
 
     WaylandWLRGammaControl *ctrl =
-        g_hash_table_lookup(self->controllers, control);
+        g_hash_table_lookup(self->controllers_by_proxy, control);
+
     if (!ctrl) return;
 
     ctrl->gamma_size = size;
@@ -274,8 +297,17 @@ static void zlwr_gamma_control_handle_failed(
     void *data, struct zwlr_gamma_control_v1 *ctrl) {
     g_debug("gamma.c:zlwr_gamma_control_handle_failed(): failed");
     WaylandGammaControlService *self = (WaylandGammaControlService *)data;
-    g_hash_table_remove(self->controllers, ctrl);
+
+    WaylandWLRGammaControl *g =
+        g_hash_table_lookup(self->controllers_by_proxy, ctrl);
+
+    if (g) {
+        g_hash_table_remove(self->controllers_by_output, g->output);
+        g_hash_table_remove(self->controllers_by_proxy, ctrl);
+    }
+
     zwlr_gamma_control_v1_destroy(ctrl);
+
     wl_display_flush(wayland_core_service_get_display(self->core));
 }
 

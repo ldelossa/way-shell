@@ -132,10 +132,13 @@ void wl_output_register(WaylandCoreService *self, struct wl_output *wl_output,
 }
 
 void wl_output_remove(WaylandCoreService *self, WaylandOutput *output) {
-    g_debug("wl_output.c:wayland_output_remove(): output: %s",
-            output->name);
+    g_debug("wl_output.c:wayland_output_remove(): output: %s", output->name);
     GHashTable *outputs = wayland_core_service_get_outputs(self);
     GHashTable *globals = wayland_core_service_get_globals(self);
+
+    // signal before we free.
+    g_signal_emit(self, wayland_core_service_signals[wl_output_removed], 0,
+                  output);
 
     // remove from outputs hash table
     g_hash_table_remove(outputs, output->output);

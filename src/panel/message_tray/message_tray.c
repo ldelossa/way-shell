@@ -305,21 +305,11 @@ static void animation_open_done(AdwAnimation *animation, MessageTray *tray) {
 };
 
 void message_tray_set_visible(MessageTray *self) {
-    int anim_state = 0;
-
     g_debug("message_tray.c:message_tray_set_visible() called.");
 
     if (!self) return;
 
-    // this ensures there are no in-flight animation done callbacks on the
-    // event-loop before starting a new animation, and avoids timing bugs.
-    anim_state = adw_animation_get_state(self->animation);
-    g_debug("message_tray.c:message_tray_set_visible() anim_state: %d",
-            anim_state);
-    if (anim_state != ADW_ANIMATION_IDLE &&
-        anim_state != ADW_ANIMATION_FINISHED) {
-        return;
-    }
+    adw_animation_reset(self->animation);
 
     // emit will show signal before we open any windows.
     g_signal_emit(self, signals[message_tray_will_show], 0);

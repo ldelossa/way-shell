@@ -8,7 +8,7 @@
 typedef struct _WaylandWLRGammaControl {
     WaylandHeader header;
     struct zwlr_gamma_control_v1 *control;
-    struct wl_output *output;
+    WaylandOutput *output;
     uint32_t gamma_size;
     int gamma_table_fd;
     int temperature;
