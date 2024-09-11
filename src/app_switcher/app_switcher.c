@@ -353,6 +353,16 @@ static gboolean key_pressed(GtkEventControllerKey *controller, guint keyval,
         return true;
     }
 
+    if (keyval == GDK_KEY_asciitilde && is_super_shift) {
+        select_prev_instance(self);
+        return true;
+    }
+
+    if (keyval == GDK_KEY_grave && (state & GDK_SUPER_MASK)) {
+        select_next_instance(self);
+        return true;
+    }
+
     if (keyval == GDK_KEY_G && is_super_shift) {
         select_prev_instance(self);
         return true;
