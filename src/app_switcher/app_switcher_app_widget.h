@@ -2,7 +2,7 @@
 
 #include <adwaita.h>
 
-#include "./../services/wayland_service/wayland_service.h"
+#include "./../services/wayland/foreign_toplevel_service/foreign_toplevel.h"
 
 G_BEGIN_DECLS
 
@@ -25,7 +25,8 @@ gchar *app_switcher_app_widget_get_app_id(AppSwitcherAppWidget *self);
 
 void app_switcher_app_widget_activate(AppSwitcherAppWidget *self);
 
-void app_switcher_app_widget_set_focused(AppSwitcherAppWidget *self, gboolean select_previous);
+void app_switcher_app_widget_set_focused(AppSwitcherAppWidget *self,
+                                         gboolean select_previous);
 
 void app_switcher_app_widget_set_focused_next_instance(
     AppSwitcherAppWidget *self);

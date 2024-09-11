@@ -10,6 +10,7 @@
 #include "./output_switcher/output_switcher.h"
 #include "./panel/message_tray/message_tray.h"
 #include "./panel/panel.h"
+#include "./rename_switcher/rename_switcher.h"
 #include "./services/brightness_service/brightness_service.h"
 #include "./services/clock_service.h"
 #include "./services/dbus_service.h"
@@ -21,11 +22,10 @@
 #include "./services/power_profiles_service/power_profiles_service.h"
 #include "./services/theme_service.h"
 #include "./services/upower_service.h"
-#include "./services/wayland_service/wayland_service.h"
+#include "./services/wayland/core.h"
 #include "./services/window_manager_service/window_manager_service.h"
 #include "./services/wireplumber_service.h"
 #include "./workspace_switcher/workspace_switcher.h"
-#include "./rename_switcher/rename_switcher.h"
 #include "panel/panel_mediator.h"
 #include "panel/quick_settings/quick_settings.h"
 
@@ -59,7 +59,7 @@ static void configure_signal_handler() {
 // activates all the components of our shell.
 static void activate(AdwApplication *app, gpointer user_data) {
     // Set up the SIGCHLD handler
-	configure_signal_handler();
+    configure_signal_handler();
 
     // CSS Theme is embedded as a GResource
     GResource *resource = gresources_get_resource();
@@ -81,8 +81,9 @@ static void activate(AdwApplication *app, gpointer user_data) {
         g_error("main.c: activate(): failed to initialize clock service.");
     }
 
-    if (wayland_service_global_init() != 0) {
-        g_error("main.c: activate(): failed to initialize wayland service.");
+    if (wayland_core_service_global_init() != 0) {
+        g_error(
+            "main.c: activate(): failed to initialize wayland core service.");
     }
 
     if (theme_service_global_init() != 0) {

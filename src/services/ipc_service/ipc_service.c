@@ -8,10 +8,11 @@
 #include "../../activities/activities.h"
 #include "../../app_switcher/app_switcher.h"
 #include "../../output_switcher/output_switcher.h"
-#include "../../rename_switcher/rename_switcher.h"
 #include "../../panel/message_tray/message_tray.h"
+#include "../../rename_switcher/rename_switcher.h"
 #include "../../services/brightness_service/brightness_service.h"
 #include "../../services/theme_service.h"
+#include "../../services/wayland/gamma_control_service/gamma.h"
 #include "../../services/wireplumber_service.h"
 #include "../../workspace_switcher/workspace_switcher.h"
 #include "glib-unix.h"
@@ -461,12 +462,12 @@ static gboolean ip_cmd_workspace_app_switcher_toggle() {
 static gboolean ipc_command_bluelight_filter_enable() {
     g_debug("ipc_service.c:ipc_command_bluelight_filter_enable()");
 
-    WaylandService *w = wayland_service_get_global();
-    if (!w) {
+    WaylandGammaControlService *g = wayland_gamma_control_service_get_global();
+    if (!g) {
         return false;
     }
 
-    wayland_wlr_bluelight_filter(w, 3100);
+    wayland_gamma_control_service_set_temperature(g, 3100);
 
     return true;
 }
@@ -474,12 +475,12 @@ static gboolean ipc_command_bluelight_filter_enable() {
 static gboolean ipc_command_bluelight_filter_disable() {
     g_debug("ipc_service.c:ipc_command_bluelight_filter_disable()");
 
-    WaylandService *w = wayland_service_get_global();
-    if (!w) {
+    WaylandGammaControlService *g = wayland_gamma_control_service_get_global();
+    if (!g) {
         return false;
     }
 
-    wayland_wlr_bluelight_filter_destroy(w);
+    wayland_gamma_control_service_destroy(g);
 
     return true;
 }
@@ -721,24 +722,24 @@ static gboolean on_ipc_readable(gint fd, GIOCondition condition,
                 "IPC_CMD_KEYBOARD_BRIGHTNESS_DOWN");
             ret = ipc_command_keyboard_brightness_down();
             break;
-		case IPC_CMD_RENAME_SWITCHER_SHOW:
-			g_debug(
-				"ipc_service.c:on_ipc_readable() received "
-				"IPC_CMD_RENAME_SWITCHER_SHOW");
-			ret = ip_cmd_rename_switcher_show();
-			break;
-		case IPC_CMD_RENAME_SWITCHER_HIDE:
-			g_debug(
-				"ipc_service.c:on_ipc_readable() received "
-				"IPC_CMD_RENAME_SWITCHER_HIDE");
-			ret = ip_cmd_rename_switcher_hide();
-			break;
-		case IPC_CMD_RENAME_SWITCHER_TOGGLE:
-			g_debug(
-				"ipc_service.c:on_ipc_readable() received "
-				"IPC_CMD_RENAME_SWITCHER_TOGGLE");
-			ret = ip_cmd_rename_switcher_toggle();
-			break;
+        case IPC_CMD_RENAME_SWITCHER_SHOW:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_RENAME_SWITCHER_SHOW");
+            ret = ip_cmd_rename_switcher_show();
+            break;
+        case IPC_CMD_RENAME_SWITCHER_HIDE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_RENAME_SWITCHER_HIDE");
+            ret = ip_cmd_rename_switcher_hide();
+            break;
+        case IPC_CMD_RENAME_SWITCHER_TOGGLE:
+            g_debug(
+                "ipc_service.c:on_ipc_readable() received "
+                "IPC_CMD_RENAME_SWITCHER_TOGGLE");
+            ret = ip_cmd_rename_switcher_toggle();
+            break;
         default:
             goto skip_resp;
             break;

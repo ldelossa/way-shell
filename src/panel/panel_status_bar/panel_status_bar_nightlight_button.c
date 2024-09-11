@@ -3,7 +3,7 @@
 #include <NetworkManager.h>
 #include <adwaita.h>
 
-#include "../../services/wayland_service/wayland_service.h"
+#include "../../services/wayland/gamma_control_service/gamma.h"
 
 struct _PanelStatusBarNightLightButton {
     GObject parent_instance;
@@ -12,12 +12,12 @@ struct _PanelStatusBarNightLightButton {
 G_DEFINE_TYPE(PanelStatusBarNightLightButton,
               panel_status_bar_nightlight_button, G_TYPE_OBJECT);
 
-static void on_gamma_control_enabled(WaylandService *w,
+static void on_gamma_control_enabled(WaylandGammaControlService *w,
                                      PanelStatusBarNightLightButton *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->icon), true);
 }
 
-static void on_gamma_control_disabled(WaylandService *w,
+static void on_gamma_control_disabled(WaylandGammaControlService *w,
                                       PanelStatusBarNightLightButton *self) {
     gtk_widget_set_visible(GTK_WIDGET(self->icon), false);
 }
@@ -28,7 +28,7 @@ static void panel_status_bar_nightlight_button_dispose(GObject *gobject) {
         PANEL_STATUS_BAR_NIGHTLIGHT_BUTTON(gobject);
 
     // kill signals
-    WaylandService *w = wayland_service_get_global();
+    WaylandGammaControlService *w = wayland_gamma_control_service_get_global();
     g_signal_handlers_disconnect_by_func(w, on_gamma_control_enabled, self);
     g_signal_handlers_disconnect_by_func(w, on_gamma_control_disabled, self);
 
@@ -57,8 +57,8 @@ static void panel_status_bar_nightlight_button_init_layout(
     gtk_widget_set_visible(GTK_WIDGET(self->icon), false);
 
     // get initial active nightlights
-    WaylandService *w = wayland_service_get_global();
-    if (wayland_wlr_gamma_control_enabled(w))
+    WaylandGammaControlService *w = wayland_gamma_control_service_get_global();
+    if (wayland_gamma_control_service_enabled(w))
         gtk_widget_set_visible(GTK_WIDGET(self->icon), true);
 
     // if we have an active nightlight connection show icon
