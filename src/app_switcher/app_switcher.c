@@ -5,7 +5,8 @@
 #include <gio/gio.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "./../services/wayland_service/wayland_service.h"
+#include "./../services/wayland/foreign_toplevel_service/foreign_toplevel.h"
+#include "./../services/wayland/keyboard_shortcuts_inhibit_service/ksi.h"
 #include "./app_switcher_app_widget.h"
 #include "gdk/gdkkeysyms.h"
 #include "gtk/gtk.h"
@@ -17,7 +18,7 @@ enum signals { signals_n };
 typedef struct _AppSwitcher {
     GObject parent_instance;
     AdwWindow *win;
-	GtkScrolledWindow *scrolled;
+    GtkScrolledWindow *scrolled;
     GtkBox *app_widget_list;
     GtkEventController *key_controller;
     int widget_n;
@@ -50,8 +51,8 @@ static void app_switcher_init_layout(AppSwitcher *self);
 static void on_window_destroy(GtkWindow *win, AppSwitcher *self) {
     g_debug("activities.c:on_window_destroy called");
 
-    WaylandService *wayland = wayland_service_get_global();
-    wayland_wlr_shortcuts_inhibitor_destroy(wayland);
+    WaylandKSIService *ksi = wayland_ksi_service_get_global();
+    wayland_ksi_inhibit_destroy(ksi);
 
     gtk_widget_remove_controller(GTK_WIDGET(self->win), self->key_controller);
 
@@ -112,7 +113,8 @@ static void app_switcher_activate_widget_at_index(AppSwitcher *self,
     app_switcher_app_widget_activate(widget);
 }
 
-static void on_top_level_changed(WaylandService *wayland, GPtrArray *toplevels,
+static void on_top_level_changed(WaylandForeignToplevelService *wayland,
+                                 GHashTable *toplevels,
                                  WaylandWLRForeignTopLevel *toplevel,
                                  AppSwitcher *self) {
     AppSwitcherAppWidget *app_widget = NULL;
@@ -163,7 +165,7 @@ static void on_top_level_changed(WaylandService *wayland, GPtrArray *toplevels,
 
 static void app_switcher_focus_widget_at_index(AppSwitcher *self, gint index);
 
-static void on_top_level_removed(WaylandService *wayland,
+static void on_top_level_removed(WaylandForeignToplevelService *wayland,
                                  WaylandWLRForeignTopLevel *toplevel,
                                  AppSwitcher *self) {
     if (toplevel->app_id == NULL) {
@@ -210,21 +212,32 @@ static void app_switcher_init_layout(AppSwitcher *self) {
     gtk_layer_set_keyboard_mode(GTK_WINDOW(self->win),
                                 GTK_LAYER_SHELL_KEYBOARD_MODE_EXCLUSIVE);
 
-	self->scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
+    self->scrolled = GTK_SCROLLED_WINDOW(gtk_scrolled_window_new());
     gtk_scrolled_window_set_max_content_width(self->scrolled, 1400);
     gtk_scrolled_window_set_max_content_height(self->scrolled, -1);
     gtk_scrolled_window_set_propagate_natural_height(self->scrolled, 1);
-	gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
+    gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
 
     self->app_widget_list = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->app_widget_list), "app-switcher-list");
 
-	gtk_scrolled_window_set_child(self->scrolled, GTK_WIDGET(self->app_widget_list));
+    gtk_scrolled_window_set_child(self->scrolled,
+                                  GTK_WIDGET(self->app_widget_list));
 
     adw_window_set_content(self->win, GTK_WIDGET(self->scrolled));
 
     // listen for toplevels from wayland service
-    WaylandService *wayland = wayland_service_get_global();
+    WaylandForeignToplevelService *wayland =
+        wayland_foreign_toplevel_service_get_global();
+
+    GHashTable *toplevels =
+        wayland_foreign_toplevel_service_get_toplevels(wayland);
+    GList *values = g_hash_table_get_values(toplevels);
+    for (GList *l = values; l != NULL; l = l->next) {
+        WaylandWLRForeignTopLevel *toplevel = l->data;
+        on_top_level_changed(wayland, toplevels, toplevel, self);
+    }
+    g_list_free(values);
 
     g_signal_connect(wayland, "top-level-changed",
                      G_CALLBACK(on_top_level_changed), self);
@@ -258,9 +271,9 @@ static void app_switcher_focus_widget_at_index(AppSwitcher *self, gint index) {
     AppSwitcherAppWidget *widget =
         app_switcher_get_widget_at_index(self, index);
 
-	// don't automatically focus previous instance of selected app, this
-	// avoids the case where switching between two apps also swaps the most
-	// recently activated instances of an app.
+    // don't automatically focus previous instance of selected app, this
+    // avoids the case where switching between two apps also swaps the most
+    // recently activated instances of an app.
     gboolean select_previous = true;
     if (self->last_activated_app) {
         if (strcmp(self->last_activated_app,
@@ -406,8 +419,8 @@ void app_switcher_show(AppSwitcher *self) {
     }
 
     gtk_window_present(GTK_WINDOW(self->win));
-    WaylandService *wayland = wayland_service_get_global();
-    wayland_wlr_shortcuts_inhibitor_create(wayland, GTK_WIDGET(self->win));
+    WaylandKSIService *ksi = wayland_ksi_service_get_global();
+    wayland_ksi_inhibit(ksi, GTK_WIDGET(self->win));
 
     app_switcher_enter_preview(self);
 }
@@ -418,8 +431,8 @@ void app_switcher_hide(AppSwitcher *self) {
     app_switcher_unfocus_widget_all_with_focus_reset(self);
 
     gtk_widget_set_visible(GTK_WIDGET(self->win), false);
-    WaylandService *wayland = wayland_service_get_global();
-    wayland_wlr_shortcuts_inhibitor_destroy(wayland);
+    WaylandKSIService *ksi = wayland_ksi_service_get_global();
+    wayland_ksi_inhibit_destroy(ksi);
 
     app_switcher_exit_preview(self);
 }
@@ -437,11 +450,15 @@ GtkWindow *app_switcher_get_window(AppSwitcher *self) {
 }
 
 void app_switcher_enter_preview(AppSwitcher *self) {
-    WaylandService *wayland = wayland_service_get_global();
-    g_signal_handlers_block_by_func(wayland, on_top_level_changed, self);
+    WaylandForeignToplevelService *foreign_toplevel =
+        wayland_foreign_toplevel_service_get_global();
+    g_signal_handlers_block_by_func(foreign_toplevel, on_top_level_changed,
+                                    self);
 }
 
 void app_switcher_exit_preview(AppSwitcher *self) {
-    WaylandService *wayland = wayland_service_get_global();
-    g_signal_handlers_unblock_by_func(wayland, on_top_level_changed, self);
+    WaylandForeignToplevelService *foreign_toplevel =
+        wayland_foreign_toplevel_service_get_global();
+    g_signal_handlers_unblock_by_func(foreign_toplevel, on_top_level_changed,
+                                      self);
 }

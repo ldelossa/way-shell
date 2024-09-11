@@ -389,10 +389,7 @@ void notifications_list_reinitialize(NotificationsList *self) {
     g_hash_table_remove_all(self->notification_groups);
 
     // remove all media players
-    for (int i = 0; i < self->media_players->len; i++) {
-        NotificationWidget *mp = g_ptr_array_index(self->media_players, i);
-        g_object_unref(mp);
-    }
+    g_ptr_array_set_size(self->media_players, 0);
 
     // init our layout again
     notifications_list_init_layout(self);
@@ -416,4 +413,3 @@ gboolean notifications_list_is_dnd(NotificationsList *self) {
 GtkWidget *notifications_list_get_widget(NotificationsList *self) {
     return GTK_WIDGET(self->container);
 }
-

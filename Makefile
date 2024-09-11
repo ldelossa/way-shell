@@ -43,14 +43,10 @@ gresources:
 
 .PHONY:
 wlr-protocols:
-	wayland-scanner client-header < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland_service/wlr-foreign-toplevel-management-unstable-v1.h
-	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland_service/wlr-foreign-toplevel-management-unstable-v1.c
-	wayland-scanner client-header < ./data/wlr-protocols/unstable/wlr-input-inhibitor-unstable-v1.xml > ./src/services/wayland_service/wlr-input-inhibitor-unstable-v1.h
-	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-input-inhibitor-unstable-v1.xml > ./src/services/wayland_service/wlr-input-inhibitor-unstable-v1.c
-	wayland-scanner client-header ./data/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.h
-	wayland-scanner private-code ./data/wlr-protocols/unstable/wlr-output-management-unstable-v1.xml ./src/services/wayland_service/wlr-output-management-unstable-v1.c
-	wayland-scanner client-header ./data/wlr-protocols/unstable/wlr-gamma-control-unstable-v1.xml ./src/services/wayland_service/wlr-gamma-control-unstable-v1.h
-	wayland-scanner private-code ./data/wlr-protocols/unstable/wlr-gamma-control-unstable-v1.xml ./src/services/wayland_service/wlr-gamma-control-unstable-v1.c
+	wayland-scanner client-header < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland/wlr-foreign-toplevel-management-unstable-v1.h
+	wayland-scanner private-code < ./data/wlr-protocols/unstable/wlr-foreign-toplevel-management-unstable-v1.xml > ./src/services/wayland/wlr-foreign-toplevel-management-unstable-v1.c
+	wayland-scanner client-header ./data/wlr-protocols/unstable/wlr-gamma-control-unstable-v1.xml ./src/services/wayland/wlr-gamma-control-unstable-v1.h
+	wayland-scanner private-code ./data/wlr-protocols/unstable/wlr-gamma-control-unstable-v1.xml ./src/services/wayland/wlr-gamma-control-unstable-v1.c
 
 .PHONY:
 way-sh/way-sh:

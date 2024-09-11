@@ -2,8 +2,7 @@
 
 #include <adwaita.h>
 
-#include "../../../../services/wayland_service/wayland_service.h"
-#include "../../quick_settings.h"
+#include "../../../../services/wayland/gamma_control_service/gamma.h"
 #include "../../quick_settings_menu_widget.h"
 #include "gtk/gtk.h"
 #include "quick_settings_grid_night_light.h"
@@ -37,8 +36,9 @@ static void on_value_changed(GtkRange *range,
                              QuickSettingsGridNightLightMenu *self) {
     g_debug("quick_settings_grid_night_light_menu.c:on_value_changed() called");
 
-    WaylandService *w = wayland_service_get_global();
-    wayland_wlr_bluelight_filter(w, gtk_range_get_value(range));
+    WaylandGammaControlService *w = wayland_gamma_control_service_get_global();
+    wayland_gamma_control_service_set_temperature(w,
+                                                  gtk_range_get_value(range));
 }
 
 static void quick_settings_grid_night_light_menu_init_layout(
@@ -58,7 +58,7 @@ static void quick_settings_grid_night_light_menu_init_layout(
     }
     gtk_scale_add_mark(self->temp_slider, 6800, GTK_POS_BOTTOM, "68K");
 
-	gtk_range_set_value(GTK_RANGE(self->temp_slider), 3000);
+    gtk_range_set_value(GTK_RANGE(self->temp_slider), 3000);
 
     // connect signal
     g_signal_connect(self->temp_slider, "value-changed",

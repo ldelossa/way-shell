@@ -5,7 +5,7 @@
 #include <gio/gio.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
-#include "./../services/wayland_service/wayland_service.h"
+#include "./../services/wayland/foreign_toplevel_service/foreign_toplevel.h"
 #include "./app_switcher.h"
 #include "gtk/gtk.h"
 
@@ -60,11 +60,12 @@ static void on_button_clicked(GtkButton *button, AppSwitcherAppWidget *self) {
     AppSwitcher *app_switcher = app_switcher_get_global();
     app_switcher_hide(app_switcher);
 
-    WaylandService *wayland = wayland_service_get_global();
+    WaylandForeignToplevelService *wayland =
+        wayland_foreign_toplevel_service_get_global();
     WaylandWLRForeignTopLevel tp = {
         .toplevel = self->wl_toplevel,
     };
-    wayland_wlr_foreign_toplevel_activate(wayland, &tp);
+    wayland_foreign_toplevel_service_activate(wayland, &tp);
 }
 
 AppSwitcherAppWidget *find_instance_by_toplevel(AppSwitcherAppWidget *self,
@@ -162,7 +163,7 @@ static void app_switcher_app_widget_init_layout(AppSwitcherAppWidget *self) {
     gtk_scrolled_window_set_max_content_width(self->scrolled, 1200);
     gtk_scrolled_window_set_max_content_height(self->scrolled, -1);
     gtk_scrolled_window_set_propagate_natural_height(self->scrolled, 1);
-	gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
+    gtk_scrolled_window_set_propagate_natural_width(self->scrolled, 1);
 
     self->instances_container =
         GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
@@ -270,12 +271,13 @@ void app_switcher_app_widget_preview(AppSwitcherAppWidget *self) {
     GtkWindow *app_switcher_win = app_switcher_get_window(app_switcher);
 
     // activate toplevel to preview
-    WaylandService *wayland = wayland_service_get_global();
+    WaylandForeignToplevelService *toplevel =
+        wayland_foreign_toplevel_service_get_global();
     WaylandWLRForeignTopLevel tp = {
         .toplevel = self->wl_toplevel,
     };
 
-    wayland_wlr_foreign_toplevel_activate(wayland, &tp);
+    wayland_foreign_toplevel_service_activate(toplevel, &tp);
 
     // this bit allows the Sway compositor to set the 'focused' border on the
     // window being previewed.
@@ -373,7 +375,7 @@ void app_switcher_app_widget_set_focused(AppSwitcherAppWidget *self,
     }
 
     gtk_widget_add_css_class(GTK_WIDGET(self->button), "selected");
-	gtk_widget_grab_focus(GTK_WIDGET(self->button));
+    gtk_widget_grab_focus(GTK_WIDGET(self->button));
 }
 
 void app_switcher_app_widget_set_focused_next_instance(
@@ -427,7 +429,8 @@ void app_switcher_app_widget_set_focused_prev_instance(
 }
 
 void app_switcher_app_widget_activate(AppSwitcherAppWidget *self) {
-    WaylandService *wayland = wayland_service_get_global();
+    WaylandForeignToplevelService *wayland =
+        wayland_foreign_toplevel_service_get_global();
 
     AppSwitcherAppWidget *instance =
         find_instance_by_index(self, self->focused_index);
@@ -436,7 +439,7 @@ void app_switcher_app_widget_activate(AppSwitcherAppWidget *self) {
         .toplevel = instance->wl_toplevel,
     };
 
-    wayland_wlr_foreign_toplevel_activate(wayland, &tp);
+    wayland_foreign_toplevel_service_activate(wayland, &tp);
 }
 
 GtkWidget *app_switcher_app_widget_get_widget(AppSwitcherAppWidget *self) {

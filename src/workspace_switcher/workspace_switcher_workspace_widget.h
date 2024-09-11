@@ -3,8 +3,6 @@
 
 #include <adwaita.h>
 
-#include "./../services/wayland_service/wayland_service.h"
-
 G_BEGIN_DECLS
 
 struct _WorkspaceSwitcherWorkspaceWidget;
