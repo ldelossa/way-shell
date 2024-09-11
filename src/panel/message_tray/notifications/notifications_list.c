@@ -265,11 +265,10 @@ static void media_players_on_media_player_removed(MediaPlayerService *serv,
 
     gtk_box_remove(self->list, notification_widget_get_widget(widget));
 
+    // g_object_unref on array removal.
     g_ptr_array_remove(self->media_players, widget);
 
     swap_no_notifications_page(self);
-
-    g_object_unref(widget);
 }
 
 static void on_message_tray_hidden(MessageTray *tray, NotificationsList *self) {
