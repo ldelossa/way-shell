@@ -102,23 +102,15 @@ static void animation_close_done(AdwAnimation *animation, MessageTray *self) {
 };
 
 void message_tray_set_hidden(MessageTray *self) {
-    int anim_state = 0;
-
     g_debug("message_tray.c:message_tray_set_hidden() called.");
 
-    // this is required, since external callers will call this method as expect
-    // a no-op of there is no attached self->monitor.
+    // this is required, since external callers will call this method and expect
+    // a no-op if there is no attached self->monitor.
     if (!self || !self->win) {
         return;
     }
 
-    // this ensures there are no in-flight animation done callbacks on the
-    // event-loop before starting a new animation, and avoids timing bugs.
-    anim_state = adw_animation_get_state(self->animation);
-    if (anim_state != ADW_ANIMATION_IDLE &&
-        anim_state != ADW_ANIMATION_FINISHED) {
-        adw_animation_reset(self->animation);
-    }
+    adw_animation_reset(self->animation);
 
     // reverse animation
     adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->animation), TRUE);

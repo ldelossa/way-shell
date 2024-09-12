@@ -97,24 +97,16 @@ static void animation_close_done(AdwAnimation *animation, QuickSettings *self) {
 };
 
 void quick_settings_set_hidden(QuickSettings *self) {
-    int anim_state = 0;
-
     g_debug("quick_settings.c:quick_settings_set_hidden() called.");
 
-    // this is required, since external callers will call this method as expect
-    // a no-op of there is no attached self->panel.
+    // this is required, since external callers will call this method and expect
+    // a no-op if there is no attached self->panel.
     if (!self || !self->win) {
         g_debug("quick_settings.c:quick_settings_set_hidden() no-op.");
         return;
     }
 
-    // this ensures there are no in-flight animation done callbacks on the
-    // event-loop before starting a new animation, and avoids timing bugs.
-    anim_state = adw_animation_get_state(self->animation);
-    if (anim_state != ADW_ANIMATION_IDLE &&
-        anim_state != ADW_ANIMATION_FINISHED) {
-        adw_animation_reset(self->animation);
-    }
+    adw_animation_reset(self->animation);
 
     // reverse animation
     adw_timed_animation_set_reverse(ADW_TIMED_ANIMATION(self->animation), TRUE);
