@@ -224,7 +224,7 @@ static void on_window_destroy(GtkWindow *win, OSD *self) {
     osd_reinitialize(self);
 }
 
-void static opacity_animation(double value, OSD *self) {
+void static slide_up_animation(double value, OSD *self) {
     gtk_layer_set_margin(GTK_WINDOW(self->win), GTK_LAYER_SHELL_EDGE_BOTTOM,
                          value);
 }
@@ -265,9 +265,8 @@ void osd_init_layout(OSD *self) {
                          150);
     gtk_widget_set_visible(GTK_WIDGET(self->win), false);
 
-    // create opacity timed animation
     AdwAnimationTarget *target = adw_callback_animation_target_new(
-        (AdwAnimationTargetFunc)opacity_animation, self, NULL);
+        (AdwAnimationTargetFunc)slide_up_animation, self, NULL);
     self->animation =
         adw_timed_animation_new(GTK_WIDGET(self->win), 0, 120, 350, target);
 
