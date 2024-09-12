@@ -369,7 +369,7 @@ void brightness_service_backlight_up(BrightnessService *self) {
 
     get_current_backlight_brightness(self);
 
-    int addend = self->max_backlight_brightness / 5;
+    int addend = self->max_backlight_brightness / 12;
 
     // add 1000 to current brightness
     self->backlight_brightness += addend;
@@ -395,7 +395,7 @@ void brightness_service_backlight_down(BrightnessService *self) {
 
     get_current_backlight_brightness(self);
 
-    int subtrahend = self->max_backlight_brightness / 5;
+    int subtrahend = self->max_backlight_brightness / 12;
 
     gint32 brightness = self->backlight_brightness - subtrahend;
 
