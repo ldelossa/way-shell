@@ -1,7 +1,7 @@
 %define _userunitdir /usr/lib/systemd/user
 
 Name: way-shell
-Version: 0.0.7
+Version: 0.0.8
 Release: 1%{?dist}
 Summary: A Gnome-like desktop shell for Wayland compositors.
 License: MIT
@@ -57,7 +57,7 @@ Currently Way-Shell only supports Sway but this will change as the project
 matures.
 
 %prep
-%setup -n way-shell-0.0.7
+%setup -n way-shell-0.0.8
 
 %build
 make %{?_smp_mflags}
