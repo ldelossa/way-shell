@@ -7,7 +7,7 @@ Summary: A Gnome-like desktop shell for Wayland compositors.
 License: MIT
 
 URL: https://github.com/ldelossa/way-shell
-Source0: https://github.com/ldelossa/way-shell/archive/refs/tags/v0.0.7.tar.gz
+Source0: https://github.com/ldelossa/way-shell/archive/refs/tags/v0.0.8.tar.gz
 
 BuildRequires: gcc
 BuildRequires: make
