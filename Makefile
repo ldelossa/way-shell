@@ -54,6 +54,13 @@ way-sh/way-sh:
 
 .PHONY:
 dbus-codegen:
+	# dbus
+	gdbus-codegen --generate-c-code dbus_dbus \
+	--c-namespace Dbus \
+	--interface-prefix org.freedesktop. \
+	--output-directory ./src/services/ \
+	./data/dbus-interfaces/org.freedesktop.DBus.xml
+
 	# logind
 	gdbus-codegen --generate-c-code logind_manager_dbus \
 	--c-namespace Dbus \

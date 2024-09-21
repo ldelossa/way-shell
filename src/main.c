@@ -20,6 +20,7 @@
 #include "./services/network_manager_service.h"
 #include "./services/notifications_service/notifications_service.h"
 #include "./services/power_profiles_service/power_profiles_service.h"
+#include "./services/status_notifier_service/status_notifier_service.h"
 #include "./services/theme_service.h"
 #include "./services/upower_service.h"
 #include "./services/wayland/core.h"
@@ -138,6 +139,12 @@ static void activate(AdwApplication *app, gpointer user_data) {
     if (media_player_service_global_init() != 0) {
         g_error(
             "main.c: activate(): failed to initialize media player service.");
+    }
+
+    if (status_notifier_service_global_init() != 0) {
+        g_error(
+            "main.c: activate(): failed to initialize status notifier "
+            "service.");
     }
 
     // Subsystem activation //
