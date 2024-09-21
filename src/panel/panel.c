@@ -5,6 +5,7 @@
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
 #include "../activities/activities.h"
+#include "./indicator_bar/indicator_bar.h"
 #include "./panel_status_bar/panel_status_bar.h"
 #include "panel_clock.h"
 #include "panel_mediator.h"
@@ -105,6 +106,12 @@ static void panel_init_status_bar(Panel *self) {
                    GTK_WIDGET(panel_status_bar_get_widget(self->status_bar)));
 }
 
+static void panel_init_indicator_bar(Panel *self) {
+    IndicatorBar *indicator_bar = g_object_new(INDICATOR_BAR_TYPE, NULL);
+    indicator_bar_set_panel(indicator_bar, self);
+    gtk_box_prepend(self->right, indicator_bar_get_widget(indicator_bar));
+}
+
 static void panel_init_layout(Panel *self) {
     // NOTE:
     // We do not initialize any of the Panel's dependecies (panel clock,
@@ -147,6 +154,7 @@ void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
     panel_init_workspaces_bar(self);
     panel_init_panel_clock(self);
     panel_init_status_bar(self);
+	panel_init_indicator_bar(self);
 
     Activities *a = activities_get_global();
 

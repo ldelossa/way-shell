@@ -20,3 +20,5 @@ DBUSService *dbus_service_get_global();
 GDBusConnection *dbus_service_get_system_bus(DBUSService *self);
 
 GDBusConnection *dbus_service_get_session_bus(DBUSService *self);
+
+GHashTable *dbus_service_get_bus_names(DBUSService *self, gboolean system);
