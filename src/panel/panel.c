@@ -119,7 +119,7 @@ static void panel_init_layout(Panel *self) {
     gtk_layer_set_anchor(GTK_WINDOW(self->win), 1, 1);
     gtk_layer_set_anchor(GTK_WINDOW(self->win), 2, 1);
     gtk_layer_set_anchor(GTK_WINDOW(self->win), 3, 0);
-    gtk_window_set_default_size(GTK_WINDOW(self->win), -1, 30);
+    gtk_widget_set_size_request(GTK_WIDGET(self->win), -1, 30);
 
     self->container = GTK_CENTER_BOX(gtk_center_box_new());
     gtk_widget_set_name(GTK_WIDGET(self->container), "panel");
