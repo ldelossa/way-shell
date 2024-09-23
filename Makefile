@@ -95,6 +95,13 @@ dbus-codegen:
 	--output-directory ./src/services/media_player_service \
 	./data/dbus-interfaces/org.mpris.MediaPlayer2.xml
 
+	# dbusmenu
+	gdbus-codegen --generate-c-code dbusmenu_dbus \
+	--c-namespace Dbus \
+	--interface-prefix com.canonical. \
+	--output-directory ./src/services/status_notifier_service/ \
+	./data/dbus-interfaces/com.canonical.dbusmenu.xml
+
 .PHONY:
 install-gschema:
 	glib-compile-schemas $(DESTDIR)$(SCHEMADIR)
