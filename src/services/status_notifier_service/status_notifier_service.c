@@ -9,6 +9,7 @@
 #include "./status_notifier_host_dbus.h"
 #include "./status_notifier_item_dbus.h"
 #include "./status_notifier_watcher_dbus.h"
+#include "dbusmenu_dbus.h"
 #include "gio/gdbusinterfaceskeleton.h"
 
 static StatusNotifierService *global = NULL;
@@ -70,6 +71,64 @@ static void status_notifier_service_class_init(
                      G_TYPE_HASH_TABLE);
 };
 
+static void dbus_menu_extract_g_menu(DbusDbusmenu *menu,
+                                     StatusNotifierService *self) {
+    GError *error = NULL;
+    guint rev;
+    GVariant *layout;
+    const gchar *props = "";
+
+    g_debug(
+        "status_notifier_service.c:dbus_menu_extract_g_menu() proxy name: %s",
+        g_dbus_proxy_get_name(G_DBUS_PROXY(menu)));
+
+    dbus_dbusmenu_call_get_layout_sync(menu, 0, -1, &props, &rev, &layout, NULL,
+                                       &error);
+    if (error) {
+        g_critical(
+            "status_notifier_service.c:dbus_menu_extract_g_menu() failed to "
+            "get layout: %s",
+            error->message);
+        return;
+    }
+    // debug rev
+    g_debug("status_notifier_service.c:dbus_menu_extract_g_menu() rev: %d",
+            rev);
+};
+
+static void on_handle_menu_async_cb(GObject *source_object, GAsyncResult *res,
+                                    gpointer data) {
+    StatusNotifierService *self = (StatusNotifierService *)data;
+    GError *error = NULL;
+
+    g_debug("status_notifier_service.c:on_handle_menu_async_cb() called");
+
+    DbusDbusmenu *proxy = dbus_dbusmenu_proxy_new_finish(res, &error);
+    if (error) {
+        g_critical(
+            "status_notifier_service.c:on_handle_menu_async_cb() failed to "
+            "create proxy: %s",
+            error->message);
+        return;
+    }
+
+    StatusNotifierItem *item = g_hash_table_lookup(
+        self->items, g_dbus_proxy_get_name(G_DBUS_PROXY(proxy)));
+
+    if (!item) return;
+
+    item->menu_proxy = proxy;
+    dbus_menu_extract_g_menu(item->menu_proxy, self);
+
+    g_debug(
+        "status_notifier_service.c:on_handle_menu_async_cb() "
+        "NotifierStatusItem for %s discovered",
+        status_notifier_item_get_id(item));
+
+    g_signal_emit(self, signals[status_notifier_item_added], 0, self->items,
+                  item);
+}
+
 static void on_handle_register_async_cb(GObject *source_object,
                                         GAsyncResult *res, gpointer data) {
     StatusNotifierService *self = (StatusNotifierService *)data;
@@ -100,7 +159,21 @@ static void on_handle_register_async_cb(GObject *source_object,
     item->obj_name =
         g_strdup(g_dbus_proxy_get_object_path(G_DBUS_PROXY(proxy)));
 
-    g_hash_table_insert(self->items, item->bus_name, item);
+    // if a menu exists, we'll grab a proxy to it and emit our added signal
+    // after we attach it to our StatusNotifierItem.
+    if (status_notifier_item_get_item_is_menu(item) ||
+        strlen(status_notifier_item_get_menu(item)) > 0) {
+        g_debug(
+            "status_notifier_service.c:on_handle_register_async_cb() "
+            "StatusNotifierItem at %s:%s has Menu at %s",
+            item->bus_name, item->obj_name,
+            status_notifier_item_get_menu(item));
+        g_hash_table_insert(self->items, item->bus_name, item);
+        dbus_dbusmenu_proxy_new(self->conn, 0, item->bus_name,
+                                status_notifier_item_get_menu(item), NULL,
+                                on_handle_menu_async_cb, self);
+        return;
+    }
 
     g_debug(
         "status_notifier_service.c:on_handle_register_async_cb() "
@@ -366,6 +439,10 @@ const gboolean status_notifier_item_get_item_is_menu(StatusNotifierItem *self) {
 }
 const gchar *status_notifier_item_get_menu(StatusNotifierItem *self) {
     return dbus_item_v0_gen_get_menu(self->proxy);
+}
+
+DbusItemV0Gen *status_notifier_item_get_proxy(StatusNotifierItem *self) {
+    return self->proxy;
 }
 
 void status_notifier_item_free(StatusNotifierItem *self) {

@@ -2,6 +2,7 @@
 
 #include <adwaita.h>
 
+#include "../../services/status_notifier_service/status_notifier_item_dbus.h"
 #include "../../services/status_notifier_service/status_notifier_service.h"
 #include "../panel.h"
 
@@ -33,6 +34,16 @@ static void indicator_widget_class_init(IndicatorWidgetClass *klass) {
     object_class->finalize = indicator_widget_finalize;
 };
 
+static void on_button_clicked(GtkButton *button, IndicatorWidget *self) {
+    GError *error = NULL;
+    dbus_item_v0_gen_call_activate_sync(
+        status_notifier_item_get_proxy(self->sni), 0, 0, NULL, &error);
+	if (error) {
+		g_warning("Failed to activate item: %s", error->message);
+		g_error_free(error);
+	}
+}
+
 static void indicator_widget_init_layout(IndicatorWidget *self) {
     self->container = GTK_BOX(gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0));
     gtk_widget_set_name(GTK_WIDGET(self->container),
@@ -46,6 +57,7 @@ static void indicator_widget_init_layout(IndicatorWidget *self) {
 
     self->button = GTK_BUTTON(gtk_button_new());
     gtk_button_set_child(self->button, GTK_WIDGET(self->icon));
+	g_signal_connect(self->button, "clicked", G_CALLBACK(on_button_clicked), self);
 
     // wire it up
     gtk_box_append(self->box, GTK_WIDGET(self->button));

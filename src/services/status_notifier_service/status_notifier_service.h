@@ -3,9 +3,12 @@
 #include <adwaita.h>
 
 #include "status_notifier_item_dbus.h"
+#include "dbusmenu_dbus.h"
 
 typedef struct StatusNotifierItem {
     DbusItemV0Gen *proxy;
+	DbusDbusmenu *menu_proxy;
+	GMenu *menu_model;
     gchar *bus_name;
     gchar *obj_name;
 } StatusNotifierItem;
@@ -17,8 +20,7 @@ const gchar *status_notifier_item_get_title(StatusNotifierItem *self);
 const gchar *status_notifier_item_get_status(StatusNotifierItem *self);
 const int status_notifier_item_get_window_id(StatusNotifierItem *self);
 const gchar *status_notifier_item_get_icon_name(StatusNotifierItem *self);
-GdkPixbuf *status_notifier_item_get_icon_pixmap(
-    StatusNotifierItem *self);
+GdkPixbuf *status_notifier_item_get_icon_pixmap(StatusNotifierItem *self);
 const gchar *status_notifier_item_get_overlay_icon_name(
     StatusNotifierItem *self);
 GdkPixbuf *status_notifier_item_get_overlay_icon_pixmap(
@@ -32,6 +34,7 @@ const gchar *status_notifier_item_get_attention_movie_name(
 // TODO: get_tooltip
 const gboolean status_notifier_item_get_item_is_menu(StatusNotifierItem *self);
 const gchar *status_notifier_item_get_menu(StatusNotifierItem *self);
+DbusItemV0Gen *status_notifier_item_get_proxy(StatusNotifierItem *self);
 void status_notifier_item_free(StatusNotifierItem *self);
 
 G_BEGIN_DECLS
