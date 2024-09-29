@@ -36,6 +36,13 @@ static void indicator_bar_dispose(GObject *gobject) {
     g_signal_handlers_disconnect_by_func(sn, on_status_notifier_item_removed,
                                          self);
 
+    // unref all indicators
+    GList *values = g_hash_table_get_values(self->indicators);
+    for (GList *l = values; l; l = l->next) {
+        IndicatorWidget *i = l->data;
+        g_object_unref(i);
+    }
+
     // Chain-up
     G_OBJECT_CLASS(indicator_bar_parent_class)->dispose(gobject);
 };
@@ -76,7 +83,7 @@ static void on_status_notifier_item_removed(StatusNotifierService *sn,
     GtkWidget *w = indicator_widget_get_widget(i);
     gtk_box_remove(self->list, w);
 
-	g_hash_table_remove(self->indicators, sni->bus_name);
+    g_hash_table_remove(self->indicators, sni->bus_name);
 }
 
 static void indicator_bar_init_layout(IndicatorBar *self) {

@@ -36,6 +36,7 @@ struct _Panel {
     PanelWorkspacesBar *ws_bar;
     PanelClock *clock;
     PanelStatusBar *status_bar;
+    IndicatorBar *indicator_bar;
 
     // used to track monitor position in GListModel for deletion.
     guint32 monitor_pos;
@@ -66,6 +67,7 @@ static void panel_dispose(GObject *gobject) {
     g_object_unref(self->ws_bar);
     g_object_unref(self->monitor);
     g_object_unref(self->clock);
+	g_object_unref(self->indicator_bar);
 
     g_free(self->monitor_desc);
 
@@ -107,9 +109,9 @@ static void panel_init_status_bar(Panel *self) {
 }
 
 static void panel_init_indicator_bar(Panel *self) {
-    IndicatorBar *indicator_bar = g_object_new(INDICATOR_BAR_TYPE, NULL);
-    indicator_bar_set_panel(indicator_bar, self);
-    gtk_box_prepend(self->right, indicator_bar_get_widget(indicator_bar));
+    self->indicator_bar = g_object_new(INDICATOR_BAR_TYPE, NULL);
+    indicator_bar_set_panel(self->indicator_bar, self);
+    gtk_box_prepend(self->right, indicator_bar_get_widget(self->indicator_bar));
 }
 
 static void panel_init_layout(Panel *self) {
@@ -154,7 +156,7 @@ void panel_attach_to_monitor(Panel *self, GdkMonitor *monitor) {
     panel_init_workspaces_bar(self);
     panel_init_panel_clock(self);
     panel_init_status_bar(self);
-	panel_init_indicator_bar(self);
+    panel_init_indicator_bar(self);
 
     Activities *a = activities_get_global();
 
