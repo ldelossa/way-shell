@@ -11,8 +11,25 @@
 #include "./status_notifier_watcher_dbus.h"
 #include "dbusmenu_dbus.h"
 #include "gio/gdbusinterfaceskeleton.h"
+#include "libdbusmenu.h"
+
+extern AdwApplication *gtk_app;
 
 static StatusNotifierService *global = NULL;
+
+static const char *property_names[] = {"accessible-desc",
+                                       "children-display",
+                                       "disposition",
+                                       "enabled",
+                                       "icon-data",
+                                       "icon-name",
+                                       "label",
+                                       "shortcut",
+                                       "toggle-type",
+                                       "toggle-state",
+                                       "type",
+                                       "visible",
+                                       NULL};
 
 enum signals {
     status_notifier_item_added,
@@ -71,19 +88,161 @@ static void status_notifier_service_class_init(
                      G_TYPE_HASH_TABLE);
 };
 
-static void dbus_menu_extract_g_menu(DbusDbusmenu *menu,
-                                     StatusNotifierService *self) {
+void on_menu_item_activate(GSimpleAction *action, GVariant *parameter,
+                           gpointer data) {
+    StatusNotifierService *self = (StatusNotifierService *)data;
+    gchar *menu_bus_name;
+    gint32 menu_item_id;
+
+    g_debug("status_notifier_service.c:on_menu_item_activate() called");
+    g_variant_get(parameter, "(si)", &menu_bus_name, &menu_item_id);
+
+    if (!menu_bus_name) {
+        g_warning(
+            "status_notifier_service.c:on_menu_item_activate() menu_bus_name "
+            "is NULL");
+        return;
+    }
+    if (!menu_item_id) {
+        g_warning(
+            "status_notifier_service.c:on_menu_item_activate() menu_item_id is "
+            "NULL");
+        return;
+    }
+
+    g_debug(
+        "status_notifier_service.c:on_menu_item_activate() menu_bus_name: %s, "
+        "menu_item_id: %d",
+        menu_bus_name, menu_item_id);
+
+    StatusNotifierItem *item = g_hash_table_lookup(self->items, menu_bus_name);
+    if (!item) {
+        g_warning(
+            "status_notifier_service.c:on_menu_item_activate() item not found: "
+            "%s",
+            menu_bus_name);
+        return;
+    }
+
+    GError *error = NULL;
+    GVariant *no_data = g_variant_new("v", g_variant_new_int32(0));
+
+    dbus_dbusmenu_call_event_sync(item->menu_proxy, menu_item_id, "clicked",
+                                  no_data, 1727549020, NULL, &error);
+    if (error) {
+        g_warning(
+            "status_notifier_service.c:on_menu_item_activate() failed to send "
+            "event: %s",
+            error->message);
+        g_error_free(error);
+    }
+}
+
+static void update_menu_layout(DbusDbusmenu *menu, StatusNotifierItem *item);
+
+static void on_menu_about_to_show(GSimpleAction *action, GVariant *parameter,
+                                  gpointer data) {
+    StatusNotifierService *self = (StatusNotifierService *)data;
+    gchar *menu_bus_name;
+    gint32 menu_item_id;
+
+    g_debug("status_notifier_service.c:on_menu_about_to_show() called");
+    g_variant_get(parameter, "(si)", &menu_bus_name, &menu_item_id);
+
+    if (!menu_bus_name) {
+        g_warning(
+            "status_notifier_service.c:on_menu_about_to_show() menu_bus_name "
+            "is NULL");
+        return;
+    }
+    if (!menu_item_id) {
+        g_warning(
+            "status_notifier_service.c:on_menu_about_to_show() menu_item_id is "
+            "NULL");
+        return;
+    }
+
+    StatusNotifierItem *item = g_hash_table_lookup(self->items, menu_bus_name);
+    if (!item) {
+        g_warning(
+            "status_notifier_service.c:on_menu_about_to_show() item not found: "
+            "%s",
+            menu_bus_name);
+        return;
+    }
+
+    GError *error = NULL;
+    gboolean need_update = FALSE;
+
+    dbus_dbusmenu_call_about_to_show_sync(item->menu_proxy, menu_item_id,
+                                          &need_update, NULL, &error);
+    if (error) {
+        g_warning(
+            "status_notifier_service.c:on_menu_about_to_show() failed to send "
+            "event: %s",
+            error->message);
+        g_error_free(error);
+    }
+
+    if (need_update) {
+        update_menu_layout(item->menu_proxy, item);
+    }
+}
+
+static const GActionEntry action_entries[] = {
+    {"item-clicked", on_menu_item_activate, "(si)", NULL, NULL},
+    {"about-to-show", on_menu_about_to_show, "(si)", NULL, NULL},
+};
+
+static void set_item_actions(struct StatusNotifierItem *item,
+                             StatusNotifierService *self) {
+    item->action_group = G_ACTION_GROUP(g_simple_action_group_new());
+    g_action_map_add_action_entries(G_ACTION_MAP(item->action_group),
+                                    action_entries,
+                                    G_N_ELEMENTS(action_entries), self);
+}
+
+static void update_menu_layout(DbusDbusmenu *menu, StatusNotifierItem *item) {
+    g_debug("status_notifier_service.c:update_menu_layout() called");
+    GVariant *layout;
+    guint rev;
+    GError *error = NULL;
+    dbus_dbusmenu_call_get_layout_sync(item->menu_proxy, 0, -1, property_names,
+                                       &rev, &layout, NULL, &error);
+    if (error) {
+        g_critical(
+            "status_notifier_service.c:update_menu_layout() failed to get "
+            "layout: %s",
+            error->message);
+        return;
+    }
+    libdbusmenu_parse_layout(layout, NULL, item);
+}
+
+static void on_property_update(DbusDbusmenu *menu, GVariant *arg_1,
+                               GVariant *arg_2, StatusNotifierItem *item) {
+    g_debug("status_notifier_service.c:on_property_update() called");
+    update_menu_layout(menu, item);
+}
+
+static void on_menu_layout_update(DbusDbusmenu *menu, guint arg_1, gint arg_2,
+                                  StatusNotifierItem *item) {
+    g_debug("status_notifier_service.c:on_menu_layout_update() called");
+    update_menu_layout(menu, item);
+}
+
+static void dbus_menu_parse_gmenu(StatusNotifierItem *item,
+                                  StatusNotifierService *self) {
     GError *error = NULL;
     guint rev;
     GVariant *layout;
-    const gchar *props = "";
 
     g_debug(
         "status_notifier_service.c:dbus_menu_extract_g_menu() proxy name: %s",
-        g_dbus_proxy_get_name(G_DBUS_PROXY(menu)));
+        g_dbus_proxy_get_name(G_DBUS_PROXY(item->menu_proxy)));
 
-    dbus_dbusmenu_call_get_layout_sync(menu, 0, -1, &props, &rev, &layout, NULL,
-                                       &error);
+    dbus_dbusmenu_call_get_layout_sync(item->menu_proxy, 0, -1, property_names,
+                                       &rev, &layout, NULL, &error);
     if (error) {
         g_critical(
             "status_notifier_service.c:dbus_menu_extract_g_menu() failed to "
@@ -91,9 +250,12 @@ static void dbus_menu_extract_g_menu(DbusDbusmenu *menu,
             error->message);
         return;
     }
-    // debug rev
-    g_debug("status_notifier_service.c:dbus_menu_extract_g_menu() rev: %d",
-            rev);
+
+    libdbusmenu_parse_layout(layout, NULL, item);
+
+    set_item_actions(item, self);
+
+    g_variant_unref(layout);
 };
 
 static void on_handle_menu_async_cb(GObject *source_object, GAsyncResult *res,
@@ -118,7 +280,12 @@ static void on_handle_menu_async_cb(GObject *source_object, GAsyncResult *res,
     if (!item) return;
 
     item->menu_proxy = proxy;
-    dbus_menu_extract_g_menu(item->menu_proxy, self);
+    dbus_menu_parse_gmenu(item, self);
+
+    g_signal_connect(item->menu_proxy, "layout-updated",
+                     G_CALLBACK(on_menu_layout_update), item);
+    g_signal_connect(item->menu_proxy, "items-properties-updated",
+                     G_CALLBACK(on_property_update), item);
 
     g_debug(
         "status_notifier_service.c:on_handle_menu_async_cb() "
@@ -443,6 +610,33 @@ const gchar *status_notifier_item_get_menu(StatusNotifierItem *self) {
 
 DbusItemV0Gen *status_notifier_item_get_proxy(StatusNotifierItem *self) {
     return self->proxy;
+}
+
+void status_notifier_item_about_to_show(StatusNotifierItem *self,
+                                        gint32 menu_item_id) {
+    g_debug(
+        "status_notifier_service.c:status_notifier_item_about_to_show() "
+        "called");
+    if (!self) {
+        return;
+    }
+
+    GError *error = NULL;
+    gboolean need_update = FALSE;
+
+    dbus_dbusmenu_call_about_to_show_sync(self->menu_proxy, menu_item_id,
+                                          &need_update, NULL, &error);
+    if (error) {
+        g_warning(
+            "status_notifier_service.c:on_menu_about_to_show() failed to send "
+            "event: %s",
+            error->message);
+        g_error_free(error);
+    }
+
+    if (need_update) {
+        update_menu_layout(self->menu_proxy, self);
+    }
 }
 
 void status_notifier_item_free(StatusNotifierItem *self) {
