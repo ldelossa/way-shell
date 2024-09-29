@@ -518,7 +518,7 @@ static void status_notifier_service_init(StatusNotifierService *self) {
 StatusNotifierService *status_notifier_service_get_global() { return global; };
 
 GHashTable *status_notifier_service_get_items(StatusNotifierService *self) {
-    return self->items;
+	return self->items;
 }
 
 int status_notifier_service_global_init() {

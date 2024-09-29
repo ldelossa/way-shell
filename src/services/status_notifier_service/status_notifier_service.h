@@ -60,4 +60,6 @@ G_END_DECLS
 
 int status_notifier_service_global_init();
 
+GHashTable *status_notifier_service_get_items(StatusNotifierService *self);
+
 StatusNotifierService *status_notifier_service_get_global();

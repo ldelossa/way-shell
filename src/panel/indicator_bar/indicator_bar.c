@@ -102,6 +102,14 @@ static void indicator_bar_init_layout(IndicatorBar *self) {
                      G_CALLBACK(on_status_notifier_item_added), self);
     g_signal_connect(sn, "status-notifier-item-removed",
                      G_CALLBACK(on_status_notifier_item_removed), self);
+
+    // seed indicators
+    GHashTable *items = status_notifier_service_get_items(sn);
+    GList *values = g_hash_table_get_values(items);
+    for (GList *l = values; l; l = l->next) {
+        StatusNotifierItem *sni = l->data;
+        on_status_notifier_item_added(sn, items, sni, self);
+    }
 }
 
 static void indicator_bar_init(IndicatorBar *self) {
