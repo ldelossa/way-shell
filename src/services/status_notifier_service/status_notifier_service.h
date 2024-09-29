@@ -2,16 +2,24 @@
 
 #include <adwaita.h>
 
-#include "status_notifier_item_dbus.h"
 #include "dbusmenu_dbus.h"
+#include "status_notifier_item_dbus.h"
+
+#define SNI_GACTION_PREFIX "sni"
+#define SNI_GRACTION_ITEM_CLICKED "sni.item-clicked"
+#define SNI_GRACTION_MENU_ABOUT_TO_SHOW "sni.about-to-show"
 
 typedef struct StatusNotifierItem {
     DbusItemV0Gen *proxy;
-	DbusDbusmenu *menu_proxy;
-	GMenu *menu_model;
+    DbusDbusmenu *menu_proxy;
+    GActionGroup *action_group;
+    GMenu *menu_model;
     gchar *bus_name;
     gchar *obj_name;
 } StatusNotifierItem;
+
+void status_notifier_item_about_to_show(StatusNotifierItem *self,
+                                        gint32 menu_item_id);
 
 GdkPixbuf *pixbuf_from_icon_data(GVariant *icon_data);
 const gchar *status_notifier_item_get_category(StatusNotifierItem *self);
@@ -41,7 +49,8 @@ G_BEGIN_DECLS
 
 // A Service which acts as a org.freedesktop.Notification daemon.
 //
-// Listens on DBUS for notifications and provides an API for acting upon them.
+// Listens on DBUS for notifications and provides an API for acting upon
+// them.
 struct _StatusNotifierService;
 #define NOTIFICATIONS_SERVICE_TYPE status_notifier_service_get_type()
 G_DECLARE_FINAL_TYPE(StatusNotifierService, status_notifier_service,

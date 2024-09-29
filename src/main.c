@@ -31,7 +31,7 @@
 #include "panel/quick_settings/quick_settings.h"
 
 // The global GTK application.
-// This can be down casted to a AdwApplication if necessary.
+// This can be down casted to a GtkApplication if necessary.
 // Decoupled code can access this variable with `extern` storage class.
 AdwApplication *gtk_app = NULL;
 
