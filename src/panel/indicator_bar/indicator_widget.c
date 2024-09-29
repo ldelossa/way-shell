@@ -110,6 +110,7 @@ static void on_sni_menu_updated(StatusNotifierService *s,
                                 IndicatorWidget *self) {
     g_debug("indicator_widget.c:on_sni_menu_updated() called");
     if (sni != self->sni) return;
+    if (!sni->menu_model) return;
     gtk_popover_menu_set_menu_model(self->menu, G_MENU_MODEL(sni->menu_model));
 }
 
