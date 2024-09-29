@@ -35,6 +35,8 @@ enum signals {
     status_notifier_item_added,
     status_notifier_item_removed,
     status_notifier_item_changed,
+    status_notifier_item_menu_will_update,
+    status_notifier_item_menu_updated,
     signals_n
 };
 
@@ -86,6 +88,16 @@ static void status_notifier_service_class_init(
         g_signal_new("status-notifier-item-removed", G_TYPE_FROM_CLASS(klass),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
                      G_TYPE_HASH_TABLE);
+
+    signals[status_notifier_item_menu_will_update] =
+        g_signal_new("status-notifier-item-menu-will-update",
+                     G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0, NULL,
+                     NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
+
+    signals[status_notifier_item_menu_updated] =
+        g_signal_new("status-notifier-item-menu-updated",
+                     G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0, NULL,
+                     NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 };
 
 void on_menu_item_activate(GSimpleAction *action, GVariant *parameter,
@@ -216,19 +228,28 @@ static void update_menu_layout(DbusDbusmenu *menu, StatusNotifierItem *item) {
             error->message);
         return;
     }
+
     libdbusmenu_parse_layout(layout, NULL, item);
 }
 
 static void on_property_update(DbusDbusmenu *menu, GVariant *arg_1,
                                GVariant *arg_2, StatusNotifierItem *item) {
     g_debug("status_notifier_service.c:on_property_update() called");
+    g_signal_emit(item, signals[status_notifier_item_menu_will_update], 0,
+                  item);
     update_menu_layout(menu, item);
+    StatusNotifierService *s = status_notifier_service_get_global();
+    g_signal_emit(s, signals[status_notifier_item_menu_updated], 0, item);
 }
 
 static void on_menu_layout_update(DbusDbusmenu *menu, guint arg_1, gint arg_2,
                                   StatusNotifierItem *item) {
     g_debug("status_notifier_service.c:on_menu_layout_update() called");
+    g_signal_emit(item, signals[status_notifier_item_menu_will_update], 0,
+                  item);
     update_menu_layout(menu, item);
+    StatusNotifierService *s = status_notifier_service_get_global();
+    g_signal_emit(s, signals[status_notifier_item_menu_updated], 0, item);
 }
 
 static void dbus_menu_parse_gmenu(StatusNotifierItem *item,
@@ -325,6 +346,8 @@ static void on_handle_register_async_cb(GObject *source_object,
     item->bus_name = g_strdup(g_dbus_proxy_get_name(G_DBUS_PROXY(proxy)));
     item->obj_name =
         g_strdup(g_dbus_proxy_get_object_path(G_DBUS_PROXY(proxy)));
+	item->menu_proxy = NULL;
+	item->menu_model = NULL;
 
     // if a menu exists, we'll grab a proxy to it and emit our added signal
     // after we attach it to our StatusNotifierItem.
@@ -494,6 +517,10 @@ static void status_notifier_service_init(StatusNotifierService *self) {
 
 StatusNotifierService *status_notifier_service_get_global() { return global; };
 
+GHashTable *status_notifier_service_get_items(StatusNotifierService *self) {
+    return self->items;
+}
+
 int status_notifier_service_global_init() {
     global = g_object_new(NOTIFICATIONS_SERVICE_TYPE, NULL);
     return 0;
@@ -640,8 +667,13 @@ void status_notifier_item_about_to_show(StatusNotifierItem *self,
 }
 
 void status_notifier_item_free(StatusNotifierItem *self) {
+    g_debug("status_notifier_service.c:status_notifier_item_free() called");
     if (self->proxy) g_clear_object(&self->proxy);
     g_free(self->bus_name);
     g_free(self->obj_name);
+    if (self->menu_proxy) {
+        g_object_unref(self->menu_proxy);
+        g_object_unref(self->menu_model);
+    }
     g_free(self);
 }
