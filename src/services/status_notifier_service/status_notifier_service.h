@@ -16,12 +16,31 @@ typedef struct StatusNotifierItem {
     GMenu *menu_model;
     gchar *bus_name;
     gchar *obj_name;
+    gchar *register_service_name;
+
+    // item properties
+    gchar *category;
+    gchar *id;
+    gchar *title;
+    gchar *status;
+    guint window_id;
+
+    gchar *icon_name;
+    GdkPixbuf *icon_pixmap;
+
+    gchar *overlay_icon_name;
+    GdkPixbuf *overlay_icon_pixmap;
+
+    gchar *attention_icon_name;
+    GdkPixbuf *attention_icon_pixmap;
+    gchar *attention_movie_name;
 } StatusNotifierItem;
 
 void status_notifier_item_about_to_show(StatusNotifierItem *self,
                                         gint32 menu_item_id);
 
 GdkPixbuf *pixbuf_from_icon_data(GVariant *icon_data);
+void *status_notifier_item_init(StatusNotifierItem *self, DbusItemV0Gen *proxy);
 const gchar *status_notifier_item_get_category(StatusNotifierItem *self);
 const gchar *status_notifier_item_get_id(StatusNotifierItem *self);
 const gchar *status_notifier_item_get_title(StatusNotifierItem *self);

@@ -18,17 +18,19 @@ G_DEFINE_TYPE(IndicatorWidget, indicator_widget, G_TYPE_OBJECT);
 
 static void on_sni_menu_updated(StatusNotifierService *s,
                                 StatusNotifierItem *sni, IndicatorWidget *self);
-static void on_new_icon(DbusItemV0Gen *item, IndicatorWidget *self);
+static void on_sni_property_update(StatusNotifierService *s,
+                                   StatusNotifierItem *item,
+                                   IndicatorWidget *self);
+// static void on_new_icon(DbusItemV0Gen *item, IndicatorWidget *self);
 // stub out dispose, finalize, class_init, and init methods
 static void indicator_widget_dispose(GObject *gobject) {
     IndicatorWidget *self = INDICATOR_WIDGET(gobject);
     // Chain-up
     G_OBJECT_CLASS(indicator_widget_parent_class)->dispose(gobject);
-    // kill signals on sni->proxy
-    g_signal_handlers_disconnect_by_func(self->sni->proxy, on_new_icon, self);
 
     StatusNotifierService *s = status_notifier_service_get_global();
     g_signal_handlers_disconnect_by_func(s, on_sni_menu_updated, self);
+    g_signal_handlers_disconnect_by_func(s, on_sni_property_update, self);
 };
 
 static void indicator_widget_finalize(GObject *gobject) {
@@ -86,7 +88,6 @@ static void on_button_clicked_with_menu(GtkButton *button,
 
 static void indicator_widget_set_icon(IndicatorWidget *self) {
     const gchar *icon_name = status_notifier_item_get_icon_name(self->sni);
-
     if (icon_name && strlen(icon_name) > 0) {
         gtk_image_set_from_icon_name(self->icon, icon_name);
     } else {
@@ -100,8 +101,10 @@ static void indicator_widget_set_icon(IndicatorWidget *self) {
     }
 }
 
-static void on_new_icon(DbusItemV0Gen *sni, IndicatorWidget *self) {
-    g_debug("indicator_widget.c:on_new_icon() called");
+static void on_sni_property_update(StatusNotifierService *s,
+                                   StatusNotifierItem *item,
+                                   IndicatorWidget *self) {
+    if (item != self->sni) return;
     indicator_widget_set_icon(self);
 }
 
@@ -118,11 +121,6 @@ void indicator_widget_set_sni(IndicatorWidget *self, StatusNotifierItem *sni) {
     self->sni = sni;
 
     indicator_widget_set_icon(self);
-    g_signal_connect(sni->proxy, "new-icon", G_CALLBACK(on_new_icon), self);
-    g_signal_connect(sni->proxy, "new-attention-icon", G_CALLBACK(on_new_icon),
-                     self);
-    g_signal_connect(sni->proxy, "new-overlay-icon", G_CALLBACK(on_new_icon),
-                     self);
 
     if (sni->menu_model)
         g_signal_connect(self->button, "clicked",
@@ -144,6 +142,8 @@ void indicator_widget_set_sni(IndicatorWidget *self, StatusNotifierItem *sni) {
                                    self->sni->action_group);
 
     StatusNotifierService *s = status_notifier_service_get_global();
+    g_signal_connect(s, "status-notifier-item-properties-changed",
+                     G_CALLBACK(on_sni_property_update), self);
     g_signal_connect(s, "status-notifier-item-menu-updated",
                      G_CALLBACK(on_sni_menu_updated), self);
 }

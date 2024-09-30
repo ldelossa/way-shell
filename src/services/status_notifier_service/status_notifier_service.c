@@ -35,6 +35,7 @@ enum signals {
     status_notifier_item_added,
     status_notifier_item_removed,
     status_notifier_item_changed,
+    status_notifier_item_properties_changed,
     status_notifier_item_menu_will_update,
     status_notifier_item_menu_updated,
     signals_n
@@ -85,9 +86,14 @@ static void status_notifier_service_class_init(
                      G_TYPE_HASH_TABLE, G_TYPE_POINTER);
 
     signals[status_notifier_item_changed] =
-        g_signal_new("status-notifier-item-removed", G_TYPE_FROM_CLASS(klass),
+        g_signal_new("status-notifier-item-changed", G_TYPE_FROM_CLASS(klass),
                      G_SIGNAL_RUN_FIRST, 0, NULL, NULL, NULL, G_TYPE_NONE, 1,
                      G_TYPE_HASH_TABLE);
+
+    signals[status_notifier_item_properties_changed] =
+        g_signal_new("status-notifier-item-properties-changed",
+                     G_TYPE_FROM_CLASS(klass), G_SIGNAL_RUN_FIRST, 0, NULL,
+                     NULL, NULL, G_TYPE_NONE, 1, G_TYPE_POINTER);
 
     signals[status_notifier_item_menu_will_update] =
         g_signal_new("status-notifier-item-menu-will-update",
@@ -150,60 +156,8 @@ void on_menu_item_activate(GSimpleAction *action, GVariant *parameter,
     }
 }
 
-static void update_menu_layout(DbusDbusmenu *menu, StatusNotifierItem *item);
-
-static void on_menu_about_to_show(GSimpleAction *action, GVariant *parameter,
-                                  gpointer data) {
-    StatusNotifierService *self = (StatusNotifierService *)data;
-    gchar *menu_bus_name;
-    gint32 menu_item_id;
-
-    g_debug("status_notifier_service.c:on_menu_about_to_show() called");
-    g_variant_get(parameter, "(si)", &menu_bus_name, &menu_item_id);
-
-    if (!menu_bus_name) {
-        g_warning(
-            "status_notifier_service.c:on_menu_about_to_show() menu_bus_name "
-            "is NULL");
-        return;
-    }
-    if (!menu_item_id) {
-        g_warning(
-            "status_notifier_service.c:on_menu_about_to_show() menu_item_id is "
-            "NULL");
-        return;
-    }
-
-    StatusNotifierItem *item = g_hash_table_lookup(self->items, menu_bus_name);
-    if (!item) {
-        g_warning(
-            "status_notifier_service.c:on_menu_about_to_show() item not found: "
-            "%s",
-            menu_bus_name);
-        return;
-    }
-
-    GError *error = NULL;
-    gboolean need_update = FALSE;
-
-    dbus_dbusmenu_call_about_to_show_sync(item->menu_proxy, menu_item_id,
-                                          &need_update, NULL, &error);
-    if (error) {
-        g_warning(
-            "status_notifier_service.c:on_menu_about_to_show() failed to send "
-            "event: %s",
-            error->message);
-        g_error_free(error);
-    }
-
-    if (need_update) {
-        update_menu_layout(item->menu_proxy, item);
-    }
-}
-
 static const GActionEntry action_entries[] = {
     {"item-clicked", on_menu_item_activate, "(si)", NULL, NULL},
-    {"about-to-show", on_menu_about_to_show, "(si)", NULL, NULL},
 };
 
 static void set_item_actions(struct StatusNotifierItem *item,
@@ -279,6 +233,45 @@ static void dbus_menu_parse_gmenu(StatusNotifierItem *item,
     g_variant_unref(layout);
 };
 
+static void status_notifier_item_update(StatusNotifierItem *self,
+                                        GVariant *props);
+
+static void on_item_property_update_cb(GObject *source_object,
+                                       GAsyncResult *res, gpointer data) {
+    StatusNotifierItem *item = (StatusNotifierItem *)data;
+    GVariant *properties = NULL;
+
+    g_debug("status_notifier_service.c:on_item_property_update_cb() called");
+
+    GError *error = NULL;
+    properties =
+        g_dbus_proxy_call_finish(G_DBUS_PROXY(source_object), res, &error);
+    if (error) {
+        g_critical(
+            "status_notifier_service.c:on_item_property_update_cb() failed to "
+            "get properties: %s",
+            error->message);
+        return;
+    }
+
+    g_debug(
+        "status_notifier_service.c:on_item_property_update_cb() properties "
+        "received");
+
+    status_notifier_item_update(item, properties);
+    g_variant_unref(properties);
+}
+
+static void on_item_property_update(DbusItemV0Gen *proxy,
+                                    StatusNotifierItem *item) {
+    g_debug("status_notifier_service.c:on_item_property_update() called");
+
+    GVariant *argument = g_variant_new("(s)", "org.kde.StatusNotifierItem");
+    g_dbus_proxy_call(G_DBUS_PROXY(item->proxy),
+                      "org.freedesktop.DBus.Properties.GetAll", argument, 0,
+                      300, NULL, on_item_property_update_cb, item);
+}
+
 static void on_handle_menu_async_cb(GObject *source_object, GAsyncResult *res,
                                     gpointer data) {
     StatusNotifierService *self = (StatusNotifierService *)data;
@@ -317,37 +310,54 @@ static void on_handle_menu_async_cb(GObject *source_object, GAsyncResult *res,
                   item);
 }
 
+static void on_session_name_lost(DBUSService *dbus, GHashTable *session_names,
+                                 gchar *name, StatusNotifierService *self);
+
 static void on_handle_register_async_cb(GObject *source_object,
                                         GAsyncResult *res, gpointer data) {
-    StatusNotifierService *self = (StatusNotifierService *)data;
+    StatusNotifierItem *item = (StatusNotifierItem *)data;
+    StatusNotifierService *self = status_notifier_service_get_global();
 
     g_debug("status_notifier_service.c:on_handle_register_async_cb() called");
 
     GError *error = NULL;
     DbusItemV0Gen *proxy = dbus_item_v0_gen_proxy_new_finish(res, &error);
-
     if (error) {
         g_critical(
             "status_notifier_service.c:on_handle_register_async_cb() failed to "
             "create proxy: %s",
             error->message);
+
+        // cleanup, since we told DBus we registered this item already...
+        on_session_name_lost(NULL, NULL, item->bus_name, self);
+
         return;
     }
     if (!proxy) {
         g_critical(
             "status_notifier_service.c:on_handle_register_async_cb() failed to "
             "create proxy");
+
+        // cleanup, since we told DBus we registered this item already...
+        on_session_name_lost(NULL, NULL, item->bus_name, self);
+
         return;
     }
 
-    struct StatusNotifierItem *item =
-        g_malloc(sizeof(struct StatusNotifierItem));
-    item->proxy = proxy;
-    item->bus_name = g_strdup(g_dbus_proxy_get_name(G_DBUS_PROXY(proxy)));
-    item->obj_name =
-        g_strdup(g_dbus_proxy_get_object_path(G_DBUS_PROXY(proxy)));
-	item->menu_proxy = NULL;
-	item->menu_model = NULL;
+    // finish StatutNotifierItem init, now that we have a proxy...
+    status_notifier_item_init(item, proxy);
+
+    // connect to signals which require us to update properties.
+    g_signal_connect(item->proxy, "new-icon",
+                     G_CALLBACK(on_item_property_update), item);
+    g_signal_connect(item->proxy, "new-attention-icon",
+                     G_CALLBACK(on_item_property_update), item);
+    g_signal_connect(item->proxy, "new-overlay-icon",
+                     G_CALLBACK(on_item_property_update), item);
+    g_signal_connect(item->proxy, "new-title",
+                     G_CALLBACK(on_item_property_update), item);
+    g_signal_connect(item->proxy, "new-status",
+                     G_CALLBACK(on_item_property_update), item);
 
     // if a menu exists, we'll grab a proxy to it and emit our added signal
     // after we attach it to our StatusNotifierItem.
@@ -365,13 +375,13 @@ static void on_handle_register_async_cb(GObject *source_object,
         return;
     }
 
+    // trigger our own internal signals.
+    g_signal_emit(self, signals[status_notifier_item_added], 0, self->items,
+                  item);
     g_debug(
         "status_notifier_service.c:on_handle_register_async_cb() "
         "NotifierStatusItem for %s discovered",
         status_notifier_item_get_id(item));
-
-    g_signal_emit(self, signals[status_notifier_item_added], 0, self->items,
-                  item);
 }
 
 gboolean on_handle_register_item(DbusWatcherV0Gen *watcher,
@@ -386,17 +396,35 @@ gboolean on_handle_register_item(DbusWatcherV0Gen *watcher,
     // check if bus_name contains forward slashes, its then an object and we
     // we have to find which bus name sent it.
     if (strchr(name, '/') != NULL) {
+        const gchar *sender = g_dbus_method_invocation_get_sender(invocation);
+        if (!sender) {
+            g_critical(
+                "status_notifier_service.c:on_handle_register_item() "
+                "object path sent but sender is NULL");
+            return TRUE;
+        }
         obj_name = name;
-        bus_name = g_dbus_method_invocation_get_sender(invocation);
+        bus_name = sender;
     }
 
     g_debug(
         "status_notifier_service.c:on_handle_register_item() bus_name: %s, "
         "obj_name: %s",
         bus_name, obj_name);
+
+    struct StatusNotifierItem *item =
+        g_malloc0(sizeof(struct StatusNotifierItem));
+    item->register_service_name = g_strdup(name);
+    item->bus_name = g_strdup(g_dbus_method_invocation_get_sender(invocation));
+
+    // register the item, we'll finish init in the proxy init cb which follows.
+    g_hash_table_insert(self->items, item->bus_name, item);
+    dbus_watcher_v0_gen_complete_register_item(watcher, invocation);
+    dbus_watcher_v0_gen_emit_item_registered(watcher, name);
+
     dbus_item_v0_gen_proxy_new(self->conn, G_DBUS_PROXY_FLAGS_NONE, bus_name,
                                obj_name, NULL, on_handle_register_async_cb,
-                               self);
+                               item);
 
     return TRUE;
 }
@@ -474,6 +502,9 @@ static void on_session_name_lost(DBUSService *dbus, GHashTable *session_names,
 
     g_hash_table_remove(self->items, name);
 
+    dbus_watcher_v0_gen_emit_item_unregistered(self->watcher,
+                                               item->register_service_name);
+
     status_notifier_item_free(item);
 }
 
@@ -505,7 +536,9 @@ static void status_notifier_service_init(StatusNotifierService *self) {
                                  G_BUS_NAME_OWNER_FLAGS_NONE,
                                  on_status_notifier_watcher_name_acquired,
                                  on_status_notifier_host_name_lost, self, NULL);
+
     dbus_watcher_v0_gen_set_is_host_registered(self->watcher, TRUE);
+    dbus_watcher_v0_gen_emit_host_registered(self->watcher);
 
     DBUSService *dbus = dbus_service_get_global();
     g_signal_connect(dbus, "dbus-session-name-lost",
@@ -518,7 +551,7 @@ static void status_notifier_service_init(StatusNotifierService *self) {
 StatusNotifierService *status_notifier_service_get_global() { return global; };
 
 GHashTable *status_notifier_service_get_items(StatusNotifierService *self) {
-	return self->items;
+    return self->items;
 }
 
 int status_notifier_service_global_init() {
@@ -583,49 +616,45 @@ GdkPixbuf *pixbuf_from_icon_data(GVariant *icon_data) {
 }
 
 const gchar *status_notifier_item_get_category(StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_category(self->proxy);
+    return self->category;
 }
 const gchar *status_notifier_item_get_id(StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_id(self->proxy);
+    return self->id;
 }
 const gchar *status_notifier_item_get_title(StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_title(self->proxy);
+    return self->title;
 }
 const gchar *status_notifier_item_get_status(StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_status(self->proxy);
+    return self->status;
 }
 const int status_notifier_item_get_window_id(StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_window_id(self->proxy);
+    return self->window_id;
 }
 const gchar *status_notifier_item_get_icon_name(StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_icon_name(self->proxy);
+    return self->icon_name;
 }
 GdkPixbuf *status_notifier_item_get_icon_pixmap(StatusNotifierItem *self) {
-    GVariant *icon_data = dbus_item_v0_gen_get_icon_pixmap(self->proxy);
-    return pixbuf_from_icon_data(icon_data);
+    return self->icon_pixmap;
 }
 const gchar *status_notifier_item_get_overlay_icon_name(
     StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_overlay_icon_name(self->proxy);
+    return self->overlay_icon_name;
 }
 GdkPixbuf *status_notifier_item_get_overlay_icon_pixmap(
     StatusNotifierItem *self) {
-    GVariant *icon_data = dbus_item_v0_gen_get_overlay_icon_pixmap(self->proxy);
-    return pixbuf_from_icon_data(icon_data);
+    return self->overlay_icon_pixmap;
 }
 const gchar *status_notifier_item_get_attention_icon_name(
     StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_attention_icon_name(self->proxy);
+    return self->attention_icon_name;
 }
 GdkPixbuf *status_notifier_item_get_attention_icon_pixmap(
     StatusNotifierItem *self) {
-    GVariant *icon_data =
-        dbus_item_v0_gen_get_attention_icon_pixmap(self->proxy);
-    return pixbuf_from_icon_data(icon_data);
+    return self->attention_icon_pixmap;
 }
 const gchar *status_notifier_item_get_attention_movie_name(
     StatusNotifierItem *self) {
-    return dbus_item_v0_gen_get_attention_movie_name(self->proxy);
+    return self->attention_movie_name;
 }
 // TODO: get_tooltip
 const gboolean status_notifier_item_get_item_is_menu(StatusNotifierItem *self) {
@@ -666,14 +695,138 @@ void status_notifier_item_about_to_show(StatusNotifierItem *self,
     }
 }
 
+static void status_notifier_item_update(StatusNotifierItem *self,
+                                        GVariant *props) {
+    g_debug("status_notifier_service.c:status_notifier_item_update() called");
+    GVariant *array = g_variant_get_child_value(props, 0);
+    GVariantIter iter;
+    g_variant_iter_init(&iter, array);
+    GVariant *value;
+    const gchar *key;
+    while (g_variant_iter_next(&iter, "{sv}", &key, &value)) {
+        g_debug(
+            "status_notifier_service.c:status_notifier_item_update() key: %s",
+            key);
+        // Category
+        if (g_strcmp0(key, "Category") == 0) {
+            if (self->category) g_free(self->category);
+            self->category = g_variant_dup_string(value, NULL);
+        }
+        // ID
+        else if (g_strcmp0(key, "Id") == 0) {
+            if (self->id) g_free(self->id);
+            self->id = g_variant_dup_string(value, NULL);
+        }
+        // Title
+        else if (g_strcmp0(key, "Title") == 0) {
+            if (self->title) g_free(self->title);
+            self->title = g_variant_dup_string(value, NULL);
+        }
+        // Status
+        else if (g_strcmp0(key, "Status") == 0) {
+            if (self->status) g_free(self->status);
+            self->status = g_variant_dup_string(value, NULL);
+        }
+        // WindowID
+        else if (g_strcmp0(key, "WindowId") == 0) {
+            self->window_id = g_variant_get_int32(value);
+        }
+        // IconName
+        else if (g_strcmp0(key, "IconName") == 0) {
+            if (self->icon_name) g_free(self->icon_name);
+            self->icon_name = g_variant_dup_string(value, NULL);
+        }
+        // IconPixmap
+        else if (g_strcmp0(key, "IconPixmap") == 0) {
+            if (self->icon_pixmap) g_object_unref(self->icon_pixmap);
+            self->icon_pixmap = pixbuf_from_icon_data(value);
+        }
+        // OverlayIconName
+        else if (g_strcmp0(key, "OverlayIconName") == 0) {
+            if (self->overlay_icon_name) g_free(self->overlay_icon_name);
+            self->overlay_icon_name = g_variant_dup_string(value, NULL);
+        }
+        // OverlayIconPixmap
+        else if (g_strcmp0(key, "OverlayIconPixmap") == 0) {
+            if (self->overlay_icon_pixmap)
+                g_object_unref(self->overlay_icon_pixmap);
+            self->overlay_icon_pixmap = pixbuf_from_icon_data(value);
+        }
+        // AttentionIconName
+        else if (g_strcmp0(key, "AttentionIconName") == 0) {
+            if (self->attention_icon_name) g_free(self->attention_icon_name);
+            self->attention_icon_name = g_variant_dup_string(value, NULL);
+        }
+        // AttentionIconPixmap
+        else if (g_strcmp0(key, "AttentionIconPixmap") == 0) {
+            if (self->attention_icon_pixmap)
+                g_object_unref(self->attention_icon_pixmap);
+            self->attention_icon_pixmap = pixbuf_from_icon_data(value);
+        }
+        // AttentionMovieName
+        else if (g_strcmp0(key, "AttentionMovieName") == 0) {
+            if (self->attention_movie_name) g_free(self->attention_movie_name);
+            self->attention_movie_name = g_variant_dup_string(value, NULL);
+        }
+        // TODO: Tooltips
+    }
+
+    StatusNotifierService *s = status_notifier_service_get_global();
+    g_signal_emit(s, signals[status_notifier_item_properties_changed], 0, self);
+}
+
+// initial settings come from the cached proxy, updates come from a call to
+// GetAll for properties.
+void *status_notifier_item_init(StatusNotifierItem *self,
+                                DbusItemV0Gen *proxy) {
+    self->proxy = proxy;
+    self->obj_name =
+        g_strdup(g_dbus_proxy_get_object_path(G_DBUS_PROXY(proxy)));
+    self->menu_proxy = NULL;
+    self->menu_model = NULL;
+
+    self->category = g_strdup(dbus_item_v0_gen_get_category(proxy));
+    self->id = g_strdup(dbus_item_v0_gen_get_id(proxy));
+    self->title = g_strdup(dbus_item_v0_gen_get_title(proxy));
+    self->status = g_strdup(dbus_item_v0_gen_get_status(proxy));
+    self->window_id = dbus_item_v0_gen_get_window_id(proxy);
+    self->icon_name = g_strdup(dbus_item_v0_gen_get_icon_name(proxy));
+    self->icon_pixmap = status_notifier_item_get_icon_pixmap(self);
+    self->overlay_icon_name =
+        g_strdup(dbus_item_v0_gen_get_overlay_icon_name(proxy));
+    self->overlay_icon_pixmap =
+        status_notifier_item_get_overlay_icon_pixmap(self);
+    self->attention_icon_name =
+        g_strdup(dbus_item_v0_gen_get_attention_icon_name(proxy));
+    self->attention_icon_pixmap =
+        status_notifier_item_get_attention_icon_pixmap(self);
+    self->attention_movie_name =
+        g_strdup(dbus_item_v0_gen_get_attention_movie_name(proxy));
+
+    return self;
+}
+
 void status_notifier_item_free(StatusNotifierItem *self) {
     g_debug("status_notifier_service.c:status_notifier_item_free() called");
     if (self->proxy) g_clear_object(&self->proxy);
     g_free(self->bus_name);
     g_free(self->obj_name);
+    g_free(self->register_service_name);
     if (self->menu_proxy) {
         g_object_unref(self->menu_proxy);
         g_object_unref(self->menu_model);
     }
+    if (self->icon_pixmap) g_object_unref(self->icon_pixmap);
+    if (self->overlay_icon_pixmap) g_object_unref(self->overlay_icon_pixmap);
+    if (self->attention_icon_pixmap)
+        g_object_unref(self->attention_icon_pixmap);
+    if (self->category) g_free(self->category);
+    if (self->id) g_free(self->id);
+    if (self->title) g_free(self->title);
+    if (self->status) g_free(self->status);
+    if (self->icon_name) g_free(self->icon_name);
+    if (self->overlay_icon_name) g_free(self->overlay_icon_name);
+    if (self->attention_icon_name) g_free(self->attention_icon_name);
+    if (self->attention_movie_name) g_free(self->attention_movie_name);
     g_free(self);
 }
