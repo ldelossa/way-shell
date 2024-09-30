@@ -129,7 +129,7 @@ void libdbusmenu_parse_layout(GVariant *layout, GMenuItem *parent_menu_item,
             NULL, "app.status_notifier_service-menu_item_clicked");
 
         gboolean is_section = false;
-        gboolean is_visible = false;
+        gboolean is_visible = true;
         g_variant_iter_init(&iter, child_props);
         while (g_variant_iter_loop(&iter, "{sv}", &prop, &value)) {
             libdbusmenu_parse_properties(menu_item, prop, value, &is_section,
