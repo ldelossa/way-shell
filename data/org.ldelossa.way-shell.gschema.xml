@@ -162,6 +162,19 @@
             Way-Shell must be restarted for changes to take effect.
             </description>
         </key>
+        <key name="enable-tray-icons" type="b">
+            <default>true</default>
+            <summary>Whether tray icons and their menus should be displayed</summary>
+            <description>
+			Way-Shell can display tray icons for applications which present them.
+
+			This is an experimental feature which may cause some issues.
+			Therefore, if issues are encountered you can disable them with this
+			flag.
+
+            Way-Shell must be restarted for changes to take effect.
+            </description>
+        </key>
     </schema>
 
 </schemalist>

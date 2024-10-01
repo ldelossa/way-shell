@@ -4,6 +4,7 @@
 #include <gdk/wayland/gdkwayland.h>
 #include <gtk4-layer-shell/gtk4-layer-shell.h>
 
+#include "../../src/services/status_notifier_service/status_notifier_service.h"
 #include "../activities/activities.h"
 #include "./indicator_bar/indicator_bar.h"
 #include "./panel_status_bar/panel_status_bar.h"
@@ -67,7 +68,7 @@ static void panel_dispose(GObject *gobject) {
     g_object_unref(self->ws_bar);
     g_object_unref(self->monitor);
     g_object_unref(self->clock);
-	g_object_unref(self->indicator_bar);
+    g_object_unref(self->indicator_bar);
 
     g_free(self->monitor_desc);
 
@@ -109,6 +110,15 @@ static void panel_init_status_bar(Panel *self) {
 }
 
 static void panel_init_indicator_bar(Panel *self) {
+    // check if StatusNotifierService is available
+    StatusNotifierService *s = status_notifier_service_get_global();
+    if (!s) {
+        g_debug(
+            "panel.c:panel_init_indicator_bar() StatusNotifierService not "
+            "available, skipping.");
+        return;
+    }
+
     self->indicator_bar = g_object_new(INDICATOR_BAR_TYPE, NULL);
     indicator_bar_set_panel(self->indicator_bar, self);
     gtk_box_prepend(self->right, indicator_bar_get_widget(self->indicator_bar));
