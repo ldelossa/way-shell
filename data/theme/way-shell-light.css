@@ -193,6 +193,17 @@ row:hover {
 }
 
 /*
+ * Panel Indicator Bar
+ */
+
+#panel #panel-indicator-bar-widget button {
+	background: @transparent;
+}
+#panel #panel-indicator-bar-widget button:hover {
+	background: @panel-button-hover;
+}
+
+/*
 / Message Tray
 */
 #message-tray {
