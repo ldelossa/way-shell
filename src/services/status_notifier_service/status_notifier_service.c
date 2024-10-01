@@ -695,6 +695,39 @@ void status_notifier_item_about_to_show(StatusNotifierItem *self,
     }
 }
 
+GdkPixbuf *icon_pixbuf_from_icon_theme(gchar *icon_name,
+                                       const gchar *icon_theme_path) {
+    if (!icon_name || !icon_theme_path) {
+        return NULL;
+    }
+
+    gchar *path_to_icon = NULL;
+
+    // check if `icon_name` has an extension, any extension at all
+    if (strchr(icon_name, '.') != NULL) {
+        path_to_icon = g_strdup_printf("%s/%s", icon_theme_path, icon_name);
+    } else {
+        // we don't have a file listed, so lets search for it...
+        GDir *dir = g_dir_open(icon_theme_path, 0, NULL);
+        const gchar *file_name;
+        while ((file_name = g_dir_read_name(dir)) != NULL) {
+            if (g_str_has_prefix(file_name, icon_name) &&
+                (g_str_has_suffix(file_name, ".png") ||
+                 g_str_has_suffix(file_name, ".svg") ||
+                 g_str_has_suffix(file_name, ".xpm") ||
+                 g_str_has_suffix(file_name, ".ico"))) {
+                path_to_icon =
+                    g_strdup_printf("%s/%s", icon_theme_path, file_name);
+                break;
+            }
+        }
+    }
+
+    GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(path_to_icon, NULL);
+    g_free(path_to_icon);
+    return pixbuf;
+}
+
 static void status_notifier_item_update(StatusNotifierItem *self,
                                         GVariant *props) {
     g_debug("status_notifier_service.c:status_notifier_item_update() called");
@@ -730,6 +763,11 @@ static void status_notifier_item_update(StatusNotifierItem *self,
         // WindowID
         else if (g_strcmp0(key, "WindowId") == 0) {
             self->window_id = g_variant_get_int32(value);
+        }
+        // IconThemePath
+        else if (g_strcmp0(key, "IconThemePath") == 0) {
+            if (self->icon_theme_path) g_free(self->icon_theme_path);
+            self->icon_theme_path = g_variant_dup_string(value, NULL);
         }
         // IconName
         else if (g_strcmp0(key, "IconName") == 0) {
@@ -771,6 +809,17 @@ static void status_notifier_item_update(StatusNotifierItem *self,
         // TODO: Tooltips
     }
 
+    // if this update resulted in having both an icon theme path and an icon
+    // name, load up the icon bits from the file.
+    if (self->icon_theme_path && self->icon_name &&
+        strlen(self->icon_name) > 0 && strlen(self->icon_theme_path) > 0) {
+        if (self->icon_pixmap_from_theme) {
+            g_object_unref(self->icon_pixmap_from_theme);
+        }
+        self->icon_pixmap_from_theme =
+            icon_pixbuf_from_icon_theme(self->icon_name, self->icon_theme_path);
+    }
+
     StatusNotifierService *s = status_notifier_service_get_global();
     g_signal_emit(s, signals[status_notifier_item_properties_changed], 0, self);
 }
@@ -804,6 +853,13 @@ void *status_notifier_item_init(StatusNotifierItem *self,
     self->attention_movie_name =
         g_strdup(dbus_item_v0_gen_get_attention_movie_name(proxy));
 
+    self->icon_theme_path =
+        g_strdup(dbus_item_v0_gen_get_icon_theme_path(proxy));
+    if (self->icon_theme_path && strlen(self->icon_theme_path) > 0) {
+        self->icon_pixmap_from_theme =
+            icon_pixbuf_from_icon_theme(self->icon_name, self->icon_theme_path);
+    }
+
     return self;
 }
 
@@ -826,6 +882,9 @@ void status_notifier_item_free(StatusNotifierItem *self) {
     if (self->title) g_free(self->title);
     if (self->status) g_free(self->status);
     if (self->icon_name) g_free(self->icon_name);
+    if (self->icon_theme_path) g_free(self->icon_theme_path);
+    if (self->icon_pixmap_from_theme)
+        g_object_unref(self->icon_pixmap_from_theme);
     if (self->overlay_icon_name) g_free(self->overlay_icon_name);
     if (self->attention_icon_name) g_free(self->attention_icon_name);
     if (self->attention_movie_name) g_free(self->attention_movie_name);

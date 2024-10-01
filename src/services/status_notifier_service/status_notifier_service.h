@@ -25,6 +25,8 @@ typedef struct StatusNotifierItem {
     gchar *status;
     guint window_id;
 
+    GdkPixbuf *icon_pixmap_from_theme;
+    gchar *icon_theme_path;
     gchar *icon_name;
     GdkPixbuf *icon_pixmap;
 

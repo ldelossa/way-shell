@@ -88,7 +88,11 @@ static void on_button_clicked_with_menu(GtkButton *button,
 
 static void indicator_widget_set_icon(IndicatorWidget *self) {
     const gchar *icon_name = status_notifier_item_get_icon_name(self->sni);
-    if (icon_name && strlen(icon_name) > 0) {
+    if (self->sni->icon_pixmap_from_theme) {
+        GdkTexture *t =
+            gdk_texture_new_for_pixbuf(self->sni->icon_pixmap_from_theme);
+        gtk_image_set_from_paintable(self->icon, GDK_PAINTABLE(t));
+    } else if (icon_name && strlen(icon_name) > 0) {
         gtk_image_set_from_icon_name(self->icon, icon_name);
     } else {
         GdkPixbuf *pix = status_notifier_item_get_icon_pixmap(self->sni);
