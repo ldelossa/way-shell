@@ -262,10 +262,22 @@ static void on_item_property_update_cb(GObject *source_object,
     g_variant_unref(properties);
 }
 
+// we just use this as an opportunity to get all propeties for refresh, the
+// signals for a StatusNotifierItem are pretty coarse anyway...
+//
+// TODO: tune this when we do the next performance pass...
 static void on_item_property_update(DbusItemV0Gen *proxy,
                                     StatusNotifierItem *item) {
     g_debug("status_notifier_service.c:on_item_property_update() called");
+    GVariant *argument = g_variant_new("(s)", "org.kde.StatusNotifierItem");
+    g_dbus_proxy_call(G_DBUS_PROXY(item->proxy),
+                      "org.freedesktop.DBus.Properties.GetAll", argument, 0,
+                      300, NULL, on_item_property_update_cb, item);
+}
 
+static void on_item_property_status_update(DbusItemV0Gen *proxy, gchar *status,
+                                           StatusNotifierItem *item) {
+    g_debug("status_notifier_service.c:on_item_property_update() called");
     GVariant *argument = g_variant_new("(s)", "org.kde.StatusNotifierItem");
     g_dbus_proxy_call(G_DBUS_PROXY(item->proxy),
                       "org.freedesktop.DBus.Properties.GetAll", argument, 0,
@@ -357,7 +369,7 @@ static void on_handle_register_async_cb(GObject *source_object,
     g_signal_connect(item->proxy, "new-title",
                      G_CALLBACK(on_item_property_update), item);
     g_signal_connect(item->proxy, "new-status",
-                     G_CALLBACK(on_item_property_update), item);
+                     G_CALLBACK(on_item_property_status_update), item);
 
     // if a menu exists, we'll grab a proxy to it and emit our added signal
     // after we attach it to our StatusNotifierItem.
@@ -865,14 +877,25 @@ void *status_notifier_item_init(StatusNotifierItem *self,
 
 void status_notifier_item_free(StatusNotifierItem *self) {
     g_debug("status_notifier_service.c:status_notifier_item_free() called");
-    if (self->proxy) g_clear_object(&self->proxy);
-    g_free(self->bus_name);
-    g_free(self->obj_name);
-    g_free(self->register_service_name);
+
+    // kill signals related to the item
     if (self->menu_proxy) {
+        g_signal_handlers_disconnect_by_func(self->menu_proxy,
+                                             on_menu_layout_update, self);
         g_object_unref(self->menu_proxy);
         g_object_unref(self->menu_model);
     }
+    if (self->proxy) {
+        g_signal_handlers_disconnect_by_func(self->proxy,
+                                             on_item_property_update, self);
+        g_clear_object(&self->proxy);
+    }
+
+    // these are required fields, so free unconditionally.
+    g_free(self->bus_name);
+    g_free(self->obj_name);
+    g_free(self->register_service_name);
+
     if (self->icon_pixmap) g_object_unref(self->icon_pixmap);
     if (self->overlay_icon_pixmap) g_object_unref(self->overlay_icon_pixmap);
     if (self->attention_icon_pixmap)
