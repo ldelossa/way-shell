@@ -151,3 +151,4 @@ Feel free to adjust these to your liking.
 - [ ] Option to turn on idle inhibitor when video/audio sources are detected.
 - [x] Network Manager VPN (Wireguard Supported) integration in quick settings (toggle VPN's on an off).
 - [x] Rename workspace via on screen widget
+- [x] Tray Icons ([StatusNotifier protocol](https://www.freedesktop.org/wiki/Specifications/StatusNotifierItem/))
