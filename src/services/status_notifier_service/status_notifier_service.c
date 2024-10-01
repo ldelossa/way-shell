@@ -791,15 +791,16 @@ void *status_notifier_item_init(StatusNotifierItem *self,
     self->status = g_strdup(dbus_item_v0_gen_get_status(proxy));
     self->window_id = dbus_item_v0_gen_get_window_id(proxy);
     self->icon_name = g_strdup(dbus_item_v0_gen_get_icon_name(proxy));
-    self->icon_pixmap = status_notifier_item_get_icon_pixmap(self);
+    self->icon_pixmap =
+        pixbuf_from_icon_data(dbus_item_v0_gen_get_icon_pixmap(proxy));
     self->overlay_icon_name =
         g_strdup(dbus_item_v0_gen_get_overlay_icon_name(proxy));
     self->overlay_icon_pixmap =
-        status_notifier_item_get_overlay_icon_pixmap(self);
+        pixbuf_from_icon_data(dbus_item_v0_gen_get_icon_pixmap(proxy));
     self->attention_icon_name =
         g_strdup(dbus_item_v0_gen_get_attention_icon_name(proxy));
-    self->attention_icon_pixmap =
-        status_notifier_item_get_attention_icon_pixmap(self);
+    self->attention_icon_pixmap = pixbuf_from_icon_data(
+        dbus_item_v0_gen_get_attention_icon_pixmap(proxy));
     self->attention_movie_name =
         g_strdup(dbus_item_v0_gen_get_attention_movie_name(proxy));
 
