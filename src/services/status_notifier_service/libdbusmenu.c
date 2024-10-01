@@ -77,8 +77,9 @@ void libdbusmenu_parse_layout(GVariant *layout, GMenuItem *parent_menu_item,
     // If we don't have a parent menu, this is the root iteration of a layout
     // parse.
     //
-    // If the sni already has a menu, remove everything from it and update it,
-    // else, create a new menu.
+    // If the sni already has a menu, clear it out, calling code should signal
+    // that a menu update occurred to references, and they can reload their
+    // models into the appropriate GtkWidgets for display.
     GMenu *menu = NULL;
     if (!parent_menu_item && item->menu_model) {
         g_clear_object(&item->menu_model);
@@ -137,9 +138,10 @@ void libdbusmenu_parse_layout(GVariant *layout, GMenuItem *parent_menu_item,
         }
 
         // now's a good time to recurse to the child of this item, we do it here
-        // becaues it makes building a GMenu model easier...
+        // becaues it makes building a GMenu model with sections easier...
         libdbusmenu_parse_layout(child, menu_item, item);
 
+        // menu item isn't visible, just skip trying to append it.
         if (!is_visible) goto skip_append;
 
         // if this child starts a section we need to create a new GMenu and
@@ -150,7 +152,7 @@ void libdbusmenu_parse_layout(GVariant *layout, GMenuItem *parent_menu_item,
         // building, and create a new one.
         //
         // the final section, or this one, if is the only one, is appended after
-        // this all children within this loop are processed.
+        // all children within this loop are processed.
         if (is_section) {
             g_debug(
                 "status_notifier_service.c:libdbusmenu_parse_layout() creating "
