@@ -567,6 +567,12 @@ GHashTable *status_notifier_service_get_items(StatusNotifierService *self) {
 }
 
 int status_notifier_service_global_init() {
+    GSettings *panel_settings = g_settings_new("org.ldelossa.way-shell.panel");
+
+    gboolean enabled =
+        g_settings_get_boolean(panel_settings, "enable-tray-icons");
+    if (!enabled) return 0;
+
     global = g_object_new(NOTIFICATIONS_SERVICE_TYPE, NULL);
     return 0;
 }
