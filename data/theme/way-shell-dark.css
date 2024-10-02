@@ -198,6 +198,7 @@ row:hover {
 
 #panel #panel-indicator-bar-widget button {
 	background: @transparent;
+	padding: 2px;
 }
 #panel #panel-indicator-bar-widget button:hover {
 	background: @panel-button-hover;
