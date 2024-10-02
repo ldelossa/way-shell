@@ -12,10 +12,10 @@ This means DBus must be running and the following services must be available:
 - Logind
 - NetworkManager
 - WirePlumber/Pipewire
-- PowerProfiles Daemon
 - UPower
 
-If you're using Fedora these services should be available by default.
+If you're using the default Fedora release these services should be available by default.
+If you're using a Fedora spin you may want to confirm these services exist. 
 
 Currently Way-Shell only supports Sway but this will change as the project
 matures.
