@@ -1,6 +1,7 @@
 #include "window_manager_service.h"
 
 #include "./sway/window_manager_service_sway.h"
+#include "./niri/window_manager_service_niri.h"
 
 static WindowManager *global = NULL;
 
@@ -17,6 +18,8 @@ int window_manager_service_init() {
 
     if (g_strcmp0(backend, "sway") == 0) {
         global = wm_service_sway_window_manager_init();
+    } else if (g_strcmp0(backend, "niri") == 0) {
+        global = wm_service_niri_window_manager_init();
     } else {
         g_warning("Unknown backend: %s", backend);
         return -1;

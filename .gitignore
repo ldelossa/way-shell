@@ -5,3 +5,4 @@ way-shell
 way-sh/way-sh
 gresources.c
 gresources.h
+/.cache/
