@@ -419,6 +419,12 @@ void app_switcher_activate(AdwApplication *app, gpointer user_data) {
 void app_switcher_show(AppSwitcher *self) {
     g_debug("app_switcher.c:app_switcher_show called");
 
+    if (self->widget_n == 0) {
+        g_debug("app_switcher.c:app_switcher_show no widgets available, hiding");
+        app_switcher_hide(self);
+        return;
+    }
+
     if (self->widget_n > 1) {
         if (self->select_alternative_app)
             app_switcher_focus_widget_at_index(self, 1);
