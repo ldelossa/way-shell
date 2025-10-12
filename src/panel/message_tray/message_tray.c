@@ -5,6 +5,7 @@
 
 #include "./notifications/notifications_list.h"
 #include "calendar/calendar.h"
+#include "glib-object.h"
 #include "gtk/gtk.h"
 
 enum signals {
@@ -194,6 +195,7 @@ static void message_tray_init_layout(MessageTray *self) {
 
     // get GdkSurface from self->win
     GtkNative *native = gtk_widget_get_native(GTK_WIDGET(self->win));
+    gtk_widget_realize(GTK_WIDGET(native)); // fixes (way-shell:15127): GLib-GObject-CRITICAL **: 12:18:35.939: invalid (NULL) pointer instance
     GdkSurface *surface = gtk_native_get_surface(native);
     g_signal_connect(surface, "layout", G_CALLBACK(on_layout_changed), self);
 
@@ -273,7 +275,8 @@ static void message_tray_init(MessageTray *self) {
     // create dependent widgets
     self->notifications_list = g_object_new(NOTIFICATIONS_LIST_TYPE, NULL);
 
-    g_object_unref(self->calendar);
+    // g_object_unref(self->calendar);
+    g_clear_object(&self->calendar); // fixes (way-shell:14434): GLib-GObject-CRITICAL **: 12:15:40.810: g_object_unref: assertion 'G_IS_OBJECT (object)' failed
 
     // setup the layout
     message_tray_init_layout(self);
