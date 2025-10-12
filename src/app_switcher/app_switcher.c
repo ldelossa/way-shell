@@ -419,6 +419,7 @@ void app_switcher_activate(AdwApplication *app, gpointer user_data) {
 void app_switcher_show(AppSwitcher *self) {
     g_debug("app_switcher.c:app_switcher_show called");
 
+    // fixes crash when app switcher is invoked without any apps open
     if (self->widget_n == 0) {
         g_debug("app_switcher.c:app_switcher_show no widgets available, hiding");
         app_switcher_hide(self);

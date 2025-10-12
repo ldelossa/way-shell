@@ -404,8 +404,10 @@ static void activities_init_layout(Activities *self) {
     gtk_widget_set_halign(GTK_WIDGET(self->search_entry), GTK_ALIGN_CENTER);
     gtk_widget_set_size_request(GTK_WIDGET(self->search_entry), 480, 120);
 
-    gtk_entry_set_placeholder_text(
-        GTK_ENTRY(self->search_entry),
+    // gtk_entry_set_placeholder_text(
+    //     GTK_ENTRY(self->search_entry),
+    gtk_search_entry_set_placeholder_text( // fixes (way-shell:13960): GLib-GObject-CRITICAL **: 12:12:03.013: invalid cast from 'GtkSearchEntry' to 'GtkEntry'
+        self->search_entry,
         "Search Applications...ctrl-g for next, ctrl-s-g for prev");
 
     // wire into search-changed signal for GtkSearchEntry
