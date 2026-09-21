@@ -635,13 +635,20 @@ statuspage {
 }
 
 #quick-settings #quick-settings-scales button {
-    margin: 2px;
     background-color: @transparent;
 }
 
 #quick-settings #quick-settings-scales button:hover {
-    margin: 2px;
     background-color: @panel-button-hover;
+}
+
+#quick-settings #quick-settings-scales #default-sink-container button,
+#quick-settings #quick-settings-scales #default-source-container button,
+#quick-settings #quick-settings-scales #brightness-container image {
+    margin: 2px;
+    padding: 6px;
+    min-width: 20px;
+    min-height: 20px;
 }
 
 #quick-settings #quick-settings-grid {

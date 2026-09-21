@@ -108,7 +108,7 @@ impl SystemControls {
         );
         let brightness_row = gtk::Box::new(gtk::Orientation::Horizontal, 0);
         brightness_row.set_widget_name("brightness-container");
-        brightness_row.append(&gtk::Button::from_icon_name("display-brightness-symbolic"));
+        brightness_row.append(&gtk::Image::from_icon_name("display-brightness-symbolic"));
         let brightness_scale = gtk::Scale::with_range(gtk::Orientation::Horizontal, 0.0, 1.0, 0.05);
         brightness_scale.set_hexpand(true);
         brightness_row.append(&brightness_scale);
